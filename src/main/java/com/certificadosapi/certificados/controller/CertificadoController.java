@@ -1,5 +1,6 @@
 package com.certificadosapi.certificados.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -11,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
-
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -861,8 +861,7 @@ public class CertificadoController {
     public ResponseEntity<ByteArrayResource> generarzip(
             @PathVariable int idMovDoc,
             @PathVariable String tipoArchivo,
-            @PathVariable boolean incluirXml,
-            @RequestParam(required = false) String cuv) { 
+            @PathVariable boolean incluirXml) { 
 
         
         if (!tipoArchivo.equalsIgnoreCase("json") &&
@@ -955,13 +954,42 @@ public class CertificadoController {
                     }
                 }
 
-                if (cuv != null && !cuv.isBlank()) {
-                    
-                    String nombreCuv = folderName + "CUV_" + prefijo + numdoc + ".txt";
-                    ZipEntry zipEntry = new ZipEntry(nombreCuv);
+                String respuestaConn = String.format("jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;", servidor);
+
+                String respuestaValidador = null;
+
+                try(Connection connRips = DriverManager.getConnection(respuestaConn)){
+                    String respuestaSQL = "SELECT MensajeRespuesta From RIPS_RespuestaApi WHERE Nfact = ?";
+                    try(PreparedStatement stmt = connRips.prepareStatement(respuestaSQL)){
+                        stmt.setString(1, prefijo + numdoc);
+                        try (ResultSet rs = stmt.executeQuery()){
+                            if (rs.next()){
+                                respuestaValidador = rs.getString("MensajeRespuesta");
+                            }
+                        }
+                    }
+                } catch(SQLException e){
+                    System.out.println("Error al consultar rips_RespuestaAPI: " + e.getMessage());
+                }
+
+                if (respuestaValidador != null && !respuestaValidador.isBlank()){
+
+                    String procesoId = "";
+                    try{
+                        ObjectMapper mapper = new ObjectMapper();
+                        JsonNode jsonNode = mapper.readTree(respuestaValidador);
+
+                        if (jsonNode.has("ProcesoId")){
+                            procesoId = jsonNode.get("ProcesoId").asText();
+                        }
+                    } catch (Exception e){
+                        System.out.println("Error al parsear ProcesoId: " + e.getMessage());
+                    }
+
+                    String nombreTxt = folderName + "ResultadosMSPS_" + prefijo + numdoc + "_ID" + procesoId + "_A_CUV.txt";
+                    ZipEntry zipEntry = new ZipEntry(nombreTxt);
                     zos.putNextEntry(zipEntry);
-                    String contenido = cuv;
-                    zos.write(contenido.getBytes(StandardCharsets.UTF_8));
+                    zos.write(respuestaValidador.getBytes(StandardCharsets.UTF_8));
                     zos.closeEntry();
                 }
             }
