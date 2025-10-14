@@ -612,13 +612,13 @@
             <label for="nFact">No. Factura</label>
             <input type="text" id="nFact" name="nFact" placeholder="Ingrese factura">
           </div>
-        </div>
 
-        <div class="form-group">
+          <div class="form-group">
             <label for="cuentaCobro">Número de Cuenta de Cobro</label>
             <input type="text" id="cuentaCobro" name="cuentaCobro" placeholder="Ingrese cuenta de cobro">
+          </div>
         </div>
-        
+
         <div class="button-group">
           <button type="submit" class="button" id="subirboton">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -767,6 +767,117 @@
           }
       }
 
+      async function procesarCUVPorLotes(filas, loteSize = 30) {
+          const toast = showToast('Procesando', 'Cargando CUVs', 'success', 999999, true);
+
+          for (let i = 0; i < filas.length; i += loteSize) {
+              const lote = filas.slice(i, i + loteSize);
+
+              const promesas = lote.map(async cell => {
+                  const fila = cell.closest('tr');
+                  const nfact = fila.querySelector('td:nth-child(2)')?.textContent.trim();
+
+                  if (!nfact) {
+                      console.warn('No se encontró Nfact para esta fila');
+                      cell.innerHTML = 'No disponible';
+                      return;
+                  }
+
+                  const cuv = await obtenerCUV(nfact);
+
+                  const renderCUVConEditar = (valorCUV, editable = false) => {
+                      cell.innerHTML = `
+                          <span class="valor-cuv">${valorCUV}</span>
+                          <button class="btn-copiar-cuv" title="Copiar CUV" style="margin-left:5px;">📋</button>
+                          ${editable ? '<button class="btn-editar-cuv">✏️</button>' : ''}
+                      `;
+
+                      const copiarBtn = cell.querySelector('.btn-copiar-cuv');
+                      copiarBtn.addEventListener('click', () => {
+                          copiarAlPortapapeles(valorCUV)
+                              .then(() => showToast('Copiado', `CUV copiado: ${valorCUV}`, 'success'))
+                              .catch(err => showToast('Error', 'No se pudo copiar el CUV', 'error'));
+                      });
+
+                      if (editable) {
+                          const editBtn = cell.querySelector('.btn-editar-cuv');
+                          editBtn.addEventListener('click', () => {
+                              renderInputCUV(valorCUV);
+                          });
+                      }
+                  };
+
+                  const renderInputCUV = (valorInicial = '') => {
+                      cell.innerHTML = `
+                          <input type="text" class="input-cuv" value="${valorInicial}" placeholder="Ingrese el CUV" style="width: 165px;" />
+                          <button class="btn-save-cuv" title="Guardar">✔</button>
+                          <button class="btn-cancel-cuv" title="Cancelar">✖</button>
+                      `;
+
+                      const input = cell.querySelector('.input-cuv');
+                      const saveBtn = cell.querySelector('.btn-save-cuv');
+                      const cancelBtn = cell.querySelector('.btn-cancel-cuv');
+
+                      saveBtn.addEventListener('click', async () => {
+                          const valorCUV = input.value.trim();
+                          let idEstadoValidacion = valorCUV ? 3 : 0;
+
+                          try {
+                              const exito = await agregarCUVCompleto(nfact, valorCUV, idEstadoValidacion);
+                              if (exito) {
+                                  if (valorCUV) {
+                                      showToast('CUV guardado', `CUV ingresado y guardado para Nfact ${nfact}`, 'success');
+                                      renderCUVConEditar(valorCUV, true);
+                                  } else {
+                                      renderAgregarCUV();
+                                  }
+                              } else {
+                                  showToast('Error', `No se ha generado JSON para ${nfact}`, 'error');
+                              }
+                          } catch (error) {
+                              showToast('Error de red', error.message, 'error');
+                          }
+                      });
+
+                      cancelBtn.addEventListener('click', () => {
+                          if (valorInicial) {
+                              renderCUVConEditar(valorInicial, true);
+                          } else {
+                              renderAgregarCUV();
+                          }
+                      });
+                  };
+
+                  const renderAgregarCUV = () => {
+                      cell.innerHTML = `<button class="btn-cuv">+</button>`;
+                      const btn = cell.querySelector('.btn-cuv');
+                      btn.addEventListener('click', () => {
+                          renderInputCUV();
+                      });
+                  };
+
+                  if (cuv) {
+                      renderCUVConEditar(cuv, false);
+                  } else {
+                      renderAgregarCUV();
+                  }
+              });
+
+              await Promise.all(promesas);
+
+              const progreso = Math.min(100, Math.round(((i + lote.length) / filas.length) * 100));
+              actualizarToastProgreso(toast, progreso);
+          }
+
+          actualizarToastProgreso(toast, 100);
+          const mensaje = toast.querySelector('.toast-content p');
+          if (mensaje) mensaje.textContent = 'CUVs cargados correctamente';
+          setTimeout(() => {
+              toast.classList.add('fadeOut');
+              setTimeout(() => toast.remove(), 300);
+          }, 1000);
+      }
+
       document.getElementById('facturasForm').addEventListener('submit', async function (e) {
           e.preventDefault();
 
@@ -869,100 +980,8 @@
                       });
                   });
 
-                  document.querySelectorAll('.cuv-cell').forEach(async cell => {
-                      const fila = cell.closest('tr');
-                      const nfact = fila.querySelector('td:nth-child(2)')?.textContent.trim();
-
-                      if (!nfact) {
-                          console.warn('No se encontró Nfact para esta fila');
-                          cell.innerHTML = 'No disponible';
-                          return;
-                      }
-
-                      const cuv = await obtenerCUV(nfact);
-
-                      const renderCUVConEditar = (valorCUV, editable = false) => {
-                          cell.innerHTML = `
-                              <span class="valor-cuv">${valorCUV}</span>
-                              <button class="btn-copiar-cuv" title="Copiar CUV" style="margin-left:5px;">📋</button>
-                              ${editable ? '<button class="btn-editar-cuv">✏️</button>' : ''}
-                          `;
-
-                          const copiarBtn = cell.querySelector('.btn-copiar-cuv');
-                          copiarBtn.addEventListener('click', () => {
-                              copiarAlPortapapeles(valorCUV)
-                                  .then(() => showToast('Copiado', `CUV copiado: ${valorCUV}`, 'success'))
-                                  .catch(err => showToast('Error', 'No se pudo copiar el CUV', 'error'));
-                          });
-
-                          if (editable) {
-                              const editBtn = cell.querySelector('.btn-editar-cuv');
-                              editBtn.addEventListener('click', () => {
-                                  renderInputCUV(valorCUV);
-                              });
-                          }
-                      };
-
-                      const renderInputCUV = (valorInicial = '') => {
-                          cell.innerHTML = `
-                              <input type="text" class="input-cuv" value="${valorInicial}" placeholder="Ingrese el CUV" style="width: 165px;" />
-                              <button class="btn-save-cuv" title="Guardar">✔</button>
-                              <button class="btn-cancel-cuv" title="Cancelar">✖</button>
-                          `;
-
-
-                          const input = cell.querySelector('.input-cuv');
-                          const saveBtn = cell.querySelector('.btn-save-cuv');
-                          const cancelBtn = cell.querySelector('.btn-cancel-cuv');
-                          
-                          saveBtn.addEventListener('click', async () => {
-                              const valorCUV = input.value.trim();
-                              let idEstadoValidacion = 0;
-                              if (valorCUV) {
-                                  idEstadoValidacion = 3;
-                              }
-
-                              try {
-                                  const exito = await agregarCUVCompleto(nfact, valorCUV, idEstadoValidacion);
-
-                                  if (exito) {
-                                      if (valorCUV) {
-                                          showToast('CUV guardado', `CUV ingresado y guardado para Nfact ${nfact}`, 'success');
-                                          renderCUVConEditar(valorCUV, true);
-                                      } else {
-                                          renderAgregarCUV();
-                                      }
-                                  } else {
-                                      showToast('Error', `No se ha generado JSON para ${nfact}`, 'error');
-                                  }
-                              } catch (error) {
-                                  showToast('Error de red', error.message, 'error');
-                              }
-                          });
-
-                          cancelBtn.addEventListener('click', () => {
-                              if (valorInicial) {
-                                  renderCUVConEditar(valorInicial, true);
-                              } else {
-                                  renderAgregarCUV();
-                              }
-                          });
-                      };
-
-                      const renderAgregarCUV = () => {
-                          cell.innerHTML = `<button class="btn-cuv">+</button>`;
-                          const btn = cell.querySelector('.btn-cuv');
-                          btn.addEventListener('click', () => {
-                              renderInputCUV();
-                          });
-                      };
-
-                      if (cuv) {
-                          renderCUVConEditar(cuv, false);
-                      } else {
-                          renderAgregarCUV();
-                      }
-                  });
+                  const celdasCUV = Array.from(document.querySelectorAll('.cuv-cell'));
+                  await procesarCUVPorLotes(celdasCUV, 30);
 
                   showToast('Búsqueda completada', `Se encontraron ${data.length} resultados`, 'success');
 
