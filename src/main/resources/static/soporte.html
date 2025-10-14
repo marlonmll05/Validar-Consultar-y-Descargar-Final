@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Documento de Soporte</title>
+    <style>
+        :root {
+        --primary: #9b87f5;
+        --primary-dark: #7a68c3;
+        --secondary: #33C3F0;
+        --dark: #1A1F2C;
+        --gray: #8E9196;
+        --light: #f8f9fa;
+        --border: #e2e8f0;
+        --success: #10b981;
+        --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f4f5fb;
+            margin: 0;
+            padding: 0;
+            color: var(--dark);
+        }
+
+        header {
+            width: 100%;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 30px 60px;
+            margin: 0;
+            box-sizing: border-box;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        
+        h2#tituloFactura {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 25px;
+            color: var(--primary-dark);
+        }
+
+        select, label {
+            font-size: 14px;
+        }
+
+        select {
+            background-color: white;
+            color: var(--dark);
+        }
+
+        #formatoSelect {
+            min-width: 100px;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        
+        th, td {
+            vertical-align: middle;
+            text-align: center;
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        th {
+            background-color: var(--light);
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        #resultados td:nth-last-child(3),
+        #resultados th:nth-last-child(3){
+            text-align: center;
+            width: 110px;
+            max-width: 110px;
+            word-wrap: break-word;     
+            white-space: normal;        
+            overflow-wrap: break-word;
+        }
+
+        .filaCheckbox {
+            transform: scale(1.25);
+            cursor: pointer;
+        }
+
+        .btn-ver-doc {
+            background-color: var(--success);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        
+        .btn-ver-doc:hover{
+            background-color: #0da271;
+        }
+
+        .btn-ver-doc:active{
+            transform: translateY(1px);
+        }
+
+        .btn-ver-docu {
+            background-color: var(--success);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        
+        .btn-ver-docu:hover{
+            background-color: #0da271;
+        }
+
+        .btn-ver-docu:active{
+            transform: translateY(1px);
+        }
+
+        .table-toolbar {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 12px; 
+            font-size: 105%; 
+        }
+
+        .table-toolbar label {
+            font-weight: 600;
+        }
+
+        .table-toolbar select {
+            padding: 7px 12px; 
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-size: 100%;
+        }
+
+        .table-toolbar .btn-ver-doc {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 100%; 
+            padding: 8px 14px;
+            border-radius: 6px;
+            background-color: var(--success);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .table-toolbar .btn-ver-doc:hover {
+            background-color: #0da271;
+        }
+
+        .table-toolbar .btn-ver-doc.white {
+            background-color: white;
+            color: var(--dark);
+            border: 1px solid var(--border);
+        }
+
+        .table-toolbar .btn-ver-doc.white:hover {
+            background-color: #f8f9fa;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            min-width: 250px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: #fff;
+            font-family: sans-serif;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            opacity: 0.95;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .toast-success { background-color: #28a745; }
+        .toast-error { background-color: #dc3545; }
+        .toast-info { background-color: #007bff; }
+
+
+        #idSoporte:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(155, 135, 245, 0.1);
+        }
+
+
+
+
+    </style>
+</head>
+<body>
+    <header>
+        <h2 id="tituloFactura" style="font-size: 1.5rem; margin-bottom: 20px; color: var(--dark);">FACTURA</h2>
+    </header>
+
+    <div class="main-content">
+        <div class="table-container">
+            <div class="table-toolbar">
+                <div class="form-group">
+                    <label for="idSoporte">Documento Soporte</label>
+                    <select id="idSoporte" name="idSoporte">
+                    </select>
+                </div>
+
+
+                <button id="btnDescargarSeleccionados" class="btn-ver-doc">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Descargar seleccionados
+                </button>
+
+                <button onclick="seleccionarTodasFilas(true)" class="btn-ver-doc white">
+                    Seleccionar todo
+                </button>
+                <button onclick="seleccionarTodasFilas(false)" class="btn-ver-doc white">
+                    Deseleccionar todo
+                </button>
+            </div>
+
+
+        
+            <table id="resultados">
+                <thead id="tablaHead"></thead>
+                <tbody id="tablaBody"></tbody>
+            </table>
+        </div>
+        <div id="accionesDiv" style="display:none;"></div>
+    </div>
+
+
+    <script>
+
+        let abortController; 
+
+        async function cargarDatosTabla() {
+            if (abortController) {
+                abortController.abort();
+            }
+
+            abortController = new AbortController(); 
+            const signal = abortController.signal;
+
+            const params = new URLSearchParams(window.location.search);
+            const idMovDoc = params.get('idmovdoc');
+            const nfact = params.get('nfact');
+
+            if (!idMovDoc) {
+                document.getElementById('tablaBody').innerHTML = `<tr><td colspan="10">No se recibió el idMovDoc.</td></tr>`;
+                return;
+            }
+
+            try {
+                document.getElementById('tablaBody').innerHTML = `<tr><td colspan="10" class="loading">Cargando...</td></tr>`;
+
+                const response = await fetch(`/api/sql/admision?idMovDoc=${encodeURIComponent(idMovDoc)}&idDoc=${encodeURIComponent(idDoc)}`, {
+                    signal
+                });
+
+                const data = await response.json();
+
+                const tabla = document.getElementById('resultados');
+                const head = document.getElementById('tablaHead');
+                const body = document.getElementById('tablaBody');
+                const accionesDiv = document.getElementById('accionesDiv');
+
+                head.innerHTML = '';
+                body.innerHTML = '';
+                accionesDiv.style.display = 'block';
+
+                if (!response.ok) {
+                    body.innerHTML = `<tr><td colspan="10">Error: ${JSON.stringify(data)}</td></tr>`;
+                    return;
+                }
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    body.innerHTML = `<tr><td colspan="10" class="empty-state">No se encontraron resultados</td></tr>`;
+                    return;
+                }
+
+                const columnasOcultas = ['CantidadDoc'];
+
+                const headers = Object.keys(data[0]).filter(h => !columnasOcultas.includes(h));
+
+                head.innerHTML = '<tr><th></th>' + headers.map(h => `<th>${h}</th>`).join('') + '<th>Documento</th></tr>';
+
+                data.forEach(row => {
+                    const filaHTML = `
+                        <tr>
+                            <td><input type="checkbox" class="filaCheckbox"></td>
+                            ${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}
+                            <td>
+                                <button class="btn-ver-docu">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    Descargar
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    body.innerHTML += filaHTML;
+                });
+
+                document.querySelectorAll('.btn-ver-docu').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const fila = btn.closest('tr');
+                        const celdaIdAdmision = fila?.querySelector('td:nth-child(9)');
+                        const celdaNombreArchivo = fila?.querySelector('td:nth-last-child(2)');
+
+                        const idAdmision = celdaIdAdmision?.textContent.trim();
+                        const nombreArchivo = celdaNombreArchivo?.textContent.trim().replace(/\s+/g, '_');
+                        const select = document.getElementById('idSoporte');
+                        const nombreSoporte = select?.value;
+
+                        if (!nombreSoporte || nombreSoporte.trim() === '') {
+                            showToast('Error', 'Debes seleccionar un tipo de documento soporte antes de descargar.', 'error');
+                            return;
+                        }
+
+                        if (idAdmision && nombreArchivo && nombreSoporte) {
+                            const url = `/descargar-pdf?idAdmision=${idAdmision}&nombreArchivo=${nombreArchivo}&nombreSoporte=${encodeURIComponent(nombreSoporte)}`;
+
+                            btn.dataset.originalHtml = btn.innerHTML;
+                            btn.innerHTML = 'Generando...';
+                            btn.disabled = true;
+
+                            let dirHandle;
+                            let toastDescargando;
+
+                            try {
+                                dirHandle = await window.showDirectoryPicker();
+                                toastDescargando = showToast('Descargando', `Descargando ${nombreArchivo}.pdf`, 'info', null);
+
+                                const response = await fetch(url);
+
+                                if (!response.ok) {
+                                    const mensaje = await response.text();
+                                    showToast('Error', mensaje || 'Ocurrió un error al guardar el PDF.', 'error');
+                                    return;
+                                }
+
+                                const blob = await response.blob();
+                                const fileHandle = await dirHandle.getFileHandle(`${nombreArchivo}.pdf`, { create: true });
+                                const writable = await fileHandle.createWritable();
+                                await writable.write(blob);
+                                await writable.close();
+
+                                showToast('Éxito', `PDF guardado correctamente como ${nombreArchivo}.pdf`, 'success');
+                            } catch (error) {
+                                console.error(error);
+                                if (error.name === 'AbortError') {
+                                    showToast('Cancelado', 'No se seleccionó carpeta.', 'info');
+                                } else {
+                                    showToast('Error', 'Error al generar o guardar el PDF.', 'error');
+                                }
+                            } finally {
+                                if (toastDescargando && toastDescargando.isConnected) {
+                                    toastDescargando.remove();
+                                }
+
+                                btn.innerHTML = btn.dataset.originalHtml || 'Descargar';
+                                btn.disabled = false;
+                            }
+                        } else {
+                            showToast('Error', 'Faltan datos en la fila para generar el PDF.', 'error');
+                        }
+                    });
+                });
+
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('Petición anterior cancelada.');
+                    return;
+                }
+                console.error(error);
+                document.getElementById('tablaBody').innerHTML = `<tr><td colspan="10">Error al cargar datos.</td></tr>`;
+            }
+        }
+
+        
+        function showToast(titulo, mensaje, tipo = 'info', duracion = 4000) {
+            let container = document.querySelector('.toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'toast-container';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${tipo}`;
+            toast.innerHTML = `<strong>${titulo}</strong><div>${mensaje}</div>`;
+            container.appendChild(toast);
+
+            if (duracion !== null) {
+                setTimeout(() => {
+                    toast.remove();
+                    if (container.children.length === 0) {
+                        container.remove();
+                    }
+                }, duracion);
+            }
+
+            return toast;
+        }
+
+        async function cargarSoporte() {
+            try {
+                const response = await fetch('/soporte');
+                const data = await response.json();
+                const select = document.getElementById('idSoporte');
+
+                let opcionPorDefecto = null;
+
+                data.forEach(soporte => {
+                    const option = document.createElement('option');
+                    option.value = soporte.nombreRptService ?? '';
+                    option.textContent = soporte.nombreDocSoporte;
+                    option.dataset.idDoc = soporte.Id;
+                    select.appendChild(option);
+
+
+                    if (soporte.nombreDocSoporte === "Resumen de atención u hoja de evolución") {
+                        opcionPorDefecto = option;
+                    }
+                });
+
+
+                if (opcionPorDefecto) {
+                    opcionPorDefecto.selected = true;
+                    rptServiceSeleccionado = opcionPorDefecto.value;
+                    idDoc = opcionPorDefecto.dataset.idDoc;
+                    console.log("Seleccionado por defecto:", rptServiceSeleccionado);
+                    console.log("Id actual:", opcionPorDefecto.dataset.idDoc);
+                }
+
+
+                select.addEventListener('change', async () => {
+                    const selected = select.options[select.selectedIndex];
+                    rptServiceSeleccionado = selected.value;
+                    idDoc = selected.dataset.idDoc;
+
+                    console.log("Seleccionado:", rptServiceSeleccionado);
+                    console.log("Id actual:", selected.dataset.idDoc);
+                    
+
+                    await cargarDatosTabla();
+                });
+
+                await cargarDatosTabla();
+
+            } catch (error) {
+                showToast("Error", "Error al cargar documentos: " + error.message, 'error'); 
+            }
+        }
+
+        function seleccionarTodasFilas(seleccionar) {
+            const checkboxes = document.querySelectorAll('.filaCheckbox');
+            checkboxes.forEach(cb => cb.checked = seleccionar);
+        }
+
+
+        let rptServiceSeleccionado = '';
+        let idDoc = '';
+
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const nfact = params.get('nfact');
+            
+            document.getElementById('tituloFactura').textContent = `FACTURA ${nfact ?? 'Desconocida'}`;
+            
+
+            await cargarSoporte();
+
+
+            document.addEventListener('click', async (e) => {
+                if (e.target && e.target.id === 'btnDescargarSeleccionados') {
+                    const btn = e.target;
+                    const seleccionados = [...document.querySelectorAll('.filaCheckbox:checked')];
+
+                    if (seleccionados.length === 0) {
+                        alert('Selecciona al menos un documento.');
+                        return;
+                    }
+
+
+                    const select = document.getElementById('idSoporte');
+                    const nombreSoporte = select?.value;
+
+                    if (!nombreSoporte || nombreSoporte.trim() === '') {
+                        showToast('Error', 'Debes seleccionar un documento soporte antes de descargar.', 'error');
+                        return;
+                    }
+
+                    let dirHandle;
+                    try {
+                        dirHandle = await window.showDirectoryPicker();
+                        await dirHandle.requestPermission({ mode: 'readwrite' });
+                    } catch (err) {
+                        showToast('Cancelado', 'No se seleccionó una carpeta.', 'info');
+                        return;
+                    }
+
+                    const LOTE_SIZE = 5;
+                    const total = seleccionados.length;
+                    let contador = 1;
+
+
+                    select.disabled = true;
+                    btn.disabled = true;
+                    btn.style.opacity = '0.6';
+                    btn.style.cursor = 'not-allowed';
+
+                    for (let i = 0; i < seleccionados.length; i += LOTE_SIZE) {
+                        const lote = seleccionados.slice(i, i + LOTE_SIZE);
+                        const loteActual = Math.floor(i / LOTE_SIZE) + 1;
+                        const totalLotes = Math.ceil(seleccionados.length / LOTE_SIZE);
+
+                        showToast('Procesando', `Procesando lote ${loteActual} de ${totalLotes} (${lote.length} archivos)`, 'info');
+
+                        const promesasLote = lote.map(async (checkbox) => {
+                            const fila = checkbox.closest('tr');
+                            const celdaIdAdmision = fila?.querySelector('td:nth-child(9)');
+                            const celdaNombreArchivo = fila?.querySelector('td:nth-last-child(2)');
+
+                            const idAdmision = celdaIdAdmision?.textContent.trim();
+                            const nombreArchivo = celdaNombreArchivo?.textContent.trim().replace(/\s+/g, '_');
+
+                            let toastDescargando;
+
+                            if (idAdmision && nombreArchivo && nombreSoporte) {
+                                try {
+                                    const numeroActual = contador++;
+                                    toastDescargando = showToast('Descargando', `Descargando ${numeroActual} de ${total}: ${nombreArchivo}.pdf`, 'info', null);
+
+                                    const response = await fetch(`/descargar-pdf?idAdmision=${idAdmision}&nombreArchivo=${nombreArchivo}&nombreSoporte=${encodeURIComponent(nombreSoporte)}`);
+
+                                    if (!response.ok) throw new Error(`Error: ${response.status}`);
+
+                                    const blob = await response.blob();
+
+                                    const permiso = await dirHandle.queryPermission({ mode: 'readwrite' });
+                                    if (permiso !== 'granted') {
+                                        const nuevoPermiso = await dirHandle.requestPermission({ mode: 'readwrite' });
+                                        if (nuevoPermiso !== 'granted') {
+                                            showToast('Error', `Permiso denegado para guardar ${nombreArchivo}`, 'error');
+                                            return { success: false, nombre: nombreArchivo, error: 'Permiso denegado' };
+                                        }
+                                    }
+
+                                    const fileHandle = await dirHandle.getFileHandle(`${nombreArchivo}.pdf`, { create: true });
+                                    const writable = await fileHandle.createWritable();
+                                    await writable.write(blob);
+                                    await writable.close();
+
+                                    checkbox.checked = false;
+
+                                    return { success: true, nombre: nombreArchivo };
+                                } catch (error) {
+                                    console.error(error);
+                                    showToast('Error', `Fallo al guardar ${nombreArchivo}: ${error.message}`, 'error');
+                                    return { success: false, nombre: nombreArchivo, error: error.message };
+                                } finally {
+                                    if (toastDescargando && toastDescargando.isConnected) {
+                                        toastDescargando.remove();
+                                    }
+                                }
+                            } else {
+                                showToast('Error', 'Faltan datos en la fila para descargar.', 'error');
+                                return { success: false, nombre: 'Archivo sin nombre', error: 'Faltan datos' };
+                            }
+                        });
+
+                        try {
+                            const resultados = await Promise.all(promesasLote);
+                            const exitosos = resultados.filter(r => r.success).length;
+                            const fallidos = resultados.filter(r => !r.success).length;
+
+                            if (fallidos > 0) {
+                                showToast('Lote completado', `Lote ${loteActual}: ${exitosos} exitosos, ${fallidos} fallidos`, 'error');
+                            } else {
+                                showToast('Lote completado', `Lote ${loteActual}: ${exitosos} archivos descargados`, 'success');
+                            }
+                        } catch (error) {
+                            console.error('Error en el lote:', error);
+                            showToast('Error', `Error en lote ${loteActual}: ${error.message}`, 'error');
+                        }
+
+                        if (i + LOTE_SIZE < seleccionados.length) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    }
+
+                    showToast('Éxito', 'Todos los archivos se procesaron.', 'success');
+
+                    select.disabled = false; 
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestión</title>
+  <style>
+    :root {
+      --primary: #9b87f5;
+      --primary-dark: #7a68c3;
+      --secondary: #33C3F0;
+      --dark: #1A1F2C;
+      --gray: #8E9196;
+      --light: #f8f9fa;
+      --border: #e2e8f0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Arial', sans-serif;
+    }
+
+    body {
+      background-color: var(--light);
+      color: var(--dark);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 2rem 0;
+      background-color: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      position: relative;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: bold;
+    }
+
+    h2 {
+      font-size: 2rem;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 2rem;
+      color: var(--primary-dark);
+    }
+
+    main {
+      flex-grow: 1;
+      padding: 3rem 0;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    @media (min-width: 768px) {
+      .options {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .option-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 1.5rem;
+      min-height: 260px;
+      border-radius: 0.75rem;
+      text-decoration: none;
+      color: white;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .option-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 10px 25px rgba(155, 135, 245, 0.2);
+    }
+
+    .option-card .icon {
+      font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    .option-card h3 {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .primary-gradient {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    }
+
+    .secondary-gradient {
+      background: linear-gradient(135deg, var(--secondary) 0%, #20a9d6 100%);
+    }
+
+    footer {
+      padding: 1.5rem 0;
+      background-color: white;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--gray);
+    }
+    
+
+  </style>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>Sistema de Gestión</h1>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h2>Seleccione una opción</h2>
+      
+      <div class="options">
+        <a href="facturas.html" class="option-card primary-gradient">
+          <div class="icon" data-lucide="file-text"></div>
+          <h3>Consulta de Facturas</h3>
+          <p>Acceda al sistema de consulta y gestión de facturas</p>
+        </a>
+        
+        <a href="validador.html" class="option-card secondary-gradient" onclick="checkTokenAndRedirect()">
+          <div class="icon" data-lucide="search"></div>
+          <h3>Validador de Rips</h3>
+          <p>Herramienta para validar registros individuales de prestación de servicios</p>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; <script>document.write(new Date().getFullYear())</script> Sistema de Gestión - Todos los derechos reservados</p>
+    </div>
+  </footer>
+
+
+  <script>
+
+    lucide.createIcons();
+
+    function checkTokenAndRedirect() {
+      const token = sessionStorage.getItem('token');
+      
+      if (token) {
+
+        window.location.href = 'validador.html';
+      } else {
+        window.location.href = 'login.html'; 
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+      const token = sessionStorage.getItem('token');
+      if (!token) {
+        console.log('Usuario no autenticado');
+
+      }
+    });
+  </script>
+</body>
+</html>
+
