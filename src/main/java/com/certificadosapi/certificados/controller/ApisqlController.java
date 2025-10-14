@@ -47,7 +47,9 @@ public class ApisqlController {
 
         @RequestParam(required = false) String idTercero,
         @RequestParam(required = false) String noContrato,
-        @RequestParam(required = false) String nFact
+        @RequestParam(required = false) String nFact,
+        @RequestParam(required = false) Integer cuentaCobro,
+        @RequestParam(required = false) Boolean soloFacturados
     ) {
         if (fechaDesde != null && fechaHasta != null && fechaDesde.isAfter(fechaHasta)) {
             return ResponseEntity.badRequest().body("fechaDesde no puede ser posterior a fechaHasta");
@@ -61,7 +63,7 @@ public class ApisqlController {
             );
 
             try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                String sql = "EXEC dbo.pa_Net_Facturas_JSON ?, ?, ?, ?, ?, ?, ?, ?";
+                String sql = "EXEC dbo.pa_Net_Facturas_JSON ?, ?, ?, ?, ?, ?, ?, ?, ?";
                 
                 try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     pstmt.setString(1, "-1"); // @Ips
@@ -104,6 +106,12 @@ public class ApisqlController {
                     
                     pstmt.setInt(8, -1); // @EstadoValidacion
 
+                    if (cuentaCobro != null) {  
+                        pstmt.setInt(9, cuentaCobro); // @CuentaCobro
+                    } else {
+                        pstmt.setNull(9, Types.INTEGER); 
+                    }
+
                     try (ResultSet rs = pstmt.executeQuery()) {
                         List<Map<String, Object>> resultados = new ArrayList<>();
                         ResultSetMetaData metaData = rs.getMetaData();
@@ -141,7 +149,6 @@ public class ApisqlController {
                 .body("Error al ejecutar el procedimiento: " + e.getMessage());
         }
     }
-
 
 
     @GetMapping("/cuv")
