@@ -7,9 +7,7 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import com.sun.jna.platform.win32.WinReg;
 import com.sun.jna.platform.win32.Advapi32Util;
-
 import javax.net.ssl.*;
-
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
@@ -117,7 +115,7 @@ public class ValidadorController {
         try {
             servidor = getServerFromRegistry();
         } catch (Exception e) {
-            System.err.println("❌ Error al obtener el servidor del registro: " + e.getMessage());
+            System.err.println("Error al obtener el servidor del registro: " + e.getMessage());
             throw new RuntimeException("Error al obtener el servidor", e);
         }
 
@@ -143,113 +141,6 @@ public class ValidadorController {
         } catch (SQLException e) {
             System.err.println("Error SQL: " + e.getMessage());
             throw new RuntimeException("Error en la consulta SQL", e);
-        }
-    }
-
-    @GetMapping("/facturasval")
-    public ResponseEntity<?> buscarFacturas(
-        @RequestParam(required = false, name = "fechaDesde")
-        @DateTimeFormat(pattern = "yyyy-MM-dd")
-        LocalDate fechaDesde,
-
-        @RequestParam(required = false, name = "fechaHasta")
-        @DateTimeFormat(pattern = "yyyy-MM-dd")
-        LocalDate fechaHasta,
-
-        @RequestParam(required = false) String idTercero,
-        @RequestParam(required = false) String noContrato,
-        @RequestParam(required = false) String nFact
-    ) {
-        if (fechaDesde != null && fechaHasta != null && fechaDesde.isAfter(fechaHasta)) {
-            return ResponseEntity.badRequest().body("fechaDesde no puede ser posterior a fechaHasta");
-        }
-
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                servidor
-            );
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                String sql = "EXEC dbo.pa_Net_Facturas_JSON ?, ?, ?, ?, ?, ?, ?, ?";
-                
-                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                    pstmt.setString(1, "-1"); // @Ips
-                    
-                    if (fechaDesde != null) {
-                        pstmt.setDate(2, Date.valueOf(fechaDesde)); // @Fecha_Ini
-                    } else {
-                        pstmt.setNull(2, Types.DATE);
-                    }
-                    
-                    if (fechaHasta != null) {
-                        pstmt.setDate(3, Date.valueOf(fechaHasta)); // @Fecha_Fin
-                    } else {
-                        pstmt.setNull(3, Types.DATE);
-                    }
-                    
-                    pstmt.setString(4, "-1"); // @IdUsuario
-                    
-                    if (idTercero != null && !idTercero.trim().isEmpty()) {
-                        try {
-                            pstmt.setInt(5, Integer.parseInt(idTercero)); // @IdTerceroKey
-                        } catch (NumberFormatException e) {
-                            pstmt.setInt(5, -1); 
-                        }
-                    } else {
-                        pstmt.setInt(5, -1);
-                    }
-                    
-                    if (noContrato != null && !noContrato.trim().isEmpty()) {
-                        pstmt.setString(6, noContrato); 
-                    } else {
-                        pstmt.setNull(6, Types.VARCHAR);
-                    }
-                    
-                    if (nFact != null && !nFact.trim().isEmpty()) {
-                        pstmt.setString(7, nFact); 
-                    } else {
-                        pstmt.setNull(7, Types.VARCHAR);
-                    }
-                    
-                    pstmt.setInt(8, -1);
-
-                    try (ResultSet rs = pstmt.executeQuery()) {
-                        List<Map<String, Object>> resultados = new ArrayList<>();
-                        ResultSetMetaData metaData = rs.getMetaData();
-                        int columnCount = metaData.getColumnCount();
-
-                        while (rs.next()) {
-                            Map<String, Object> fila = new LinkedHashMap<>();
-                            for (int i = 1; i <= columnCount; i++) {
-                                String columnName = metaData.getColumnName(i);
-                                Object value = rs.getObject(i);
-
-                                if ("FechaFactura".equalsIgnoreCase(columnName)) {
-                                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-                                    if (value instanceof Timestamp) {
-                                        fila.put(columnName, sdf.format(value));
-                                    } else if (value instanceof Date) {
-                                        fila.put(columnName, sdf.format(new java.util.Date(((Date) value).getTime())));
-                                    } else {
-                                        fila.put(columnName, value);
-                                    }
-                                } else {
-                                    fila.put(columnName, (value instanceof String) ? value.toString().trim() : value);
-                                }
-                            }
-                            resultados.add(fila);
-                        }
-
-                        return ResponseEntity.ok(resultados);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error al ejecutar el procedimiento: " + e.getMessage());
         }
     }
 
