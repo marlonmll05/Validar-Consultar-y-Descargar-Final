@@ -1,6 +1,5 @@
 package com.certificadosapi.certificados.controller;
 
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -11,14 +10,9 @@ import javax.net.ssl.*;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-
 import java.sql.*;
 
 
@@ -38,7 +32,7 @@ public class ValidadorController {
         }
     }
 
-        @PostMapping("/subir")
+    @PostMapping("/subir")
     public ResponseEntity<String> subirArchivoJson(
         @RequestBody String jsonContenido,
         @RequestHeader("Authorization") String bearerToken,
@@ -284,5 +278,54 @@ public class ValidadorController {
     public ResponseEntity<?> handleOptions() {
     return ResponseEntity.ok().build();
     }
-    
+
+
+    @PostMapping("/guardarrespuesta")
+    public ResponseEntity<?> guardarRespuestaApi(@RequestBody Map<String, Object> payload){
+        
+
+        String servidor;
+
+        try{
+            servidor = getServerFromRegistry();
+        }
+        catch(Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al leer el servidor de registro: " + e.getMessage());
+        }
+
+        String nFact = (String) payload.get("nFact");
+        String mensajeRespuesta = (String) payload.get("mensajeRespuesta");
+
+        String connectionUrl = String.format("jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;", servidor);
+
+        String sql = "INSERT INTO RIPS_RespuestaAPI (Nfact, MensajeRespuesta) VALUES (?, ?)";
+        String checkSql = "SELECT COUNT(*) FROM RIPS_RespuestaAPI WHERE Nfact = ?";
+
+
+        try(Connection conn = DriverManager.getConnection(connectionUrl)) {
+
+            try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                checkStmt.setString(1, nFact);
+                try (ResultSet rs = checkStmt.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) > 0) {
+                        return ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body("Ya existe un registro para el Nfact: " + nFact);
+                    }
+               }
+            }
+                
+            try(PreparedStatement statement = conn.prepareStatement(sql)){
+                statement.setString(1, nFact);
+                statement.setString(2, mensajeRespuesta);
+                statement.executeUpdate();
+            }
+
+            return ResponseEntity.ok("Respuesta guardada correctamente");
+
+
+        } catch (SQLException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al guardar respuesta: " + e.getMessage());
+        }
+    }  
 }
