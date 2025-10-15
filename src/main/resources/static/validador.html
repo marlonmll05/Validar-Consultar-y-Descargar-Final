@@ -1940,20 +1940,9 @@
                 const filas = await Promise.all(filasPromises);
                 body.innerHTML = filas.map(f => f.html).join('');
 
-                filas.forEach(async (filaData, index) => {
-                    const fila = body.children[index];
-                    if (filaData.nFact) {
-                        await actualizarCUVEnFila(fila, filaData.nFact);
-                    } else {
-                        const cuvCell = fila.querySelector('.cuv-cell');
-                        const enviarBtn = fila.querySelector('button[onclick*="enviarPaquete"]');
-                        if (cuvCell) cuvCell.innerHTML = '';
-                        if (enviarBtn) {
-                            enviarBtn.disabled = false;
-                            enviarBtn.classList.remove('button-disabled');
-                        }
-                    }
-                });
+                const toast = showToast('Procesando', 'Cargando CUVs...', 'success', 999999, true);
+
+                await procesarFilasEnLotes(filas, body, 30, toast);
 
                 showToast('Búsqueda completada', `Se encontraron ${data.length} resultados`, 'success');
 
@@ -1968,6 +1957,46 @@
                 }
             }
         });
+
+        async function procesarFilasEnLotes(filas, body, loteSize = 30, toast = null) {
+            for (let i = 0; i < filas.length; i += loteSize) {
+                const lote = filas.slice(i, i + loteSize);
+                const promesas = lote.map(async (filaData, index) => {
+                    const fila = body.children[i + index];
+                    if (filaData.nFact) {
+                        await actualizarCUVEnFila(fila, filaData.nFact);
+                    } else {
+                        const cuvCell = fila.querySelector('.cuv-cell');
+                        const enviarBtn = fila.querySelector('button[onclick*="enviarPaquete"]');
+                        if (cuvCell) cuvCell.innerHTML = '';
+                        if (enviarBtn) {
+                            enviarBtn.disabled = false;
+                            enviarBtn.classList.remove('button-disabled');
+                        }
+                    }
+                });
+
+                await Promise.all(promesas);
+
+                if (toast) {
+                    const progreso = Math.min(100, Math.round(((i + lote.length) / filas.length) * 100));
+                    actualizarToastProgreso(toast, progreso);
+                }
+            }
+
+            if (toast) {
+                actualizarToastProgreso(toast, 100);
+                const mensaje = toast.querySelector('.toast-content p');
+                if (mensaje) mensaje.textContent = 'CUVs Cargados correctamente';
+
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.classList.add('fadeOut');
+                        setTimeout(() => toast.remove(), 300);
+                    }
+                }, 3000); 
+            }
+        }
 
 
         function toggleSelectAll(checkbox) {
