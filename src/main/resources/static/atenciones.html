@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Admisiones</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+    <body>
+  <header>
+    <div class="header-inner">
+      <a href="inicio.html" class="back-link">Volver</a>
+      <h1>Gestión de Documentos Soporte</h1>
+      <p class="subtitle">Generación, carga y descarga de Documentos Soporte</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Filtros -->
+    <section class="card">
+      <div class="card-title">Filtros de búsqueda</div>
+      <form id="filtrosForm">
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label for="registroAtencion">Registro Atención</label>
+            <input type="text" id="registroAtencion" name="registroAtencion" placeholder="Ej. 12345">
+          </div>
+
+          <div class="form-group">
+            <label for="histClinica">Historia Clínica</label>
+            <input type="text" id="histClinica" name="histClinica" placeholder="Ej. 100234">
+          </div>
+
+          <div class="form-group">
+            <label for="eps">EPS o Cliente</label>
+            <select id="eps" name="eps">
+              <option value="" selected>-- Selecciona eps --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="contrato">Contrato</label>
+            <select id="contrato" name="contrato">
+              <option value="" selected>-- Selecciona contrato --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="idAreaAtencion">Área de Atención</label>
+            <select id="idAreaAtencion" name="idAreaAtencion">
+              <option value="" selected>-- Selecciona área --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="idUnidadAtencionCur">Unidad Atención en Curso</label>
+            <select id="idUnidadAtencionCur" name="idUnidadAtencionCur">
+              <option value="" selected>-- Selecciona unidad --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="fechaDesde">Fecha Desde</label>
+            <input type="date" id="fechaDesde" name="fechaDesde">
+          </div>
+
+          <div class="form-group">
+            <label for="fechaHasta">Fecha Hasta</label>
+            <input type="date" id="fechaHasta" name="fechaHasta">
+          </div>
+
+          <div class="form-group">
+            <label for="numeroFactura">Número de Factura</label>
+            <input type="text" id="numeroFactura" name="numeroFactura" placeholder="Ej. 12345">
+          </div>
+
+          <div class="form-group">
+            <label for="cuentaCobro">Número de Cuenta de Cobro</label>
+            <input type="text" id="cuentaCobro" name="cuentaCobro" placeholder="Ej. 12345">
+          </div>
+        </div>
+
+        <div class="actions-bar">
+          <button type="submit" class="button">Buscar</button>
+          <button type="button" id="btnLimpiar" class="button button-secondary">Limpiar</button>
+        </div>
+        <div class="error" id="errorMsg"></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-header-row">
+        <div class="checkbox-container">
+          <div class="checkbox-group">
+            <label for="exportarCuentaCobro">Exportar por Cuenta de Cobro</label>
+            <label class="switch">
+              <input type="checkbox" id="exportarCuentaCobro">
+              <span class="slider"></span>
+            </label>
+
+            <label for="MostrarFacturadas">Mostrar Solo Facturadas</label>
+            <label class="switch">
+              <input type="checkbox" id="mostrarFacturadas">
+              <span class="slider"></span>
+            </label>
+          </div>
+          
+          <div class="export-button-wrapper">
+            <button type="button" id="btnExportar" class="button">Exportar</button>
+          </div>
+        </div>
+
+
+        <div class="card-title">Resultados</div>
+      </div>
+
+      <div id="emptyState" class="empty-state" style="display:none;">No se encontraron resultados</div>
+
+      <table id="resultadosTabla" style="display:none;">
+        <thead id="tablaHead"></thead>
+        <tbody id="tablaBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+
+  <div id="modalConfirm" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <h3>Confirmar acción</h3>
+      <p id="modalMessage">¿Seguro que deseas continuar?</p>
+      <div class="modal-actions">
+        <button id="btnModalCancel" class="btn-cancel">Cancelar</button>
+        <button id="btnModalOk" class="btn-ok">Eliminar</button>
+        
+      </div>
+    </div>
+  </div>
+
+
+  <div id="modalGuardar" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <h3>Confirmar guardado</h3>
+      <p id="modalGuardarMessage">Ya existe un documento para este soporte. ¿Qué deseas hacer?</p>
+      <div class="modal-actions">
+        <button id="btnModalGuardarCancel" class="btn-cancel">Cancelar</button>
+        <button id="btnModalGuardarAnexar" class="btn-ok">Anexar</button>
+        <button id="btnModalGuardarReemplazar" class="btn-ok">Reemplazar</button>
+      </div>
+    </div>
+  </div>
+    
+</body>
+</html>
