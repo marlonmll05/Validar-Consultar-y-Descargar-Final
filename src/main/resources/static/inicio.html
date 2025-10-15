@@ -117,6 +117,10 @@
       background: linear-gradient(135deg, var(--secondary) 0%, #20a9d6 100%);
     }
 
+    .success-gradient {
+      background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+    }
+
     footer {
       padding: 1.5rem 0;
       background-color: white;
@@ -144,15 +148,22 @@
       <div class="options">
         <a href="facturas.html" class="option-card primary-gradient">
           <div class="icon" data-lucide="file-text"></div>
-          <h3>Consulta de Facturas</h3>
-          <p>Acceda al sistema de consulta y gestión de facturas</p>
+          <h3>Gestión Manual de Rips</h3>
+          <p>Consulta y generación de archivos Rips (JSON)</p>
         </a>
         
         <a href="validador.html" class="option-card secondary-gradient" onclick="checkTokenAndRedirect()">
           <div class="icon" data-lucide="search"></div>
-          <h3>Validador de Rips</h3>
-          <p>Herramienta para validar registros individuales de prestación de servicios</p>
+          <h3>Validador de Rips (Api Docker)</h3>
+          <p>Consulta, edición y validación directa de Rips ante el ministerio</p>
         </a>
+
+        <a href="atenciones.html" class="option-card success-gradient">
+          <div class="icon" data-lucide="edit-3"></div>
+          <h3>Gestión de Documentos Soporte</h3>
+          <p>Generación, carga y descarga de Documentos Soporte</p>
+        </a>
+
       </div>
     </div>
   </main>
