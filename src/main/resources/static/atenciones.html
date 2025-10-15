@@ -409,6 +409,21 @@
       </div>
     </div>
   </div>
+
+  <script>
+    const host = window.location.hostname;
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById("fechaDesde").value = today
+        document.getElementById("fechaHasta").value = today
+    });
+
+    document.getElementById('mostrarFacturadas').addEventListener('change', function() {
+      this.dataset.touched = 'true';
+    });
+    
+  </script>
     
 </body>
 </html>
