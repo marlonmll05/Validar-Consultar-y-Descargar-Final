@@ -170,4 +170,76 @@ public class AtencionesController {
                     .body("Error al ejecutar pa_Net_Facturas_Tablas: " + e.getMessage());
         }
     }
+
+    //ENDPOINT PARA VER TODAS LAS TIPIFICACIONES DE ANEXOS
+    @GetMapping("/soportes-anexos-completo")
+    public ResponseEntity<?> obtenerDocumentosSoporteSinFiltros() {
+        try {
+            String servidor = getServerFromRegistry();
+            String connectionUrl = String.format(
+                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
+                servidor
+            );
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+                String sql = "EXEC pa_Net_Facturas_Tablas ?, ?";
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setInt(1, 8);  
+                    stmt.setInt(2, -1);  
+
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        List<Map<String, Object>> resultados = new ArrayList<>();
+                        while (rs.next()) {
+                            Map<String, Object> fila = new LinkedHashMap<>();
+                            fila.put("Id", rs.getInt("Id"));
+                            fila.put("nombreDocSoporte", rs.getString("NombreDocSoporte"));
+                            fila.put("nombreRptService", rs.getString("NombreRptService"));
+                            fila.put("TipoDocumento", rs.getInt("TipoDocumento"));
+                            resultados.add(fila);
+                        }
+                        return ResponseEntity.ok(resultados);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error ejecutando procedimiento: " + e.getMessage());
+        }
+    }
+
+    //ENDPOINT PARA VER LOS SOPORTES DE ANEXOS
+    @GetMapping("/soportes-anexos")
+    public ResponseEntity<?> obtenerDocumentosSoporte() {
+        try {
+            String servidor = getServerFromRegistry();
+            String connectionUrl = String.format(
+                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
+                servidor
+            );
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+                String sql = "EXEC pa_Net_Facturas_Tablas ?, ?";
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setInt(1, 9);  
+                    stmt.setInt(2, -1);  
+
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        List<Map<String, Object>> resultados = new ArrayList<>();
+                        while (rs.next()) {
+                            Map<String, Object> fila = new LinkedHashMap<>();
+                            fila.put("Id", rs.getInt("Id"));
+                            fila.put("nombreDocSoporte", rs.getString("NombreDocSoporte"));
+                            fila.put("nombreRptService", rs.getString("NombreRptService"));
+                            fila.put("TipoDocumento", rs.getInt("TipoDocumento"));
+                            resultados.add(fila);
+                        }
+                        return ResponseEntity.ok(resultados);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error ejecutando procedimiento: " + e.getMessage());
+        }
+    }
 }
