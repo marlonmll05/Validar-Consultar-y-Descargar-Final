@@ -488,5 +488,95 @@ public class AtencionesController {
         }
     }
 
+    @GetMapping("/generar-apoyo-diagnostico")
+    public ResponseEntity<?> generarPdfAnexos(
+            @RequestParam int idAdmision,
+            @RequestParam int idPacienteKey
+    ) {
+        System.out.println("Generando Apoyo diagnostico para idAdmision=" + idAdmision + ", idPacienteKey=" + idPacienteKey);
 
+        String servidor;
+        try {
+            servidor = getServerFromRegistry();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al obtener servidor: " + e.getMessage());
+        }
+
+        String connectionUrl = String.format(
+                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                servidor
+        );
+
+        String sql = "EXEC dbo.pa_HC_ResultadosAnexosPrintUnif ?, ?, '-1'";
+
+        try (Connection conn = DriverManager.getConnection(connectionUrl);
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, idPacienteKey);
+            ps.setInt(2, idAdmision);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                boolean hayResultados = false;
+                PDDocument doc = new PDDocument();
+
+                while (rs.next()) {
+                    String ruta = rs.getString("RutaArchivoLocal");
+                    System.out.println("RutaArchivoLocal desde SQL: " + ruta);
+
+                    if (ruta == null || ruta.isBlank()) {
+                        continue;
+                    }
+
+                    File imgFile = new File(ruta);
+                    if (!imgFile.exists()) {
+                        System.err.println("No existe: " + ruta);
+                        continue;
+                    }
+
+                    BufferedImage bimg = ImageIO.read(imgFile);
+                    if (bimg == null) {
+                        System.err.println("No se pudo leer como imagen: " + ruta);
+                        continue;
+                    }
+
+                    PDPage page = new PDPage(PDRectangle.A4);
+                    doc.addPage(page);
+
+                    PDImageXObject pdImage = PDImageXObject.createFromFileByContent(imgFile, doc);
+                    try (PDPageContentStream contentStream = new PDPageContentStream(doc, page)) {
+                        float pageWidth = page.getMediaBox().getWidth();
+                        float pageHeight = page.getMediaBox().getHeight();
+                        contentStream.drawImage(pdImage, 0, 0, pageWidth, pageHeight);
+                    }
+
+                    hayResultados = true;
+                }
+
+                if (!hayResultados) {
+                    System.out.println("No se encontraron anexos para generar PDF.");
+                    doc.close();
+                    return ResponseEntity
+                            .status(HttpStatus.NO_CONTENT)
+                            .body("No hay anexos disponibles para generar PDF");
+                }
+
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                doc.save(baos);
+                doc.close();
+
+                return ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .body(baos.toByteArray());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al generar PDF: " + e.getMessage());
+        }
+    }
 }
