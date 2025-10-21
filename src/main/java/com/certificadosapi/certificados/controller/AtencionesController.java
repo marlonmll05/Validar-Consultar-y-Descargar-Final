@@ -349,4 +349,36 @@ public class AtencionesController {
                     .body("Error al obtener anexos: " + e.getMessage());
         }
     }
+
+    //ENDPOINT PARA ELIMINAR PDFS MANUALMENTE
+    @GetMapping("/eliminar-pdf")
+    public ResponseEntity<?> eliminarPdf(
+            @RequestParam Long idAdmision,
+            @RequestParam Long idSoporteKey) {
+        try {
+            String servidor = getServerFromRegistry();
+            String connectionUrl = String.format(
+                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                servidor
+            );
+
+            String sql = "EXEC [dbo].[pa_Net_Eliminar_DocumentoPdf] @IdAdmision = ?, @IdSoporteKey = ?";
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl);
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+                ps.setLong(1, idAdmision);
+                ps.setLong(2, idSoporteKey);
+                ps.execute();
+
+                return ResponseEntity.ok("Documento eliminado correctamente");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                .body("Error al ejecutar eliminación: " + e.getMessage());
+        }
+    }
+
 }
