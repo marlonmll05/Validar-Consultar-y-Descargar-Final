@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.DriverManager;
@@ -53,6 +54,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -1203,5 +1205,101 @@ public class AtencionesController {
         }
         return ResponseEntity.ok(respuestaValidador);
     }
+
+    //ENDPOINT PARA OBTENER EL XML DE UNA FACTURA Y RENOMBRARLO
+    @GetMapping("/generarxml/{nFact}")
+    public ResponseEntity<byte[]> generarXml(@PathVariable String nFact) {
+        Connection conn = null;
+        try {
+            String servidor = getServerFromRegistry();
+            String connectionUrl = String.format(
+                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                servidor
+            );
+
+            String sql = "SELECT FF.NFact, CONVERT(xml, M.DocXml) AS DocXml, T.CUV, FF.IdMovDoc " +
+                        "FROM IPSoft100_ST.dbo.FacturaFinal FF " +
+                        "INNER JOIN IPSoft100_ST.dbo.Rips_Transaccion T ON T.IdMovDoc = FF.IdMovDoc " +
+                        "INNER JOIN IPSoftFinanciero_ST.dbo.MovimientoDocumentos M ON M.IdMovDoc = FF.IdMovDoc " +
+                        "WHERE FF.NFact = ?";
+
+            conn = DriverManager.getConnection(connectionUrl);
+            
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, nFact);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        System.out.println("No se encontró registro para nFact=" + nFact);
+                        return ResponseEntity.notFound().build();
+                    }
+
+                    String docXml = rs.getString("DocXml");
+                    int idMovDoc = rs.getInt("IdMovDoc");
+
+                    if (docXml == null || docXml.trim().isEmpty()) {
+                        System.out.println("No hay XML para nFact=" + nFact);
+                        return ResponseEntity.noContent().build();
+                    }
+
+                    String connectionUrlFinanciero = String.format(
+                        "jdbc:sqlserver://%s;databaseName=IPSoftFinanciero_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
+                        servidor
+                    );
+                    Connection connFinanciero = DriverManager.getConnection(connectionUrlFinanciero);
+
+                    String numdoc = "";
+                    String docQuery = "SELECT Numdoc FROM MovimientoDocumentos WHERE IdMovDoc = ?";
+                    try (PreparedStatement stmt = connFinanciero.prepareStatement(docQuery)) {
+                        stmt.setInt(1, idMovDoc);
+                        ResultSet rsDoc = stmt.executeQuery();
+                        if (rsDoc.next()) {
+                            numdoc = rsDoc.getString("Numdoc");
+                        }
+                    }
+
+                    String IdEmpresaGrupo = "";
+                    String empresaQuery = "SELECT IdEmpresaGrupo FROM MovimientoDocumentos as M INNER JOIN Empresas as E ON E.IdEmpresaKey = M.IdEmpresaKey WHERE IdMovDoc = ?";
+                    try (PreparedStatement stmt = connFinanciero.prepareStatement(empresaQuery)) {
+                        stmt.setInt(1, idMovDoc);
+                        ResultSet rsEmpresa = stmt.executeQuery();
+                        if (rsEmpresa.next()) {
+                            IdEmpresaGrupo = rsEmpresa.getString("IdEmpresaGrupo");
+                        }
+                    }
+
+                    connFinanciero.close();
+
+                    String yearSuffix = String.valueOf(LocalDate.now().getYear()).substring(2);
+
+                    String formattedNumdoc = String.format("%08d", Integer.parseInt(numdoc));
+
+                    String fileName = "ad0" + IdEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml";
+
+                    byte[] xmlBytes = docXml.getBytes(StandardCharsets.UTF_8);
+
+                    return ResponseEntity.ok()
+                        .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
+                        .header("X-IdMovDoc", String.valueOf(idMovDoc))
+                        .contentType(MediaType.APPLICATION_XML)
+                        .body(xmlBytes);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(("Error al generar XML: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    
 
 }
