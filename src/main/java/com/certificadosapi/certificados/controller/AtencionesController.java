@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.Date;
@@ -948,7 +949,7 @@ public class AtencionesController {
                 
                 try (PreparedStatement psProc = conn.prepareStatement(sqlProc)) {
                     psProc.setLong(1, idAdmision);
-                    System.out.println("📤 Ejecutando: EXEC pa_Net_Facturas_Tablas 12, " + idAdmision);
+                    System.out.println("Ejecutando: EXEC pa_Net_Facturas_Tablas 12, " + idAdmision);
                     
                     try (ResultSet rsProc = psProc.executeQuery()) {
                         if (rsProc.next()) {
@@ -1093,5 +1094,75 @@ public class AtencionesController {
                     .body("Excepción al conectar o procesar el PDF: " + e.getMessage());
         }
     }
+
+
+    //ENDPOINT PARA EXPORTAR EL CONTENIDO DE UNA ADMISION
+    @GetMapping("/exportar-pdf")
+    public ResponseEntity<?> exportarPdfIndividual(
+            @RequestParam Long idAdmision,
+            @RequestParam Long idSoporteKey) {
+        System.out.println("Exportando PDF para IdAdmision=" + idAdmision + ", IdSoporteKey=" + idSoporteKey);
+
+        try {
+            String servidor = getServerFromRegistry();
+            String connectionUrl = String.format(
+                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                servidor
+            );
+
+            String sql = "SELECT NameFilePdf FROM tbl_Net_Facturas_ListaPdf WHERE IdAdmision = ? AND IdSoporteKey = ?";
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl);
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+                ps.setLong(1, idAdmision);
+                ps.setLong(2, idSoporteKey);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        try (InputStream is = rs.getBinaryStream("NameFilePdf")) {
+                            if (is == null) {
+                                System.out.println("NameFilePdf NULL para soporte=" + idSoporteKey + " → se salta");
+                                return ResponseEntity.noContent().build();
+                            }
+
+                            byte[] pdfBytes = is.readAllBytes();
+                            if (pdfBytes.length == 0) {
+                                System.out.println("NameFilePdf vacío (0 bytes) soporte=" + idSoporteKey + " → se salta");
+                                return ResponseEntity.noContent().build();
+                            }
+
+                            // Obtener nombre real
+                            String nombrePdf = "Documento_" + idSoporteKey + ".pdf";
+                            try (PreparedStatement psName = conn.prepareStatement(
+                                    "SELECT dbo.fn_Net_DocSoporte_NameFile(?, ?) AS Nombre")) {
+                                psName.setLong(1, idAdmision);
+                                psName.setLong(2, idSoporteKey);
+                                try (ResultSet rsName = psName.executeQuery()) {
+                                    if (rsName.next() && rsName.getString("Nombre") != null) {
+                                        nombrePdf = rsName.getString("Nombre");
+                                    }
+                                }
+                            }
+
+                            System.out.println("PDF válido encontrado soporte=" + idSoporteKey);
+                            return ResponseEntity.ok()
+                                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nombrePdf + "\"")
+                                    .contentType(MediaType.APPLICATION_PDF)
+                                    .body(pdfBytes);
+                        }
+                    } else {
+                        System.out.println("No existe fila en la tabla para soporte=" + idSoporteKey);
+                        return ResponseEntity.noContent().build();
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Error al exportar: " + e.getMessage());
+        }
+    }
+
 
 }
