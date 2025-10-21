@@ -1164,5 +1164,44 @@ public class AtencionesController {
         }
     }
 
+    //ENDPOINT PARA OBTENER EL CUV DE UNA FACTURA VALIDADA
+    @GetMapping(value = "/rips/respuesta", produces = MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity<String> obtenerRespuestaRips(@RequestParam String nFact) throws Exception {
+        
+        final String servidor;
+        try {
+            servidor = getServerFromRegistry();
+        } catch (Exception ex) {
+            throw new RuntimeException("Error obteniendo servidor del registry", ex);
+        }
+
+        final String conn100 = String.format(
+            "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+            servidor
+        );
+
+        final String sql =
+            "SELECT TOP 1 MensajeRespuesta " +
+            "FROM RIPS_RespuestaApi " +
+            "WHERE LTRIM(RTRIM(NFact)) = LTRIM(RTRIM(?)) " +
+            "ORDER BY 1 DESC";
+
+        String respuestaValidador = null;
+
+        try (Connection c = DriverManager.getConnection(conn100);
+            PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, nFact);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    respuestaValidador = rs.getString("MensajeRespuesta");
+                }
+            }
+        }
+
+        if (respuestaValidador == null || respuestaValidador.isBlank()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(respuestaValidador);
+    }
 
 }
