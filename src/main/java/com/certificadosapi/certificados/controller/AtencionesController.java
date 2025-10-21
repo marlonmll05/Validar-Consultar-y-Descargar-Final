@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -56,6 +57,7 @@ public class AtencionesController {
         }
     }
 
+    //ENDPOINT PARA BUSCAR LAS ADMISIONES (FILTROS)
     @GetMapping("/admisiones")
     public ResponseEntity<?> buscarAdmisiones(
         @RequestParam(required = false) Long IdAtencion,
@@ -123,4 +125,49 @@ public class AtencionesController {
         }
     }
 
+    //ENDPOINT PARA LLENAR LOS SELECTS DE LOS FILTROS DE BUSQUEDA
+    @GetMapping("/selects-filtro")
+    public ResponseEntity<?> obtenerTablas(
+            @RequestParam int idTabla,
+            @RequestParam(defaultValue = "-1") int id
+    ) {
+        try {
+            String servidor = getServerFromRegistry();
+            String connectionUrl = String.format(
+                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
+                servidor
+            );
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+                String sql = "EXEC dbo.pa_Net_Facturas_Tablas ?, ?";
+
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setInt(1, idTabla);
+                    ps.setInt(2, id);
+
+                    try (ResultSet rs = ps.executeQuery()) {
+                        List<Map<String, Object>> resultados = new ArrayList<>();
+                        ResultSetMetaData meta = rs.getMetaData();
+                        int colCount = meta.getColumnCount();
+
+                        while (rs.next()) {
+                            Map<String, Object> fila = new LinkedHashMap<>();
+                            for (int i = 1; i <= colCount; i++) {
+                                String colName = meta.getColumnName(i);
+                                Object value = rs.getObject(i);
+                                fila.put(colName, (value instanceof String) ? value.toString().trim() : value);
+                            }
+                            resultados.add(fila);
+                        }
+
+                        return ResponseEntity.ok(resultados);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al ejecutar pa_Net_Facturas_Tablas: " + e.getMessage());
+        }
+    }
 }
