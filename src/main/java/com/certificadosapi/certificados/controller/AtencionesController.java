@@ -3,21 +3,40 @@ package com.certificadosapi.certificados.controller;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.http.config.Registry;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+
+import org.apache.http.auth.AuthSchemeProvider;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.NTCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.config.RegistryBuilder;
+import org.apache.http.impl.auth.NTLMSchemeFactory;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -711,4 +730,151 @@ public class AtencionesController {
                     .body("Error al generar PDF: " + e.getMessage());
         }
     }
+
+    //ENDPOINT QUE DESCARGA PDFS DE REPORTING SERVICE Y LOS INSERTA
+    @GetMapping("/insertar-soportes")
+    public ResponseEntity<?> descargarEInsertarPdf(
+            @RequestParam Long idAdmision,
+            @RequestParam Long idPacienteKey,
+            @RequestParam Long idSoporteKey,
+            @RequestParam String tipoDocumento,
+            @RequestParam String nombreSoporte,
+            @RequestParam(required = false, defaultValue = "anexo") String nombreArchivo
+    ) {
+        System.out.println("========== DATOS RECIBIDOS ==========");
+        System.out.println("idAdmision: " + idAdmision);
+        System.out.println("idPacienteKey: " + idPacienteKey);
+        System.out.println("idSoporteKey: " + idSoporteKey);
+        System.out.println("tipoDocumento: " + tipoDocumento);
+        System.out.println("nombreSoporte: " + nombreSoporte);
+        System.out.println("======================================");
+
+        if (nombreSoporte == null || nombreSoporte.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("El nombre del soporte es requerido.");
+        }
+
+        String servidor = null;
+        String urlBase = null;
+
+        try {
+            servidor = getServerFromRegistry();
+            String connectionUrl = String.format(
+                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                servidor
+            );
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+                String sql = "SELECT ValorParametro FROM ParametrosServidor WHERE NomParametro = 'URLReportServerWS'";
+                try (PreparedStatement stmt = conn.prepareStatement(sql);
+                    ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        urlBase = rs.getString("ValorParametro");
+                    } else {
+                        return ResponseEntity.internalServerError().body("No se encontró la URL del servidor de reportes.");
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error al obtener la URL del servidor: " + e.getMessage());
+        }
+
+        if (urlBase == null || urlBase.trim().isEmpty()) {
+            return ResponseEntity.internalServerError().body("No se encontró la URL del servidor de reportes.");
+        }
+
+        String dominio = "servergihos";
+        String usuario = "Consulta";
+        String contrasena = "Informes.01";
+
+        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        NTCredentials ntCredentials = new NTCredentials(usuario, contrasena, null, dominio);
+        credentialsProvider.setCredentials(AuthScope.ANY, ntCredentials);
+
+        Registry<AuthSchemeProvider> authSchemeRegistry = RegistryBuilder.<AuthSchemeProvider>create()
+                .register("NTLM", new NTLMSchemeFactory())
+                .build();
+
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setAuthenticationEnabled(true)
+                .setTargetPreferredAuthSchemes(Arrays.asList("NTLM"))
+                .setProxyPreferredAuthSchemes(Arrays.asList("NTLM"))
+                .build();
+
+        HttpClientBuilder clientBuilder = HttpClients.custom()
+                .setDefaultCredentialsProvider(credentialsProvider)
+                .setDefaultAuthSchemeRegistry(authSchemeRegistry)
+                .setDefaultRequestConfig(requestConfig);
+
+        try (CloseableHttpClient httpClient = clientBuilder.build()) {
+
+            String reportUrl = urlBase + "?" + nombreSoporte + "&IdAdmision=" + idAdmision + "&rs:Format=PDF";
+            System.out.println("URL: " + reportUrl);
+
+            HttpGet request = new HttpGet(reportUrl);
+
+            try (CloseableHttpResponse response = httpClient.execute(request)) {
+                int statusCode = response.getStatusLine().getStatusCode();
+
+                if (statusCode == 200) {
+                    byte[] pdfBytes = EntityUtils.toByteArray(response.getEntity());
+
+                    String connectionUrl = String.format(
+                        "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                        servidor
+                    );
+
+                    try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+                        
+                        String sql = "EXEC dbo.pa_Net_Insertar_DocumentoPdf ?, ?, ?, ?, ?, ?, ?, ?";
+                        
+                        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                            ps.setLong(1, idAdmision);           // @IdAdmision
+                            ps.setLong(2, idPacienteKey);        // @IdPacienteKey  
+                            ps.setLong(3, idSoporteKey);         // @IdSoporteKey
+                            ps.setBoolean(4, false);             // @Inactivar (0)
+                            ps.setString(5, tipoDocumento);      // @TipoDocumento
+                            ps.setBinaryStream(6, new ByteArrayInputStream(pdfBytes)); // @NameFilePdf
+                            ps.setBoolean(7, false);      // @EliminarSiNo
+                            ps.setBoolean(8, true); 
+                            
+                            ResultSet rs = ps.executeQuery();
+                            if (rs.next()) {
+                                long idGenerado = rs.getLong("IdpdfKey");
+                                System.out.println("PDF insertado con ID: " + idGenerado);
+                            }
+                        }
+
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                        return ResponseEntity
+                                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .body("Error al insertar en la base de datos: " + ex.getMessage());
+                    }
+
+                    return ResponseEntity.ok("PDF insertado correctamente en la base de datos");
+
+                } else {
+                    String errorContent = "";
+                    if (response.getEntity() != null) {
+                        try {
+                            errorContent = EntityUtils.toString(response.getEntity(), "UTF-8");
+                        } catch (Exception e) {
+                            errorContent = "No se pudo leer el contenido del error: " + e.getMessage();
+                        }
+                    }
+
+                    return ResponseEntity.status(statusCode)
+                            .body("Error al descargar el informe. Código: " + statusCode +
+                                    " - " + response.getStatusLine().getReasonPhrase() +
+                                    "\nDetalle: " + errorContent);
+                }
+            }
+
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError()
+                    .body("Excepción al conectar o procesar el PDF: " + e.getMessage());
+        }
+    }
+
 }
