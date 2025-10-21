@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -307,6 +308,45 @@ public class AtencionesController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("Error al contar: " + e.getMessage());
+        }
+    }
+
+
+    //ENDPOINT PARA VERIFICAR SI HAY SOPORTE INSERTADO PARA UN IDSOPORTE EN ESPECIFICO
+    @GetMapping("/soportes-por-anexos")
+    public ResponseEntity<?> obtenerAnexosPorAdmision(@RequestParam Long idAdmision) {
+        try {
+            String servidor = getServerFromRegistry();
+            String connectionUrl = String.format(
+                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                servidor
+            );
+
+            String sql = "SELECT IdSoporteKey FROM tbl_Net_Facturas_ListaPdf PDF INNER JOIN tbl_Net_Facturas_DocSoporte DS ON PDF.IdSoporteKey = DS.Id \n" + //
+                                "WHERE IdAdmision = ?\n" + //
+                                "ORDER BY IdSoporteKey";
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl);
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+                ps.setLong(1, idAdmision);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    List<Long> anexos = new ArrayList<>();
+                    while (rs.next()) {
+                        anexos.add(rs.getLong("IdSoporteKey"));
+                    }
+
+                    if (anexos.isEmpty()) {
+                        return ResponseEntity.ok(Collections.emptyList());
+                    }
+                    return ResponseEntity.ok(anexos);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                    .body("Error al obtener anexos: " + e.getMessage());
         }
     }
 }
