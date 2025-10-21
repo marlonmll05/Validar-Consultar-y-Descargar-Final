@@ -226,5 +226,38 @@ public class ReporteController {
         }
     }
 
+    @GetMapping("/facturas/existe")
+    public ResponseEntity<?> existeFactura(
+            @RequestParam String idAdmision,
+            @RequestParam Integer idDoc
+    ) {
+        try {
+            String servidor = getServerFromRegistry();
+            String cnx = String.format(
+                    "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
+                    servidor
+            );
+
+            try (Connection conn = DriverManager.getConnection(cnx)) {
+                String sql = "SELECT COUNT(*) FROM dbo.tbl_Net_Facturas_ListaPdf WHERE IdSoporteKey = ? AND IdAdmision = ?";
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setInt(1, idDoc);
+                    ps.setString(2, idAdmision);
+
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next() && rs.getInt(1) > 0) {
+                            return ResponseEntity.ok(Map.of("existe", true));
+                        }
+                    }
+                }
+            }
+
+            return ResponseEntity.ok(Map.of("existe", false));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+        }
+    }
 
 }
