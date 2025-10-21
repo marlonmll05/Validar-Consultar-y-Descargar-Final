@@ -242,4 +242,40 @@ public class AtencionesController {
                     .body("Error ejecutando procedimiento: " + e.getMessage());
         }
     }
+
+    //ENDPOINT PARA DESCARGAR LOS SOPORTES DISPONIBLES PARA UNA ADMISION
+    @GetMapping("/soportes-disponibles")
+    public ResponseEntity<?> obtenerSoportesFiltrados(@RequestParam Long idAdmision) {
+
+        try {
+            String servidor = getServerFromRegistry();
+            String connectionUrl = String.format(
+                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
+                servidor
+            );
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+                String sql = "EXEC pa_Net_Facturas_Tablas ?, ?";
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setInt(1, 10);  
+                    stmt.setLong(2, idAdmision);  
+
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        List<Map<String, Object>> resultados = new ArrayList<>();
+                        while (rs.next()) {
+                            Map<String, Object> fila = new LinkedHashMap<>();
+                            fila.put("Id", rs.getInt("Id"));
+                            fila.put("nombreRptService", rs.getString("NombreRptService"));
+                            fila.put("TipoDocumento", rs.getInt("TipoDocumento"));
+                            resultados.add(fila);
+                        }
+                        return ResponseEntity.ok(resultados);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error ejecutando procedimiento: " + e.getMessage());
+        }
+    }
 }
