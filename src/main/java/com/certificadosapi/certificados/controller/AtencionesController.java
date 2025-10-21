@@ -278,4 +278,35 @@ public class AtencionesController {
                     .body("Error ejecutando procedimiento: " + e.getMessage());
         }
     }
+
+    //ENDPOINT PARA VERIFICAR SI HAY FACTURA DE VENTA
+    @GetMapping("/verificar-factura-venta")
+    public ResponseEntity<?> countSoporte18(@RequestParam Long idAdmision) {
+        try {
+            String servidor = getServerFromRegistry();
+            String connectionUrl = String.format(
+                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                servidor
+            );
+
+            String sql = "SELECT COUNT(*) AS Cantidad " +
+                        "FROM dbo.tbl_Net_Facturas_ListaPdf " +
+                        "WHERE IdAdmision = ? AND IdSoporteKey = 18";
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl);
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+
+                ps.setLong(1, idAdmision);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    int cantidad = 0;
+                    if (rs.next()) cantidad = rs.getInt("Cantidad");
+                    return ResponseEntity.ok(Map.of("cantidad", cantidad));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Error al contar: " + e.getMessage());
+        }
+    }
 }
