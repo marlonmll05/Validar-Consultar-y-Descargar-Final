@@ -220,6 +220,77 @@
             background: rgba(155,135,245,0.06);
         }
 
+        td.anexar-col button + button,
+        td.doc-col button + button {
+          padding-top: 8px;              
+          margin-top: 8px; 
+        }
+
+        td.anexar-col button,
+        td.doc-col button {
+          display: block;
+          width: 100%;       
+          margin: 6px 0;
+          height: 45px;
+        }
+
+        .btn-success {
+          background-color: var(--success);
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          padding: 6px 12px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+        }
+
+        .btn-success:hover {
+          background-color: #0da271;
+        }
+
+        .btn-primary {
+          background-color: var(--success);
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          padding: 6px 12px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+        }
+
+        .btn-primary:hover {
+          background-color: #0da271;
+        }
+
+        .btn-primary:active, .btn-success:active {
+          transform: translateY(1px);
+        }
+        
+
+        .btn-exportar, .btn-verpdfs {
+          background-color: var(--primary);
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          padding: 6px 12px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+        }
+
+        .btn-exportar:hover, .btn-verpdfs:hover {
+          background-color: var(--primary-dark);
+        }
+
+        .btn-exportar:active, .btn-verpdfs:active {
+          transform: translateY(1px);
+        }
+
         .empty-state {
             color: var(--gray);
             text-align: center;
@@ -608,6 +679,11 @@
   <script>
     const host = window.location.hostname;
 
+    function formatDate(date) {
+      const [year, month, day] = date.split('-');
+      return `${year}${month}${day}`;
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById("fechaDesde").value = today
@@ -658,6 +734,294 @@
             progressBar.style.width = `${porcentaje}%`;
         }
     }
+
+    const archivosPorFila = new Map();
+
+    //BUSCAR
+    let currentController = null;
+    document.getElementById('filtrosForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const errorMsg = document.getElementById('errorMsg');
+      const emptyState = document.getElementById('emptyState');
+      const table = document.getElementById('resultadosTabla');
+      const thead = document.getElementById('tablaHead');
+      const tbody = document.getElementById('tablaBody');
+
+      errorMsg.textContent = "";
+      emptyState.style.display = 'none';
+      table.style.display = 'none';
+      thead.innerHTML = '';
+      tbody.innerHTML = '';
+
+      if (currentController) {
+        currentController.abort();
+      }
+      currentController = new AbortController();
+
+      const toast = showToast("Buscando", "Obteniendo resultados...", "info", 0, true);
+
+      let progreso = 0;
+      const intervalo = setInterval(() => {
+        progreso += 15;
+        if (progreso > 95) progreso = 95; 
+        actualizarToastProgreso(toast, progreso);
+      }, 100);
+
+      const params = new URLSearchParams();
+      const campos = {
+        IdAtencion: "registroAtencion",
+        HistClinica: "histClinica",
+        Cliente: "eps",
+        NoContrato: "contrato",
+        IdAreaAtencion: "idAreaAtencion",
+        IdUnidadAtencion: "idUnidadAtencionCur",
+        nFact: "numeroFactura",
+        nCuentaCobro: "cuentaCobro",
+      };
+
+      const fechaDesde = document.getElementById('fechaDesde').value;  // "yyyy-MM-dd"
+      const fechaHasta = document.getElementById('fechaHasta').value;  // "yyyy-MM-dd"
+      const formattedFechaDesde = formatDate(fechaDesde);  // "yyyyMMdd"
+      const formattedFechaHasta = formatDate(fechaHasta);  // "yyyyMMdd"
+
+      params.append('FechaDesde', formattedFechaDesde);
+      params.append('FechaHasta', formattedFechaHasta);
+
+      const checkboxFacturadas = document.getElementById('mostrarFacturadas');
+      const mostrarFacturadasValue = checkboxFacturadas.dataset.touched 
+        ? (checkboxFacturadas.checked ? 1 : 0) 
+        : null;
+
+      if (mostrarFacturadasValue !== null) {
+        params.append('soloFacturados', mostrarFacturadasValue);
+      }
+
+      Object.entries(campos).forEach(([paramName, inputId]) => {
+        const el = document.getElementById(inputId);
+        if (el && el.value.trim() !== "") {
+          params.append(paramName, el.value.trim());
+        }
+      });
+
+      const url = `https://${host}:9876/api/admisiones?${params.toString()}`;
+      console.log("➡️ URL generada:", url);
+
+      fetch(url, { signal: currentController.signal })
+        .then(response => {
+          if (!response.ok) {
+            return response.text().then(text => { throw new Error(text); });
+          }
+          return response.json();
+        })
+        .then(data => {
+          clearInterval(intervalo);
+          actualizarToastProgreso(toast, 100);
+          setTimeout(() => toast.remove(), 400);
+
+          if (!Array.isArray(data) || data.length === 0) {
+            emptyState.style.display = 'block';
+            showToast("Sin resultados", "No se encontraron registros.", "warning", 4000);
+            return;
+          }
+
+          const camposMostrar = [
+            "IdAtencion",
+            "NomContrato",
+            "Paciente",
+            "Cerrada",
+            "Liquidada",
+            "NoContrato",
+            "NFact",
+            "EntornoIngreso",
+          ];
+
+          const headRow = document.createElement('tr');
+
+          const thCheckbox = document.createElement('th');
+          thCheckbox.textContent = 'Seleccionar';
+          headRow.appendChild(thCheckbox);
+
+          camposMostrar.forEach(h => {
+            const th = document.createElement('th');
+            th.textContent = h;
+            headRow.appendChild(th);
+          });
+
+          // Nueva columna 1
+          const thAccion1 = document.createElement('th');
+          thAccion1.textContent = "Acciones";
+          headRow.appendChild(thAccion1);
+
+          // Nueva columna 2
+          const thAccion2 = document.createElement('th');
+          thAccion2.textContent = "Documentos";
+          headRow.appendChild(thAccion2);
+
+          thead.appendChild(headRow);
+
+          // Filas principales 
+          data.forEach((row, idx) => {
+            const rowKey = row["IdAtencion"] ?? `fila-${idx}`;
+            const idAdmision = row["IdAdmision"] ?? '';
+            const idAtencion = row["IdAtencion"] ?? '';
+            const idPacienteKey = row["IdPacienteKey"] ?? '';
+
+            // Fila de datos
+            const tr = document.createElement('tr');
+            tr.dataset.rowkey = rowKey;
+            tr.dataset.idadmision = idAdmision;
+            tr.dataset.idpacientekey = idPacienteKey;
+            tr.dataset.idatencion = idAtencion;
+
+            // Columna de casilla de verificación
+            const tdCheckbox = document.createElement('td');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'checkbox-row';
+            checkbox.dataset.rowkey = rowKey; // Identificador único
+            tdCheckbox.appendChild(checkbox);
+            tr.appendChild(tdCheckbox);
+
+            camposMostrar.forEach(h => {
+              const td = document.createElement('td');
+              td.textContent = (row[h] !== null && row[h] !== undefined) ? row[h] : '';
+              tr.appendChild(td);
+            });
+
+            // Columna 1: Anexar y Generación Auto
+            const tdAccion1 = document.createElement('td');
+            tdAccion1.classList.add("anexar-col");
+
+            const btnAnexar = document.createElement('button');
+            btnAnexar.type = "button";
+            btnAnexar.textContent = "Anexar";
+            btnAnexar.className = "btn-success btn-anexar";
+            btnAnexar.innerHTML = '<i class="fa-solid fa-paperclip"></i> Anexar';
+            btnAnexar.dataset.rowkey = rowKey;
+            tdAccion1.appendChild(btnAnexar);
+
+            const btnGenerar = document.createElement('button');
+            btnGenerar.type = "button";
+            btnGenerar.textContent = "Generación Automática";
+            btnGenerar.className = "btn-primary btn-generar";
+            btnGenerar.dataset.rowkey = rowKey;
+            btnGenerar.dataset.idadmision = idAdmision;
+            btnGenerar.dataset.idpacientekey = idPacienteKey;
+            btnGenerar.dataset.idatencion = idAtencion;
+            tdAccion1.appendChild(btnGenerar);
+
+            // Columna 2: Exportar y Ver Documentos
+            const tdAccion2 = document.createElement('td');
+            tdAccion2.classList.add("doc-col");
+
+            const btnExportar = document.createElement('button');
+            btnExportar.type = "button";
+            btnExportar.textContent = "Exportar";
+            btnExportar.className = "btn-warning btn-exportar";
+            btnExportar.innerHTML = '<i class="fa-solid fa-file-export"></i> Exportar';
+            btnExportar.dataset.rowkey = rowKey;
+            btnExportar.dataset.idadmision = idAdmision;
+            btnExportar.dataset.idpacientekey = idPacienteKey;
+            btnExportar.dataset.nfact = row["NFact"] || '';
+            tdAccion2.appendChild(btnExportar);
+
+            const btnVerPdfs = document.createElement('button');
+            btnVerPdfs.type = "button";
+            btnVerPdfs.textContent = "Ver Documentos";
+            btnVerPdfs.className = "btn-secondary btn-verpdfs";
+            btnVerPdfs.dataset.rowkey = rowKey;
+            btnVerPdfs.dataset.idadmision = idAdmision;
+            btnVerPdfs.dataset.idatencion = idAtencion;
+            tdAccion2.appendChild(btnVerPdfs);
+
+            tr.appendChild(tdAccion1);
+            tr.appendChild(tdAccion2);
+
+            tbody.appendChild(tr);
+
+            const trPanel = document.createElement('tr');
+            trPanel.className = 'anexar-row';
+            trPanel.style.display = 'none';
+            trPanel.dataset.rowkey = rowKey;
+
+            const tdPanel = document.createElement('td');
+            tdPanel.colSpan = camposMostrar.length + 3;
+
+            tdPanel.innerHTML = `
+              <div class="anexar-panel">
+                <h4>Adjuntar archivos para IdAtencion: <strong>${row["IdAtencion"] ?? ''}</strong></h4>
+                <div class="anexar-actions">
+                  <div class="dropzone" data-rowkey="${rowKey}">
+                    <p>Arrastra aquí tus archivos (PDF o imágenes)</p>
+                    <button type="button" class="btn-picker" data-input="fileInput-${rowKey}">Seleccionar archivos</button>
+                    <input type="file" id="fileInput-${rowKey}" class="file-input" accept=".pdf,image/*" multiple hidden>
+                  </div>
+
+                  <div class="form-group soporte-group">
+                    <label for="idSoporte-${rowKey}">Documento Soporte</label>
+                    <select id="idSoporte-${rowKey}" name="idSoporte" data-rowkey="${rowKey}" data-loaded="0" required>
+                      <option value="" disabled selected>-- Selecciona --</option>
+                    </select>
+                  </div>
+
+                  <ul class="file-list" id="fileList-${rowKey}"></ul>
+                </div>
+
+                <div class="panel-footer" style="margin-top:10px; display:flex; width:100%;">
+                  <div class="form-group ver-todos-group" style="margin-top:6px;">
+                    <label style="font-size:14px; display:flex; align-items:center; gap:8px;">
+                      <span>Ver todas las tipificaciones</span>
+                      <label class="switch">
+                        <input type="checkbox" id="verTodos-${rowKey}" data-rowkey="${rowKey}">
+                        <span class="slider round"></span>
+                      </label>
+                    </label>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="btn-success btn-guardar"
+                    data-rowkey="${rowKey}"
+                    data-idadmision="${idAdmision}"
+                    data-idpacientekey="${idPacienteKey}"
+                    style="margin-left:auto; min-width:120px; padding:12px 18px; font-size:15px; border-radius:8px; white-space:nowrap;"
+                  >
+                    Guardar
+                  </button>
+                </div>
+
+                <div class="error" id="error-${rowKey}" style="display:none;"></div>
+              </div>
+            `;
+
+            trPanel.appendChild(tdPanel);
+            tbody.appendChild(trPanel);
+
+            archivosPorFila.set(rowKey, []);
+          });
+
+          table.style.display = 'table';
+
+          showToast("Éxito", `Se encontraron ${data.length} registros.`, "success", 4000);
+        })
+        .catch(error => {
+          clearInterval(intervalo);
+          actualizarToastProgreso(toast, 100);
+          setTimeout(() => toast.remove(), 400);
+
+          if (error.name !== "AbortError") {
+            showToast("Error", "No se pudieron obtener los datos.", "error", 5000);
+
+            emptyState.style.display = 'none';
+            table.style.display = 'none';
+            errorMsg.textContent = "Error al obtener datos: " + error.message;
+          }
+        });
+    });
+
+
+
   </script>
 </body>
 </html>
