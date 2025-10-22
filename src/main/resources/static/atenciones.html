@@ -2182,6 +2182,27 @@
       });
     }
 
+    // Limpiar
+    document.getElementById('btnLimpiar').addEventListener('click', () => {
+      const form = document.getElementById('filtrosForm');
+      form.reset();
+
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('fechaDesde').value = today;
+      document.getElementById('fechaHasta').value = today;
+
+      document.getElementById('tablaHead').innerHTML = '';
+      document.getElementById('tablaBody').innerHTML = '';
+      document.getElementById('resultadosTabla').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('errorMsg').textContent = '';
+
+      const checkboxFacturadas = document.getElementById('mostrarFacturadas');
+      delete checkboxFacturadas.dataset.touched;  // Eliminar el atributo para volver a null
+
+      archivosPorFila.clear();
+    });
+
     // Util para evitar inyección en nombres
     function escapeHtml(text) {
       const map = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' };
