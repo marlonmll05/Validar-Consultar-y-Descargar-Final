@@ -1177,6 +1177,390 @@
       }
     });
 
+    const ENDPOINT_ANEXOS = `https://${host}:9876/api/insertar-pdf`;
+    const DEBUG_ENVIO = false; 
+
+    tabla.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.btn-guardar');
+      if (!btn) return;
+
+      const rowKey = btn.dataset.rowkey;
+
+      const mainRow = tabla.querySelector(`tr[data-rowkey="${rowKey}"]:not(.anexar-row)`);
+      let idAdmision    = btn.dataset.idadmision    || mainRow?.dataset.idadmision    || '';
+      let idPacienteKey = btn.dataset.idpacientekey || mainRow?.dataset.idpacientekey || '';
+
+      const archivos = archivosPorFila.get(rowKey) || [];
+      const errorEl = document.getElementById(`error-${rowKey}`);
+      const selectSoporte = document.getElementById(`idSoporte-${rowKey}`);
+      const idSoporte = selectSoporte ? (selectSoporte.value || '') : '';
+      const tipoDocumento = selectSoporte 
+        ? selectSoporte.options[selectSoporte.selectedIndex].dataset.tipodoc || '' 
+        : '';
+
+      if (!idAdmision) {
+        showToast('Falta IdAdmision', 'No se pudo obtener IdAdmision de la fila.', 'error', 6000);
+        return;
+      }
+      if (!idPacienteKey) {
+        showToast('Falta IdPacienteKey', 'No se pudo obtener IdPacienteKey de la fila.', 'error', 6000);
+        return;
+      }
+      if (!idSoporte || isNaN(Number(idSoporte))) {
+        errorEl.textContent = 'Debes seleccionar un Documento Soporte válido.';
+        errorEl.style.display = 'block';
+        showToast('Documento soporte requerido', 'Selecciona un Documento Soporte.', 'error', 6000);
+        return;
+      }
+      if (archivos.length === 0) {
+        errorEl.textContent = 'Selecciona al menos un archivo antes de guardar.';
+        errorEl.style.display = 'block';
+        showToast('Sin archivos', 'Agrega archivos para continuar.', 'error', 5000);
+        return;
+      }
+
+      let eliminarSiNo = true; 
+
+      try {
+        const respCheck = await fetch(`https://${host}:9876/api/soportes-por-anexos?idAdmision=${idAdmision}`);
+        if (respCheck.ok) {
+          const anexos = await respCheck.json();
+          if (Array.isArray(anexos) && anexos.includes(Number(idSoporte))) {
+
+            const confirmar = await showModalGuardar("Ya existe un registro para este soporte, ¿Qué deseas hacer?");
+            if (!confirmar) {
+              return; 
+            }
+            if (confirmar === "anexar") {
+              eliminarSiNo = false; 
+            } else if (confirmar === "reemplazar") {
+              eliminarSiNo = true;  
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error verificando anexos:", err);
+
+      }
+          
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      const toast = showToast('Insertando', 'Procesando archivos...', 'info', 120000, true);
+
+      try {
+        // 🚀 Enviar TODOS los archivos en un solo request
+        const fd = new FormData();
+        fd.append('idAdmision', idAdmision);
+        fd.append('idPacienteKey', idPacienteKey);
+        fd.append('idSoporteKey', idSoporte); 
+        fd.append('tipoDocumento', tipoDocumento);
+
+        for (const f of archivos) {
+          fd.append('nameFilePdf', f, f.name);  // mismo campo varias veces
+        }
+
+        fd.append("automatico", "false");
+        fd.append("eliminarSiNo", eliminarSiNo);
+
+        if (DEBUG_ENVIO) {
+          console.group('➡️ Enviando a backend:', ENDPOINT_ANEXOS);
+          for (const [k, v] of fd.entries()) console.log(k, v instanceof File ? v.name : v);
+          console.groupEnd();
+        }
+
+        const resp = await fetch(ENDPOINT_ANEXOS, { method: 'POST', body: fd });
+        const text = await resp.text().catch(() => '');
+        if (DEBUG_ENVIO) console.log('⬅️ Respuesta:', resp.status, resp.statusText, text);
+        if (!resp.ok) throw new Error(text || 'Fallo insertando archivos');
+
+        actualizarToastProgreso(toast, 100);
+
+        archivosPorFila.set(rowKey, []);
+        renderLista(rowKey);
+        errorEl.style.color = 'var(--success)';
+        errorEl.textContent = `Insert OK (${archivos.length}/${archivos.length}).`;
+        errorEl.style.display = 'block';
+        setTimeout(() => { errorEl.style.display = 'none'; errorEl.style.color = 'var(--danger)'; }, 3000);
+        showToast('Guardado', `Se insertaron ${archivos.length} archivo(s).`, 'success', 4500);
+
+        toast.classList.add('fadeOut'); setTimeout(() => toast.remove(), 300);
+
+      } catch (err) {
+        toast.classList.add('fadeOut'); setTimeout(() => toast.remove(), 300);
+        errorEl.style.color = 'var(--danger)';
+        errorEl.textContent = 'Error al guardar: ' + err.message;
+        errorEl.style.display = 'block';
+        showToast('Error al guardar', err.message || 'No se pudo completar la operación.', 'error', 7000);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText; // restaurar texto del botón
+      }
+    });
+
+
+    const ENDPOINT_LISTA_PDFS = `https://${host}:9876/api/admisiones/lista-pdfs`;
+    const ENDPOINT_VER_PDF    = `https://${host}:9876/api/admisiones/ver-pdf`;
+    const ENDPOINT_ELIMINAR_PDF = `https://${host}:9876/api/eliminar-pdf`;
+
+    tabla.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-verpdfs');
+      if (!btn) return;
+
+      const idAdmision = btn.dataset.idadmision ||
+        tabla.querySelector(`tr[data-rowkey="${btn.dataset.rowkey}"]:not(.anexar-row)`)?.dataset.idadmision;
+
+      const idAtencion = btn.dataset.idatencion ||
+        tabla.querySelector(`tr[data-rowkey="${btn.dataset.rowkey}"]:not(.anexar-row)`)?.dataset.idatencion;
+
+      if (!idAdmision) {
+        showToast('Falta IdAdmision', 'No se pudo obtener IdAdmision.', 'error', 6000);
+        return;
+      } 
+
+      console.log(idAdmision);
+      
+      abrirVisorPDFs(idAdmision, idAtencion);
+    });
+
+    function abrirVisorPDFs(idAdmision, idAtencion) {
+      const w = window.open('', '_blank');
+
+      
+      
+      const html = `<!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title>Documentos de Atencion ${idAtencion || ''}</title>
+        <style>
+          :root{
+            --primary:#9b87f5; --primary-dark:#7a68c3; --secondary:#33C3F0;
+            --dark:#1A1F2C; --gray:#8E9196; --light:#f8f9fa; --border:#e2e8f0;
+            --success:#10b981; --danger:#ef4444;
+          }
+          *{box-sizing:border-box}
+          body{
+            font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background:#f5f5f9; color:var(--dark); margin:0;
+          }
+          header{background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.08); padding:16px 20px}
+          h1{margin:0; font-size:18px}
+          .container{display:grid; grid-template-columns: 320px 1fr; gap:12px; padding:16px}
+          .card{background:#fff; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,.06); overflow:hidden}
+          .list{padding:10px}
+          .list h3{font-size:14px; margin:10px}
+          .item{
+            width:100%; display:flex; align-items:center; justify-content:space-between;
+            gap:8px; background:#fff; border:1px solid var(--border);
+            border-radius:8px; padding:10px 12px; margin:8px 0; cursor:pointer;
+            transition:background .2s, border-color .2s, box-shadow .2s;
+          }
+          .item:hover{ background:var(--light); border-color:var(--primary) }
+          .item.active{ border-color:var(--primary); box-shadow:0 0 0 3px rgba(155,135,245,.12) }
+          .name{ flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+          .btn-del {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: #555; /* gris neutro del cesto */
+            border-radius: 6px;
+            padding: 2px 8px;
+            line-height: 1.4;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, border-color 0.2s, transform 0.1s;
+          }
+
+          .btn-del:hover {
+            background: #f0f0f0;      /* gris claro al pasar el mouse */
+            border-color: #d0d0d0;    /* bordes un poco más oscuros */
+            transform: scale(1.05);   /* leve aumento */
+          }
+
+          .viewer {
+            height: calc(100vh - 120px);
+          }
+
+          .viewer iframe,
+          .viewer img {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+            background: #fff;
+          }
+
+          .meta{ padding:10px 14px; border-bottom:1px solid var(--border); font-size:14px; color:var(--gray) }
+          .empty{ padding:24px; color:var(--gray); }
+        </style>
+      </head>
+      <body>
+        <header>
+          <h1>Documentos de IdAtencion: ${idAtencion || 'N/D'}</h1>
+        </header>
+
+        <main class="container">
+          <section class="card">
+            <div class="list">
+              <h3>Archivos</h3>
+              <div id="lista"></div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="meta">Selecciona un documento para visualizarlo</div>
+            <div id="viewer" class="viewer"><div class="empty">Sin documento seleccionado</div></div>
+          </section>
+        </main>
+
+          <script>
+              const LISTA_URL = '${ENDPOINT_LISTA_PDFS}?idAdmision=${encodeURIComponent(idAdmision)}';
+              const VER_URL   = '${ENDPOINT_VER_PDF}';
+              const DEL_URL   = '${ENDPOINT_ELIMINAR_PDF}'; // ✅ Endpoint real de eliminación
+              
+
+              let listaActual = [];
+
+              async function cargarLista() {
+                  try {
+                      const r = await fetch(LISTA_URL);
+                      if (!r.ok) throw new Error(await r.text());
+                      
+                      const arr = await r.json(); // [{idSoporteKey, nombre}]
+                      listaActual = Array.isArray(arr) ? arr : [];
+                      renderLista(listaActual);
+                      
+                      if (listaActual.length) {
+                          seleccionar(listaActual[0].idSoporteKey, listaActual[0].nombre);
+                      }
+                  } catch (err) {
+                      document.getElementById('lista').innerHTML = 
+                          '<div class="empty">No se pudo cargar la lista: ' + (err.message || '') + '</div>';
+                  }
+              }
+
+              function renderLista(arr) {
+                  const cont = document.getElementById('lista');
+                  if (!arr || !arr.length) {
+                      cont.innerHTML = '<div class="empty">No hay PDFs para esta admisión.</div>';
+                      return;
+                  }
+                  cont.innerHTML = arr.map(it => {
+                      const nombre = escapeHtml(it.nombre || ('Documento ' + it.idSoporteKey));
+                      return (
+                        '<div class="item" data-soporte="' + it.idSoporteKey + '" data-nombre="' + nombre + '">' +
+                          '<span class="name">' + nombre + '</span>' +
+                          '<button class="btn-del" title="Eliminar" data-del="' + it.idSoporteKey + '">' +
+                            // 🗑️ Ícono SVG de cesto de basura
+                            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" ' +
+                            'viewBox="0 0 16 16">' +
+                              '<path d="M5.5 5.5A.5.5 0 0 1 6 5h4a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5v-8z"/>' +
+                              '<path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1 0-2h3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1h3a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118z"/>' +
+                            '</svg>' +
+                          '</button>' +
+                        '</div>'
+                      );
+                  }).join('');
+              }
+
+
+              document.addEventListener('click', async (e) => {
+                  const del = e.target.closest('.btn-del');
+                  if (del) {
+                      e.stopPropagation();
+                      const idSoporteKey = del.getAttribute('data-del');
+                      const item = del.closest('.item');
+                      const nombre = item?.dataset?.nombre || 'Documento';
+                      await eliminarSoporte(idSoporteKey, nombre, item);
+                      return;
+                  }
+
+                  const b = e.target.closest('.item');
+                  if (!b) return;
+                  
+                  document.querySelectorAll('.item').forEach(x => x.classList.remove('active'));
+                  b.classList.add('active');
+                  seleccionar(b.dataset.soporte, b.dataset.nombre);
+              });
+
+              async function seleccionar(idSoporteKey, nombre) {
+                  const url = VER_URL + '?idAdmision=${encodeURIComponent(idAdmision)}&idSoporteKey=' + encodeURIComponent(idSoporteKey);
+                  const viewer = document.getElementById('viewer');
+                  viewer.innerHTML = '<div class="empty">Cargando...</div>';
+                  
+                  try {
+                      const resp = await fetch(url);
+                      if (!resp.ok) throw new Error(await resp.text());
+                      
+                      const ct = (resp.headers.get('Content-Type') || 'application/pdf').toLowerCase();
+                      const blob = await resp.blob();
+                      const objUrl = URL.createObjectURL(blob);
+                      
+                      if (ct.startsWith('image/')) {
+                          viewer.innerHTML = '<img alt="' + escapeHtml(nombre || 'Documento') + '">';
+                          viewer.querySelector('img').src = objUrl;
+                      } else {
+                          viewer.innerHTML = '<iframe title="' + escapeHtml(nombre || 'Documento') + '"></iframe>';
+                          viewer.querySelector('iframe').src = objUrl;
+                      }
+                      
+                      document.querySelector('.meta').textContent = nombre || ('Documento ' + idSoporteKey);
+                  } catch (err) {
+                      viewer.innerHTML = '<div class="empty">No se pudo cargar el documento: ' + 
+                                        (err.message || '') + '</div>';
+                  }
+              }
+
+              // 🔹 Eliminar documento en backend y refrescar lista
+              async function eliminarSoporte(idSoporteKey, nombre, itemEl) {
+
+                  try {
+                      const url = DEL_URL + '?idAdmision=${encodeURIComponent(idAdmision)}&idSoporteKey=' + encodeURIComponent(idSoporteKey);
+                      const r = await fetch(url, { method: 'GET' }); // tu endpoint usa GET
+                      
+                      if (!r.ok) throw new Error(await r.text());
+
+                      // ✅ Mensaje de éxito
+                      alert('Documento eliminado correctamente.');
+
+                      // Si era el activo, limpia el visor
+                      const eraActivo = itemEl?.classList.contains('active');
+                      if (eraActivo) {
+                          document.querySelector('.meta').textContent = 'Selecciona un documento para visualizarlo';
+                          document.getElementById('viewer').innerHTML = '<div class="empty">Sin documento seleccionado</div>';
+                      }
+
+                      // Actualizar lista local
+                      listaActual = listaActual.filter(x => String(x.idSoporteKey) !== String(idSoporteKey));
+                      renderLista(listaActual);
+                      if (listaActual.length) seleccionar(listaActual[0].idSoporteKey, listaActual[0].nombre);
+
+                  } catch (err) {
+                      alert('Error al eliminar: ' + (err.message || 'Desconocido'));
+                  }
+              }
+
+              function escapeHtml(text) {
+                  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+                  return String(text || '').replace(/[&<>"']/g, m => map[m]);
+              }
+
+              cargarLista();
+          <\/script>
+      </body>
+      </html>`;
+
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    }
+
+
     const archivosPorFila = new Map();
     const MAX_TAM_MB = 20; 
     const TIPOS_PERMITIDOS = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
@@ -1254,10 +1638,7 @@
       }      
     });
 
-
-
-
-        tabla.addEventListener('click', (e) => {
+    tabla.addEventListener('click', (e) => {
       const picker = e.target.closest('.btn-picker');
       if (!picker) return;
       const inputId = picker.dataset.input;
