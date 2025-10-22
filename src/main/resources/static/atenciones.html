@@ -1159,6 +1159,344 @@
         });
     });
 
+    //Botón Exportar por lote
+    document.getElementById('btnExportar').addEventListener('click', async () => {
+      const exportarPorCuenta = document.getElementById('exportarCuentaCobro').checked;
+
+      if (!exportarPorCuenta) {
+        // Modo: Exportar solo filas seleccionadas
+        const checkboxes = document.querySelectorAll('.checkbox-row:checked');
+
+        if (checkboxes.length === 0) {
+          showToast("Sin selección", "Selecciona al menos una fila para exportar", "warning", 4000);
+          return;
+        }
+
+        // Desmarcar de una todas las casillas seleccionadas al exportar
+        const uncheck = (cb) => {
+          cb.checked = false;
+          cb.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        checkboxes.forEach(uncheck);
+
+        try {
+          const dirHandle = await window.showDirectoryPicker();
+          const toast = showToast("Exportando", `Procesando ${checkboxes.length} admisión(es)...`, "info", 0, true);
+
+          let admisionesProcesadas = 0;
+          const totalAdmisiones = checkboxes.length;
+
+          for (const checkbox of checkboxes) {
+            const rowKey = checkbox.dataset.rowkey;
+            const tr = document.querySelector(`tr[data-rowkey="${rowKey}"]`);
+            if (!tr) continue;
+
+            const idAdmision = tr.dataset.idadmision;
+            const idAtencion = tr.dataset.idatencion;
+            const btnExportar = tr.querySelector('.btn-exportar');
+            const nFact = btnExportar ? btnExportar.dataset.nfact : null;
+
+            console.log(`Exportando admisión: ${idAdmision}, nFact: ${nFact}`);
+
+            try {
+              const form = new FormData();
+
+              try {
+                const respSoporte = await fetch(`https://${host}:9876/api/soportes-por-anexos?idAdmision=${idAdmision}`);
+
+                if (respSoporte.status === 204) {
+                  showToast("Sin PDFs", `IdAtencion ${idAtencion} no tiene PDFs`, "warning", 3000);
+                } else if (!respSoporte.ok) {
+                  console.warn(`Error obteniendo soportes:`, await respSoporte.text());
+                } else {
+                  const soportes = await respSoporte.json(); 
+                  for (const idSoporteKey of soportes) {
+                    try {
+                      const url = new URL(`https://${host}:9876/api/exportar-pdf`);
+                      url.searchParams.set("idAdmision", idAdmision);
+                      url.searchParams.set("idSoporteKey", idSoporteKey);
+
+                      const resp = await fetch(url);
+                      if (resp.status === 204 || !resp.ok) continue;
+
+                      const blob = await resp.blob();
+                      const header = resp.headers.get("Content-Disposition");
+                      const nombre = header?.split("filename=")[1]?.replace(/"/g, "") || `Documento_${idSoporteKey}.pdf`;
+
+                      form.append('pdfs', new File([blob], nombre, { type: blob.type || 'application/pdf' }));
+                      await new Promise(r => setTimeout(r, 120));
+                    } catch (err) {
+                      console.error(`Error descargando PDF ${idSoporteKey}:`, err);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error(`Error listando soportes:`, err);
+              }
+
+              // 2) XML 
+              let idMovDoc = null;
+              if (nFact) {
+                try {
+                  const respXml = await fetch(`https://${host}:9876/api/generarxml/${nFact}`);
+                  if (respXml.ok) {
+                    const blobXml = await respXml.blob();
+                    const headerXml = respXml.headers.get("Content-Disposition");
+                    const filenameXml = headerXml?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.xml`;
+                    idMovDoc = respXml.headers.get("X-IdMovDoc") || null;
+
+                    form.append('xml', new File([blobXml], filenameXml, { type: 'application/xml' }));
+                  } else {
+                    showToast("Sin XML", `No hay XML para factura ${nFact}`, "warning", 3000);
+                    admisionesProcesadas++;
+                    const porcentaje = Math.round((admisionesProcesadas / totalAdmisiones) * 100);
+                    actualizarToastProgreso(toast, porcentaje);
+                    continue;
+                  }
+                } catch (err) {
+                  console.error(`Error descargando XML:`, err);
+                  showToast("Error", `Error descargando XML: ${err.message}`, "error", 4000);
+                  admisionesProcesadas++;
+                  const porcentaje = Math.round((admisionesProcesadas / totalAdmisiones) * 100);
+                  actualizarToastProgreso(toast, porcentaje);
+                  continue;
+                }
+              } else {
+                showToast("Sin NFact", `La fila ${idAdmision} no tiene NFact`, "warning", 3000);
+                admisionesProcesadas++;
+                const porcentaje = Math.round((admisionesProcesadas / totalAdmisiones) * 100);
+                actualizarToastProgreso(toast, porcentaje);
+                continue;
+              }
+
+              // 3) JSON de la factura
+              if (idMovDoc) {
+                try {
+                  const respJson = await fetch(`https://${host}:9876/certificados/generarjson/${idMovDoc}`);
+                  if (respJson.ok) {
+                    const blobJson = await respJson.blob();
+                    const headerJson = respJson.headers.get("Content-Disposition");
+                    const filenameJson = headerJson?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.json`;
+
+                    form.append('jsonFactura', new File([blobJson], filenameJson, { type: 'application/json' }));
+                  } else {
+                    showToast("Sin JSON", `No hay JSON para factura ${nFact}`, "warning", 3000);
+                  }
+                } catch (err) {
+                  console.error(`Error descargando JSON:`, err);
+                  showToast("Error", `Error descargando JSON: ${err.message}`, "error", 4000);
+                }
+              }
+
+              // 4) Enviar todo al backend para que arme el ZIP (allí se añade el TXT MSPS)
+              const respZip = await fetch(`https://${host}:9876/api/armar-zip/${encodeURIComponent(nFact)}`, {
+                method: 'POST',
+                body: form
+              });
+              if (!respZip.ok) {
+                const txt = await respZip.text();
+                throw new Error(`Error al armar ZIP: ${txt}`);
+              }
+
+              // 5) Guardar el ZIP en la carpeta seleccionada
+              const blobZip = await respZip.blob();
+              const zipName = `${nFact}.zip`;
+              const fileHandleZip = await dirHandle.getFileHandle(zipName, { create: true });
+              const writableZip = await fileHandleZip.createWritable();
+              await writableZip.write(blobZip);
+              await writableZip.close();
+
+              console.log(`✅ ZIP guardado: ${zipName}`);
+              showToast("Éxito", `ZIP descargado: ${zipName}`, "success", 2500);
+
+            } catch (err) {
+              console.error(`Error procesando admisión ${idAdmision}:`, err);
+              showToast("Error", err.message, "error", 4500);
+            }
+
+            admisionesProcesadas++;
+            const porcentaje = Math.round((admisionesProcesadas / totalAdmisiones) * 100);
+            actualizarToastProgreso(toast, porcentaje);
+          }
+
+          toast.querySelector("p").textContent = `Exportación completada (${admisionesProcesadas} admisiones)`;
+          toast.classList.remove("info");
+          toast.classList.add("success");
+
+          setTimeout(() => {
+            if (toast.parentElement) {
+              toast.classList.add('fadeOut');
+              setTimeout(() => toast.remove(), 300);
+            }
+          }, 3000);
+
+        } catch (err) {
+          console.error("Error general exportando:", err);
+          showToast("Error", err.message, "error", 5000);
+        }
+
+        } else {
+          // 👉 Modo: Exportar por Cuenta de Cobro 
+          const numeroCuentaCobro = document.getElementById('cuentaCobro').value.trim();
+
+          if (!numeroCuentaCobro) {
+            showToast("Campo requerido", "Ingresa un número de cuenta de cobro", "warning", 4000);
+            return;
+          }
+
+          const todasLasFilas = document.querySelectorAll('tbody tr[data-idadmision]');
+          if (todasLasFilas.length === 0) {
+            showToast("Sin datos", "No hay filas para exportar", "warning", 4000);
+            return;
+          }
+
+          try {
+            const toast = showToast("Exportando", `Procesando ${todasLasFilas.length} fila(s)...`, "info", 0, true);
+
+            let filasProces = 0;
+            const formFinal = new FormData();
+            formFinal.append('numeroCuentaCobro', numeroCuentaCobro);
+
+            for (const tr of todasLasFilas) {
+              const idAdmision = tr.dataset.idadmision;
+              const idAtencion = tr.dataset.idatencion;
+              const btnExportar = tr.querySelector('.btn-exportar');
+              const nFact = btnExportar ? btnExportar.dataset.nfact : null;
+
+              console.log(`📦 Recopilando admisión: ${idAdmision}, nFact: ${nFact}`);
+
+              if (!nFact) {
+                console.warn(`La fila ${idAdmision} no tiene NFact; se omite.`);
+                filasProces++;
+                const porcentaje = Math.round((filasProces / todasLasFilas.length) * 100);
+                actualizarToastProgreso(toast, porcentaje);
+                continue;
+              }
+
+              // 1) PDFs (opcionales) 
+              try {
+                const respSoporte = await fetch(`https://${host}:9876/api/soportes-por-anexos?idAdmision=${idAdmision}`);
+
+                if (respSoporte.status === 204) {
+                  showToast("Sin PDFs", `IdAtencion ${idAtencion} no tiene PDFs`, "warning", 3000);
+                } else if (!respSoporte.ok) {
+                  console.warn(`Error obteniendo soportes:`, await respSoporte.text());
+                } else {
+                  const soportes = await respSoporte.json();
+                  for (const idSoporteKey of soportes) {
+                    try {
+                      const url = new URL(`https://${host}:9876/api/exportar-pdf`);
+                      url.searchParams.set("idAdmision", idAdmision);
+                      url.searchParams.set("idSoporteKey", idSoporteKey);
+
+                      const resp = await fetch(url);
+                      if (resp.status === 204 || !resp.ok) continue;
+
+                      const blob = await resp.blob();
+                      const header = resp.headers.get("Content-Disposition");
+                      const nombre = header?.split("filename=")[1]?.replace(/"/g, "") || `Documento_${idSoporteKey}.pdf`;
+
+                      formFinal.append(`${nFact}_pdfs`, new File([blob], nombre, { type: blob.type || 'application/pdf' }));
+                      await new Promise(r => setTimeout(r, 120));
+                    } catch (err) {
+                      console.error(`Error descargando PDF ${idSoporteKey}:`, err);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error(`Error listando soportes:`, err);
+              }
+
+              // 2) XML (obligatorio)
+              let idMovDoc = null;
+              try {
+                const respXml = await fetch(`https://${host}:9876/api/generarxml/${nFact}`);
+                if (respXml.ok) {
+                  const blobXml = await respXml.blob();
+                  const headerXml = respXml.headers.get("Content-Disposition");
+                  const filenameXml = headerXml?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.xml`;
+                  idMovDoc = respXml.headers.get("X-IdMovDoc") || null;
+
+                  formFinal.append(`${nFact}_xml`, new File([blobXml], filenameXml, { type: 'application/xml' }));
+                } else {
+                  console.warn(`Sin XML para factura ${nFact}`);
+                  filasProces++;
+                  const porcentaje = Math.round((filasProces / todasLasFilas.length) * 100);
+                  actualizarToastProgreso(toast, porcentaje);
+                  continue;
+                }
+              } catch (err) {
+                console.error(`Error descargando XML:`, err);
+                showToast("Error", `Error descargando XML de ${nFact}: ${err.message}`, "error", 4000);
+                filasProces++;
+                const porcentaje = Math.round((filasProces / todasLasFilas.length) * 100);
+                actualizarToastProgreso(toast, porcentaje);
+                continue;
+              }
+
+              // 3) JSON de la factura (opcional)
+              if (idMovDoc) {
+                try {
+                  const respJson = await fetch(`https://${host}:9876/certificados/generarjson/${idMovDoc}`);
+                  if (respJson.ok) {
+                    const blobJson = await respJson.blob();
+                    const headerJson = respJson.headers.get("Content-Disposition");
+                    const filenameJson = headerJson?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.json`;
+
+                    formFinal.append(`${nFact}_jsonFactura`, new File([blobJson], filenameJson, { type: 'application/json' }));
+                  } else {
+                    showToast("Sin JSON", `No hay JSON para factura ${nFact}`, "warning", 3000);
+                  }
+                } catch (err) {
+                  console.error(`Error descargando JSON:`, err);
+                  showToast("Error", `Error descargando JSON: ${err.message}`, "error", 4000);
+                }
+              }
+
+              filasProces++;
+              const porcentaje = Math.round((filasProces / todasLasFilas.length) * 100);
+              actualizarToastProgreso(toast, porcentaje);
+            } 
+
+            for (const [k, v] of formFinal.entries()) { console.log('Parte:', k, v instanceof File ? '(file)' : v); }
+
+            // 4) Exportar por cuenta cobro
+            const response = await fetch(`https://${host}:9876/api/exportar-cuenta-cobro`, {
+              method: 'POST',
+              body: formFinal 
+            });
+
+            if (!response.ok) {
+              throw new Error(await response.text());
+            }
+
+            // 5) Descargar el ZIP final 
+            const blob = await response.blob();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${numeroCuentaCobro}.zip`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+
+            toast.querySelector("p").textContent = `ZIP descargado correctamente`;
+            toast.classList.remove("info");
+            toast.classList.add("success");
+            actualizarToastProgreso(toast, 100);
+
+            setTimeout(() => {
+              if (toast.parentElement) {
+                toast.classList.add('fadeOut');
+                setTimeout(() => toast.remove(), 300);
+              }
+            }, 3000);
+
+          } catch (err) {
+            console.error("Error exportando por cuenta de cobro:", err);
+            showToast("Error", err.message, "error", 5000);
+          }
+        }
+    });
+
     tabla.addEventListener('click', (e) => {
       const btn = e.target.closest('.btn-anexar');
       if (!btn) return;
@@ -2198,7 +2536,7 @@
       document.getElementById('errorMsg').textContent = '';
 
       const checkboxFacturadas = document.getElementById('mostrarFacturadas');
-      delete checkboxFacturadas.dataset.touched;  // Eliminar el atributo para volver a null
+      delete checkboxFacturadas.dataset.touched;  
 
       archivosPorFila.clear();
     });
