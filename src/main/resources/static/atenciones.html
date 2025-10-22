@@ -1560,6 +1560,182 @@
       w.document.close();
     }
 
+    tabla.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.btn-exportar');
+      if (!btn) return;
+
+      const idAdmision = btn.dataset.idadmision;
+      const nFact = btn.dataset.nfact;
+      
+      console.log("nFact obtenido:", nFact);
+
+      try {
+        // Seleccionar carpeta destino UNA SOLA VEZ al inicio
+        const dirHandle = await window.showDirectoryPicker();
+
+        // -------------------------------
+        // 1️⃣ Descargar PDFs
+        // -------------------------------
+        const respSoporte = await fetch(`https://${host}:9876/api/soportes-por-anexos?idAdmision=${idAdmision}`);
+        
+        if (respSoporte.status === 204) {
+          showToast("Sin PDFs", "No hay PDFs asociados a esta admisión", "warning", 3000);
+        } else if (!respSoporte.ok) {
+          console.warn("Error obteniendo soportes:", await respSoporte.text());
+        } else {
+          const soportes = await respSoporte.json();
+          console.log("Total soportes encontrados:", soportes.length);
+
+          const toast = showToast("Exportando", "Exportando PDFs, por favor espera...", "info", 0, true);
+
+          let procesados = 0;
+          for (const idSoporteKey of soportes) {
+            try {
+              const url = new URL(`https://${host}:9876/api/exportar-pdf`);
+              url.searchParams.set("idAdmision", idAdmision);
+              url.searchParams.set("idSoporteKey", idSoporteKey);
+
+              const resp = await fetch(url);
+              if (resp.status === 204) continue;
+              if (!resp.ok) {
+                console.warn(`Soporte ${idSoporteKey} error:`, await resp.text());
+                continue;
+              }
+
+              const blob = await resp.blob();
+              const header = resp.headers.get("Content-Disposition");
+              const nombre = header?.split("filename=")[1]?.replace(/"/g, "") || `Documento_${idSoporteKey}.pdf`;
+
+              const fileHandle = await dirHandle.getFileHandle(nombre, { create: true });
+              const writable = await fileHandle.createWritable();
+              await writable.write(blob);
+              await writable.close();
+
+              console.log(`Guardado: ${nombre}`);
+              await new Promise(r => setTimeout(r, 300));
+
+            } catch (err) {
+              console.error(`Error descargando soporte ${idSoporteKey}:`, err);
+            }
+
+            procesados++;
+            const porcentaje = Math.round((procesados / soportes.length) * 100);
+            actualizarToastProgreso(toast, porcentaje);
+          }
+
+          toast.querySelector("p").textContent = "Exportación PDFs completada";
+          toast.classList.remove("info");
+          toast.classList.add("success");
+          setTimeout(() => {
+            if (toast.parentElement) {
+              toast.classList.add('fadeOut');
+              setTimeout(() => toast.remove(), 300);
+            }
+          }, 3000);
+        }
+
+        // -------------------------------
+        // 2️⃣ Descargar XML en la MISMA carpeta
+        // -------------------------------
+        if (nFact) {
+          const respXml = await fetch(`https://${host}:9876/api/generarxml/${nFact}`);
+          if (respXml.status === 204) {
+            showToast("Sin XML", "No hay XML asociado a esta factura", "warning", 3000);
+          } else if (!respXml.ok) {
+            console.warn("Error obteniendo XML:", await respXml.text());
+          } else {
+            const blobXml = await respXml.blob();
+            const headerXml = respXml.headers.get("Content-Disposition");
+            const filenameXml = headerXml?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.xml`;
+
+            const idMovDoc = respXml.headers.get("X-IdMovDoc");
+
+            const fileHandleXml = await dirHandle.getFileHandle(filenameXml, { create: true });
+            const writableXml = await fileHandleXml.createWritable();
+            await writableXml.write(blobXml);
+            await writableXml.close();
+
+            console.log(`XML guardado: ${filenameXml}`);
+            showToast("Éxito", "Archivo XML descargado correctamente", "success", 3000);
+
+            // -------------------------------
+            // 3️⃣ Descargar JSON usando el IdMovDoc
+            // -------------------------------
+            if (idMovDoc) {
+              const respJson = await fetch(`https://${host}:9876/certificados/generarjson/${idMovDoc}`);
+              if (respJson.status === 204) {
+                showToast("Sin JSON", "No hay JSON asociado a esta factura", "warning", 3000);
+              } else if (!respJson.ok) {
+                console.warn("Error obteniendo JSON:", await respJson.text());
+              } else {
+                const blobJson = await respJson.blob();
+                const headerJson = respJson.headers.get("Content-Disposition");
+                const filenameJson = headerJson?.split("filename=")[1]?.replace(/"/g, "") || `Fac_${nFact}.json`;
+
+                const fileHandleJson = await dirHandle.getFileHandle(filenameJson, { create: true });
+                const writableJson = await fileHandleJson.createWritable();
+                await writableJson.write(blobJson);
+                await writableJson.close();
+
+                console.log(`JSON guardado: ${filenameJson}`);
+                showToast("Éxito", "Archivo JSON descargado correctamente", "success", 3000);
+              }
+            }
+          }
+
+          // -------------------------------
+          // 4️⃣ Descargar TXT RIPS (con posible ProcesoId)
+          // -------------------------------
+          try {
+            const urlTxt = new URL(`https://${host}:9876/api/rips/respuesta`);
+            urlTxt.searchParams.set("nFact", encodeURIComponent(nFact));
+
+            const respTxt = await fetch(urlTxt);
+            if (respTxt.status === 204) {
+              console.log("Sin TXT de RIPS para", nFact);
+            } else if (!respTxt.ok) {
+              console.warn("Error obteniendo TXT RIPS:", await respTxt.text());
+            } else {
+              const contenidoTxt = await respTxt.text();
+
+              // Intentar extraer ProcesoId si el contenido es JSON
+              let procesoId = "";
+              try {
+                const js = JSON.parse(contenidoTxt);
+                if (js && typeof js === "object" && "ProcesoId" in js) {
+                  procesoId = String(js.ProcesoId ?? "").trim();
+                }
+              } catch (_) {
+                // No era JSON o no trae ProcesoId: está bien, seguimos sin ID
+              }
+
+              const nombreTxt = `ResultadosMSPS_${nFact}${procesoId ? `_ID${procesoId}` : ""}_A_CUV.txt`;
+
+              const fileHandleTxt = await dirHandle.getFileHandle(nombreTxt, { create: true });
+              const writableTxt = await fileHandleTxt.createWritable();
+              await writableTxt.write(contenidoTxt);
+              await writableTxt.close();
+
+              console.log(`TXT guardado: ${nombreTxt}`);
+              showToast("Éxito", "Archivo TXT (RIPS) descargado correctamente", "success", 3000);
+            }
+          } catch (err) {
+            console.error("Error descargando TXT RIPS:", err);
+            showToast("Error", `Error descargando TXT RIPS: ${err.message}`, "error", 4000);
+          }
+        } else {
+          console.log("No se pudo obtener nFact, XML/JSON no descargados");
+        }
+
+      } catch (err) {
+        console.error("Error exportando PDFs/XML/JSON:", err);
+        showToast("Error", err.message, "error", 5000);
+      }
+    });
+
+
+
+
 
     const archivosPorFila = new Map();
     const MAX_TAM_MB = 20; 
