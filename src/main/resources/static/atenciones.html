@@ -135,6 +135,15 @@
             transition: border-color .2s, box-shadow .2s;
         }
 
+        .anexar-panel .soporte-group {
+          flex: 0 0 auto;
+        }
+
+        .anexar-panel .soporte-group select {
+          width: 300px;   
+          max-width: 300px;
+        }
+
         input:focus,
         select:focus {
             outline: none;
@@ -289,6 +298,98 @@
 
         .btn-exportar:active, .btn-verpdfs:active {
           transform: translateY(1px);
+        }
+
+        .anexar-panel {
+          background: #fafafa;
+          padding: 14px;
+          border-radius: 8px;
+          margin: 8px 0;
+        }
+
+        .anexar-row td {
+          text-align: left !important;
+          background: #fafafa;
+        }
+
+        .anexar-panel h4 {
+          margin-bottom: 8px;
+          font-size: 15px;
+        }
+
+        .anexar-actions {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+
+        /* Dropzone */
+        .dropzone {
+          border: 2px dashed var(--border);
+          background: #fff;
+          border-radius: 8px;
+          padding: 18px;
+          text-align: center;
+          color: var(--gray);
+          transition: border-color .2s, background-color .2s;
+          flex: 1 1 320px;
+          min-width: 280px;
+        }
+
+        .dropzone.dragover {
+          border-color: var(--primary);
+          background: #f3f0ff;
+          color: var(--dark);
+        }
+
+        .btn-picker {
+          background: #fff;
+          color: var(--dark);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 8px 12px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-top: 8px;
+        }
+
+        .btn-picker:hover {
+          background: var(--light);
+          border-color: var(--primary);
+        }
+
+        .file-list {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          max-width: 520px;
+        }
+
+        .file-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: #fff;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 8px 10px;
+          margin-top: 29px;
+          gap: 10px;
+        }
+
+        .file-meta {
+          font-size: 13px;
+          color: var(--dark);
+        }
+
+        .file-remove {
+          background: transparent;
+          border: none;
+          color: var(--danger);
+          font-weight: 800;
+          cursor: pointer;
+          font-size: 16px;
         }
 
         .empty-state {
@@ -502,6 +603,10 @@
             transition: width .25s linear;
         }
 
+        .toast.fadeOut {
+          animation: toastOut .25s ease-in forwards;
+        }
+
         /* ====== ANIMACIONES BÁSICAS ====== */
         @keyframes fadeIn {
             from {
@@ -512,6 +617,21 @@
                 opacity: 1;
                 transform: scale(1);
             }
+        }
+
+        @keyframes toastIn {
+          from { 
+              opacity: 0; transform: translateY(-6px);
+          }
+          to { 
+            opacity: 1; transform: translateY(0); 
+          }
+        }
+
+        @keyframes toastOut {
+          to { 
+             opacity: 0; transform: translateY(-6px); 
+          }
         }
 
         /* ====== RESPONSIVE ====== */
@@ -678,6 +798,7 @@
 
   <script>
     const host = window.location.hostname;
+    const tabla = document.getElementById('resultadosTabla');
 
     function formatDate(date) {
       const [year, month, day] = date.split('-');
@@ -735,7 +856,25 @@
         }
     }
 
-    const archivosPorFila = new Map();
+    // Cargar selects iniciales al abrir la página
+    document.addEventListener('DOMContentLoaded', () => {
+
+      poblarSelect("eps", 2, -1, "IdTerceroKey", "NomTercero");
+
+      poblarSelect("idAreaAtencion", 4, -1, "IdAreaAtencion", "NomAreaAtencion");
+    });
+
+    document.getElementById("eps").addEventListener("change", (e) => {
+      const idCliente = e.target.value;
+      poblarSelect("contrato", 3, idCliente, "NoContrato", "NomContrato");
+    });
+
+    document.getElementById("idAreaAtencion").addEventListener("change", (e) => {
+      const idArea = e.target.value;
+      poblarSelect("idUnidadAtencionCur", 6, idArea, "IdEntorno", "NomEntorno");
+    });
+
+
 
     //BUSCAR
     let currentController = null;
@@ -1020,7 +1159,233 @@
         });
     });
 
+    tabla.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-anexar');
+      if (!btn) return;
 
+      const rowKey = btn.dataset.rowkey;
+      const panelRow = tabla.querySelector(`tr.anexar-row[data-rowkey="${rowKey}"]`);
+      if (!panelRow) return;
+
+      panelRow.style.display = panelRow.style.display === 'none' ? '' : 'none';
+
+      if (panelRow.style.display !== 'none') {
+        const selectSoporte = panelRow.querySelector(`select[name="idSoporte"]`);
+        if (selectSoporte && selectSoporte.dataset.loaded !== '1') {
+          poblarSelectSoporte(selectSoporte);
+        }
+      }
+    });
+
+    const archivosPorFila = new Map();
+    const MAX_TAM_MB = 20; 
+    const TIPOS_PERMITIDOS = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    
+    async function poblarSelectSoporte(selectEl) {
+      const rowKey = selectEl.dataset.rowkey;
+      const switchEl = document.getElementById(`verTodos-${rowKey}`);
+      const usarTodos = switchEl && switchEl.checked;
+
+
+      selectEl.innerHTML = `<option value="">-- Selecciona --</option>`;
+
+      try {
+        let data = [];
+
+        if (usarTodos) {
+          const resp = await fetch(`https://${host}:9876/api/soportes-anexos-completo`);
+          if (!resp.ok) throw new Error(await resp.text());
+          data = await resp.json();
+        } else {
+          data = listaSoporte;
+        }
+
+        if (Array.isArray(data)) {
+          const opts = data.map(s =>
+            `<option value="${s.Id}" data-tipodoc="${s.TipoDocumento}">
+              ${escapeHtml(s.nombreDocSoporte ?? '')}
+            </option>`
+          ).join('');
+          selectEl.insertAdjacentHTML('beforeend', opts);
+        }
+
+        selectEl.addEventListener('change', (e) => {
+          const selectedId = e.target.value;
+          console.log(`Usuario seleccionó soporte Id: ${selectedId}`);
+        });
+
+        selectEl.dataset.loaded = "1";
+      } catch (err) {
+        console.error("Error poblando soportes:", err);
+        selectEl.innerHTML = `<option value="">Error al cargar</option>`;
+      }
+    }
+
+    tabla.addEventListener('change', (e) => {
+      const switchEl = e.target.closest('input[type="checkbox"][id^="verTodos-"]');
+      if (!switchEl) return;
+
+      const rowKey = switchEl.dataset.rowkey;
+      const selectEl = document.getElementById(`idSoporte-${rowKey}`);
+      if (selectEl) {
+        poblarSelectSoporte(selectEl);
+      }
+    });
+
+    
+
+    const ENDPOINT_SOPORTE = `https://${host}:9876/api/soportes-anexos`;
+    
+    let listaSoporte = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('fechaDesde').value = today;
+      document.getElementById('fechaHasta').value = today;
+
+      try {
+        const r = await fetch(ENDPOINT_SOPORTE);
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        listaSoporte = Array.isArray(data) ? data : [];
+      } catch (err) {
+        console.error('Error cargando soporte:', err);
+        listaSoporte = [];
+      }      
+    });
+
+
+
+
+        tabla.addEventListener('click', (e) => {
+      const picker = e.target.closest('.btn-picker');
+      if (!picker) return;
+      const inputId = picker.dataset.input;
+      const input = document.getElementById(inputId);
+      if (input) input.click();
+    });
+
+    // Manejador de cambio en inputs file
+    tabla.addEventListener('change', (e) => {
+      const input = e.target.closest('.file-input');
+      if (!input) return;
+      const rowKey = input.id.replace('fileInput-','');
+      agregarArchivos(rowKey, input.files);
+      input.value = ''; // reset para permitir volver a elegir los mismos
+    });
+
+    // Drag & drop
+    tabla.addEventListener('dragover', (e) => {
+      const dz = e.target.closest('.dropzone');
+      if (!dz) return;
+      e.preventDefault();
+      dz.classList.add('dragover');
+    });
+    tabla.addEventListener('dragleave', (e) => {
+      const dz = e.target.closest('.dropzone');
+      if (!dz) return;
+      dz.classList.remove('dragover');
+    });
+    tabla.addEventListener('drop', (e) => {
+      const dz = e.target.closest('.dropzone');
+      if (!dz) return;
+      e.preventDefault();
+      dz.classList.remove('dragover');
+      const rowKey = dz.dataset.rowkey;
+      const files = e.dataTransfer.files;
+      agregarArchivos(rowKey, files);
+    });
+
+    // Quitar archivo
+    tabla.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('file-remove')) return;
+      const li = e.target.closest('.file-item');
+      const rowKey = li.dataset.rowkey;
+      const idx = Number(li.dataset.index);
+      const arr = archivosPorFila.get(rowKey) || [];
+      arr.splice(idx, 1);
+      archivosPorFila.set(rowKey, arr);
+      renderLista(rowKey);
+    });
+
+    // Helpers
+    function agregarArchivos(rowKey, fileList) {
+      const arr = archivosPorFila.get(rowKey) || [];
+      const nuevos = Array.from(fileList);
+
+      const errorEl = document.getElementById(`error-${rowKey}`);
+      const showError = (msg) => {
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+        setTimeout(() => (errorEl.style.display = 'none'), 4000);
+      };
+
+      for (const f of nuevos) {
+        if (!TIPOS_PERMITIDOS.includes(f.type)) {
+          showError(`Tipo no permitido: ${f.name}`);
+          continue;
+        }
+        if (f.size > MAX_TAM_MB * 1024 * 1024) {
+          showError(`Archivo supera ${MAX_TAM_MB}MB: ${f.name}`);
+          continue;
+        }
+        arr.push(f);
+      }
+      archivosPorFila.set(rowKey, arr);
+      renderLista(rowKey);
+    }
+
+    function renderLista(rowKey) {
+      const ul = document.getElementById(`fileList-${rowKey}`);
+      const arr = archivosPorFila.get(rowKey) || [];
+      ul.innerHTML = '';
+      arr.forEach((f, i) => {
+        const li = document.createElement('li');
+        li.className = 'file-item';
+        li.dataset.rowkey = rowKey;
+        li.dataset.index = i.toString();
+        li.innerHTML = `
+          <span class="file-meta">${escapeHtml(f.name)} • ${(f.size/1024/1024).toFixed(2)} MB</span>
+          <button type="button" class="file-remove" title="Quitar">&times;</button>
+        `;
+        ul.appendChild(li);
+      });
+    }
+
+    // Util para evitar inyección en nombres
+    function escapeHtml(text) {
+      const map = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' };
+      return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    async function poblarSelect(selectId, idTabla, id, valueField, textField) {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+
+      try {
+        const url = `https://${host}:9876/api/selects-filtro?idTabla=${idTabla}&id=${id}`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+
+        select.querySelectorAll("option:not([value=''])").forEach(opt => opt.remove());
+
+        data.forEach(item => {
+          const opt = document.createElement("option");
+          opt.value = item[valueField];      
+          opt.textContent = item[textField];
+          select.appendChild(opt);
+        });
+      } catch (err) {
+        console.error(`Error cargando ${selectId}:`, err);
+
+        select.querySelectorAll("option:not([value=''])").forEach(opt => opt.remove());
+        const errorOpt = document.createElement("option");
+        errorOpt.value = "";
+        errorOpt.textContent = "❌ Error al cargar";
+        select.appendChild(errorOpt);
+      }
+    }
 
   </script>
 </body>
