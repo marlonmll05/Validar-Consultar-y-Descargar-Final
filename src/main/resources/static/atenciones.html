@@ -1960,6 +1960,60 @@
     const MAX_TAM_MB = 20; 
     const TIPOS_PERMITIDOS = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
     
+    function showModalConfirm(message) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById("modalConfirm");
+        const msg = document.getElementById("modalMessage");
+        const btnOk = document.getElementById("btnModalOk");
+        const btnCancel = document.getElementById("btnModalCancel");
+
+        msg.textContent = message;
+        modal.style.display = "flex";
+
+        function close(result) {
+          modal.style.display = "none";
+          btnOk.removeEventListener("click", okHandler);
+          btnCancel.removeEventListener("click", cancelHandler);
+          resolve(result);
+        }
+
+        function okHandler() { close(true); }
+        function cancelHandler() { close(false); }
+
+        btnOk.addEventListener("click", okHandler);
+        btnCancel.addEventListener("click", cancelHandler);
+      });
+    }
+
+    function showModalGuardar(message) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById("modalGuardar");
+        const msg = document.getElementById("modalGuardarMessage");
+        const btnCancel = document.getElementById("btnModalGuardarCancel");
+        const btnAnexar = document.getElementById("btnModalGuardarAnexar");
+        const btnReemplazar = document.getElementById("btnModalGuardarReemplazar");
+
+        msg.textContent = message;
+        modal.style.display = "flex";
+
+        function close(result) {
+          modal.style.display = "none";
+          btnCancel.removeEventListener("click", cancelHandler);
+          btnAnexar.removeEventListener("click", anexarHandler);
+          btnReemplazar.removeEventListener("click", reemplazarHandler);
+          resolve(result);
+        }
+
+        function cancelHandler()   { close(false); }
+        function anexarHandler()   { close("anexar"); }
+        function reemplazarHandler(){ close("reemplazar"); }
+
+        btnCancel.addEventListener("click", cancelHandler);
+        btnAnexar.addEventListener("click", anexarHandler);
+        btnReemplazar.addEventListener("click", reemplazarHandler);
+      });
+    }
+
     async function poblarSelectSoporte(selectEl) {
       const rowKey = selectEl.dataset.rowkey;
       const switchEl = document.getElementById(`verTodos-${rowKey}`);
