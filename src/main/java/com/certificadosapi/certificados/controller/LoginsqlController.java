@@ -50,9 +50,9 @@ public class LoginsqlController {
         String servidor;
         try {
             servidor = getServerFromRegistry();
-            System.out.println("🖥️ Servidor obtenido del registro: " + servidor);
+            System.out.println("Servidor obtenido del registro: " + servidor);
         } catch (Exception e) {
-            System.err.println("❌ Error al leer el registro: " + e.getMessage());
+            System.err.println("Error al leer el registro: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("Error al obtener el servidor del registro: " + e.getMessage());
         }
@@ -86,12 +86,12 @@ public class LoginsqlController {
             }
             
         } catch (SQLTimeoutException e) {
-            System.err.println("⏱️ Timeout: " + e.getMessage());
+            System.err.println("Timeout: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT)
                 .body("Tiempo de espera agotado al conectar con el servidor.");
                 
         } catch (SQLException e) {
-            System.err.println("❌ Error SQL: " + e.getMessage());
+            System.err.println("Error SQL: " + e.getMessage());
             System.err.println("   Código: " + e.getErrorCode());
             System.err.println("   Estado: " + e.getSQLState());
             
