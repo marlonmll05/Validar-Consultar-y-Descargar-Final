@@ -805,6 +805,33 @@
       return `${year}${month}${day}`;
     }
 
+    const exportarCuentaCobroSwitch = document.getElementById("exportarCuentaCobro");
+    const mostrarFacturadasSwitch = document.getElementById("mostrarFacturadas");
+    const numeroFacturaInput = document.getElementById("numeroFactura");  
+    const cuentaCobroInput = document.getElementById("cuentaCobro");
+
+    const archivosPorFila = new Map();
+    const MAX_TAM_MB = 20; 
+    const TIPOS_PERMITIDOS = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+
+
+    exportarCuentaCobroSwitch.addEventListener('change', function() {
+      if (exportarCuentaCobroSwitch.checked) {
+        mostrarFacturadasSwitch.disabled = true; 
+        mostrarFacturadasSwitch.checked = false;  
+
+        numeroFacturaInput.disabled = true;  
+        numeroFacturaInput.value = '';  
+
+        cuentaCobroInput.required = true;
+      } else {
+        mostrarFacturadasSwitch.disabled = false;  
+        numeroFacturaInput.disabled = false;
+
+        cuentaCobroInput.required = false;
+      }
+    });
+
     document.addEventListener("DOMContentLoaded", () => {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById("fechaDesde").value = today
@@ -1018,7 +1045,7 @@
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.className = 'checkbox-row';
-            checkbox.dataset.rowkey = rowKey; // Identificador único
+            checkbox.dataset.rowkey = rowKey; 
             tdCheckbox.appendChild(checkbox);
             tr.appendChild(tdCheckbox);
 
@@ -1588,7 +1615,7 @@
       const toast = showToast('Insertando', 'Procesando archivos...', 'info', 120000, true);
 
       try {
-        // 🚀 Enviar TODOS los archivos en un solo request
+        // Enviar TODOS los archivos en un solo request
         const fd = new FormData();
         fd.append('idAdmision', idAdmision);
         fd.append('idPacienteKey', idPacienteKey);
@@ -2068,7 +2095,7 @@
       }
     });
 
-        tabla.addEventListener('click', async (e) => {
+    tabla.addEventListener('click', async (e) => {
       const btn = e.target.closest('.btn-generar');
       if (!btn) return;
 
@@ -2294,10 +2321,6 @@
       }
     });
 
-    const archivosPorFila = new Map();
-    const MAX_TAM_MB = 20; 
-    const TIPOS_PERMITIDOS = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-    
     function showModalConfirm(message) {
       return new Promise((resolve) => {
         const modal = document.getElementById("modalConfirm");
@@ -2402,8 +2425,6 @@
         poblarSelectSoporte(selectEl);
       }
     });
-
-    
 
     const ENDPOINT_SOPORTE = `https://${host}:9876/api/soportes-anexos`;
     
