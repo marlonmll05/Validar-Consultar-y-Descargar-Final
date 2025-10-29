@@ -650,7 +650,12 @@
 
 </head>
 <body>
-    <body>
+    
+  <script>
+    if (!sessionStorage.getItem('tokenSQL')) {
+      window.location.href = 'loginsql.html';
+    }
+  </script>
   <header>
     <div class="header-inner">
       <a href="inicio.html" class="back-link">Volver</a>

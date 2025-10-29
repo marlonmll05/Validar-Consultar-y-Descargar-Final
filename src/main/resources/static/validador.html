@@ -858,6 +858,30 @@
     </style>
  
   <body>
+    <script>
+        const tokenSQL = sessionStorage.getItem('tokenSQL');
+        const token = sessionStorage.getItem('token');
+
+        if (!tokenSQL) {
+        sessionStorage.clear();
+        window.location.href = 'loginsql.html';
+        }
+
+        if (!token) {
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('pestanaActiva');
+        window.location.href = 'login.html';
+        }
+
+        if (!sessionStorage.getItem('pestanaActiva')) {
+        sessionStorage.clear();
+        window.location.href = 'loginsql.html';
+        }
+
+        sessionStorage.setItem('pestanaActiva', 'true');
+    </script>
+
+
     <header>
         <div class="container">
             <a href="inicio.html" class="back-link">Volver</a>
@@ -955,17 +979,6 @@
 
     <script>
         const host = window.location.hostname;
-        const token = sessionStorage.getItem('token');
-
-        if (!sessionStorage.getItem('pestanaActiva')) {
-            sessionStorage.clear();
-            window.location.href = 'login.html';
-        } else if (!token) {
-            sessionStorage.clear();
-            window.location.href = 'login.html'; 
-        } else {
-            sessionStorage.setItem('pestanaActiva', 'true');
-        }
 
         document.addEventListener('DOMContentLoaded', () => {
             const fechaDesdeInput = document.getElementById('fechaDesde');
