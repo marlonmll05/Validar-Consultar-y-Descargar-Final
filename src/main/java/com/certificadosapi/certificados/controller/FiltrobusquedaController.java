@@ -29,17 +29,21 @@ public class FiltrobusquedaController {
     //ENDPOINT PARA BUSCAR FACTURAS
     @GetMapping("/facturas")
     public ResponseEntity<List<Map<String, Object>>> buscarFacturas(
-            @RequestParam(required = false) 
-            @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fechaDesde,
-            @RequestParam(required = false) 
-            @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fechaHasta,
-            @RequestParam(required = false) String idTercero,
-            @RequestParam(required = false) String noContrato,
-            @RequestParam(required = false) String nFact,
-            @RequestParam(required = false) Integer nCuentaCobro) {
+        @RequestParam(required = false) 
+        @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fechaDesde,
+        @RequestParam(required = false) 
+        @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fechaHasta,
+        @RequestParam(required = false) String idTercero,
+        @RequestParam(required = false) String noContrato,
+        @RequestParam(required = false) String nFact,
+        @RequestParam(required = false) Integer cuentaCobro) {
+
         
+        System.out.printf("FechaDesde: %s, FechaHasta: %s, IdTercero: %s, NoContrato: %s, NFact: %s, NCuentaCobro: %s%n",
+            fechaDesde, fechaHasta, idTercero, noContrato, nFact, cuentaCobro);
+
         List<Map<String, Object>> resultados = filtrobusquedaService.buscarFacturas(
-            fechaDesde, fechaHasta, idTercero, noContrato, nFact, nCuentaCobro
+            fechaDesde, fechaHasta, idTercero, noContrato, nFact, cuentaCobro
         );
         return ResponseEntity.ok(resultados);
     }

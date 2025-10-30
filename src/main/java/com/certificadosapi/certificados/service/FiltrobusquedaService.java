@@ -23,7 +23,7 @@ public class FiltrobusquedaService {
     }
 
     //BUSCAR FACTURAS MANUAL
-    public List<Map<String, Object>> buscarFacturas(LocalDate fechaDesde, LocalDate fechaHasta, String idTercero, String noContrato, String nFact, Integer nCuentaCobro) {
+    public List<Map<String, Object>> buscarFacturas(LocalDate fechaDesde, LocalDate fechaHasta, String idTercero, String noContrato, String nFact, Integer cuentaCobro) {
         if (fechaDesde != null && fechaHasta != null && fechaDesde.isAfter(fechaHasta)) {
             throw new IllegalArgumentException("fechaDesde no puede ser posterior a fechaHasta");
         }
@@ -31,16 +31,52 @@ public class FiltrobusquedaService {
         try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
             String sql = "EXEC dbo.pa_Net_Facturas_JSON ?, ?, ?, ?, ?, ?, ?, ?, ?";
             
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, "-1"); // Ips
-                pstmt.setDate(2, fechaDesde != null ? Date.valueOf(fechaDesde) : null); // Fecha_Ini
-                pstmt.setDate(3, fechaHasta != null ? Date.valueOf(fechaHasta) : null); // @Fecha_Fin
-                pstmt.setString(4, "-1"); // IdUsuario
-                pstmt.setInt(5, (idTercero != null && !idTercero.trim().isEmpty()) ? Integer.parseInt(idTercero) : -1); // IdTerceroKey
-                pstmt.setString(6, (noContrato != null && !noContrato.trim().isEmpty()) ? noContrato : null); // NoContrato
-                pstmt.setString(7, (nFact != null && !nFact.trim().isEmpty()) ? nFact : null); // NumFactura
-                pstmt.setInt(8, -1); // EstadoValidacion
-                pstmt.setInt(9, (nCuentaCobro != null ? nCuentaCobro : null)); // nCuentacobro
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setString(1, "-1"); // @Ips
+                    
+                    if (fechaDesde != null) {
+                        pstmt.setDate(2, Date.valueOf(fechaDesde)); // @Fecha_Ini
+                    } else {
+                        pstmt.setNull(2, Types.DATE);
+                    }
+                    
+                    if (fechaHasta != null) {
+                        pstmt.setDate(3, Date.valueOf(fechaHasta)); // @Fecha_Fin
+                    } else {
+                        pstmt.setNull(3, Types.DATE);
+                    }
+                    
+                    pstmt.setString(4, "-1"); // @IdUsuario
+                    
+                    if (idTercero != null && !idTercero.trim().isEmpty()) {
+                        try {
+                            pstmt.setInt(5, Integer.parseInt(idTercero)); // @IdTerceroKey
+                        } catch (NumberFormatException e) {
+                            pstmt.setInt(5, -1);
+                        }
+                    } else {
+                        pstmt.setInt(5, -1);
+                    }
+                    
+                    if (noContrato != null && !noContrato.trim().isEmpty()) {
+                        pstmt.setString(6, noContrato); // @NoContrato
+                    } else {
+                        pstmt.setNull(6, Types.VARCHAR);
+                    }
+                    
+                    if (nFact != null && !nFact.trim().isEmpty()) {
+                        pstmt.setString(7, nFact); // @NumFactura
+                    } else {
+                        pstmt.setNull(7, Types.VARCHAR);
+                    }
+                    
+                    pstmt.setInt(8, -1); // @EstadoValidacion
+
+                    if (cuentaCobro != null) {  
+                        pstmt.setInt(9, cuentaCobro); // @CuentaCobro
+                    } else {
+                        pstmt.setNull(9, Types.INTEGER); 
+                    }
 
                 try (ResultSet rs = pstmt.executeQuery()) {
                     List<Map<String, Object>> resultados = new ArrayList<>();
@@ -141,7 +177,7 @@ public class FiltrobusquedaService {
             Boolean soloFacturados) {
         try {
             try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
-                String sql = "EXEC dbo.pa_Net_Facturas_Historico_GenSoportes ?,?,?,?,?,?,?,?,?,?";
+                String sql = "EXEC dbo.pa_Net_Facturas_Historico_GenSoportes ?,?,?,?,?,?,?,?,?,?,?";
                 try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                     stmt.setObject(1, IdAtencion);
                     stmt.setObject(2, HistClinica);
