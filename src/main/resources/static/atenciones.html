@@ -975,7 +975,7 @@
         }
       });
 
-      const url = `https://${host}:9876/api/admisiones?${params.toString()}`;
+      const url = `https://${host}:9876/filtros/atenciones?${params.toString()}`;
       console.log("➡️ URL generada:", url);
 
       fetch(url, { signal: currentController.signal })

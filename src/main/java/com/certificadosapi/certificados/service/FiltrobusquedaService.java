@@ -126,8 +126,8 @@ public class FiltrobusquedaService {
     }
 
 
-    //Buscador para el filtro de admisiones (CUADRO VERDE)  
-    public List<Map<String, Object>> buscarAdmisiones(
+    //Buscador para el filtro de atenciones (CUADRO VERDE)  
+    public List<Map<String, Object>> buscarAtenciones(
             Long IdAtencion,
             String HistClinica,
             Integer Cliente,
@@ -135,10 +135,13 @@ public class FiltrobusquedaService {
             Integer IdAreaAtencion,
             Integer IdUnidadAtencion,
             LocalDate FechaDesde,
-            LocalDate FechaHasta) {
+            LocalDate FechaHasta,
+            String nFact,
+            Integer nCuentaCobro,
+            Boolean soloFacturados) {
         try {
             try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
-                String sql = "EXEC dbo.pa_Net_Facturas_Historico_GenSoportes ?,?,?,?,?,?,?,?";
+                String sql = "EXEC dbo.pa_Net_Facturas_Historico_GenSoportes ?,?,?,?,?,?,?,?,?,?";
                 try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                     stmt.setObject(1, IdAtencion);
                     stmt.setObject(2, HistClinica);
@@ -148,6 +151,9 @@ public class FiltrobusquedaService {
                     stmt.setObject(6, IdUnidadAtencion);
                     stmt.setObject(7, FechaDesde != null ? Date.valueOf(FechaDesde) : null);
                     stmt.setObject(8, FechaHasta != null ? Date.valueOf(FechaHasta) : null);
+                    stmt.setObject(9, nFact);
+                    stmt.setObject(10, nCuentaCobro);
+                    stmt.setObject(11, soloFacturados);
 
                     try (ResultSet rs = stmt.executeQuery()) {
                         List<Map<String, Object>> resultados = new ArrayList<>();

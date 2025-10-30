@@ -60,9 +60,9 @@ public class FiltrobusquedaController {
     }
 
 
-    // Buscador para el filtro de admisiones (CUADRO VERDE)
-    @GetMapping("/admisiones")
-    public ResponseEntity<List<Map<String, Object>>> buscarAdmisiones(
+    // Buscador para el filtro de atenciones (CUADRO VERDE)
+    @GetMapping("/atenciones")
+    public ResponseEntity<List<Map<String, Object>>> buscarAtenciones(
             @RequestParam(required = false) Long IdAtencion,
             @RequestParam(required = false) String HistClinica,
             @RequestParam(required = false) Integer Cliente,
@@ -70,18 +70,21 @@ public class FiltrobusquedaController {
             @RequestParam(required = false) Integer IdAreaAtencion,
             @RequestParam(required = false) Integer IdUnidadAtencion,
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate FechaDesde,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate FechaHasta
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate FechaHasta,
+            @RequestParam(required = false) String nFact,
+            @RequestParam(required = false) Integer nCuentaCobro,
+            @RequestParam(required = false) Boolean soloFacturados
     ) {
         System.out.printf(
             "Filtros recibidos: IdAtencion=%s, HistClinica=%s, Cliente=%s, NoContrato=%s, " +
             "IdAreaAtencion=%s, IdUnidadAtencion=%s, FechaDesde=%s, FechaHasta=%s%n",
-            IdAtencion, HistClinica, Cliente, NoContrato, IdAreaAtencion, IdUnidadAtencion, FechaDesde, FechaHasta
+            IdAtencion, HistClinica, Cliente, NoContrato, IdAreaAtencion, IdUnidadAtencion, FechaDesde, FechaHasta, nFact, nCuentaCobro, soloFacturados
         );
 
-        List<Map<String, Object>> data = filtrobusquedaService.buscarAdmisiones(
+        List<Map<String, Object>> data = filtrobusquedaService.buscarAtenciones(
                 IdAtencion, HistClinica, Cliente, NoContrato,
-                IdAreaAtencion, IdUnidadAtencion, FechaDesde, FechaHasta
-        );
+                IdAreaAtencion, IdUnidadAtencion, FechaDesde, FechaHasta, 
+                nFact, nCuentaCobro, soloFacturados);
 
         return ResponseEntity.ok(data);
     }
