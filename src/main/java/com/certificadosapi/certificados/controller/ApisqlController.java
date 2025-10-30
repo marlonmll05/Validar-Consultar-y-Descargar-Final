@@ -318,63 +318,6 @@ public class ApisqlController {
         }
     }
 
-    @GetMapping("/admision")
-    public ResponseEntity<?> generaradmision(
-        @RequestParam int idMovDoc,
-        @RequestParam int idDoc) {
-        
-        
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                servidor
-            );
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                String sql = "EXEC dbo.pa_Net_Facturas_GenSoportes ?, ?";
-
-                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                    pstmt.setInt(1, idMovDoc);
-                    pstmt.setInt(2, idDoc);
-                    boolean hasResults = pstmt.execute();
-
-                    while (!hasResults && pstmt.getUpdateCount() != -1) {
-                        hasResults = pstmt.getMoreResults();
-                    }
-
-                    if (hasResults) {
-                        try (ResultSet rs = pstmt.getResultSet()) {
-                            List<Map<String, Object>> resultados = new ArrayList<>();
-                            ResultSetMetaData metaData = rs.getMetaData();
-                            int columnCount = metaData.getColumnCount();
-
-                            while (rs.next()) {
-                                Map<String, Object> fila = new LinkedHashMap<>();
-                                for (int i = 1; i <= columnCount; i++) {
-                                    fila.put(metaData.getColumnName(i), rs.getObject(i));
-                                }
-                                resultados.add(fila);
-                            }
-
-                            return ResponseEntity.ok(resultados);
-                        }
-                    } else {
-                        return ResponseEntity.ok(Collections.singletonMap("mensaje", "El procedimiento no devolvió resultados."));
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error al ejecutar el procedimiento: " + e.getMessage());
-        }
-    }
-
-
-
-
-
     @GetMapping("/ejecutarRips")
     public ResponseEntity<?> ejecutarRips(@RequestParam String Nfact) {
         try {
