@@ -87,23 +87,6 @@ public class ValidadorController {
         }
     }
 
-    private RestTemplate crearRestTemplateInseguro() throws Exception {
-        TrustManager[] trustAllCerts = new TrustManager[]{
-            new X509TrustManager() {
-                public void checkClientTrusted(X509Certificate[] xcs, String s) {}
-                public void checkServerTrusted(X509Certificate[] xcs, String s) {}
-                public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-            }
-        };
-
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, trustAllCerts, new SecureRandom());
-        HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
-        HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
-
-        return new RestTemplate();
-    }
-
     private Integer obtenerIdTipoCapita(String nFact) {
         String servidor;
         try {
@@ -135,60 +118,6 @@ public class ValidadorController {
         } catch (SQLException e) {
             System.err.println("Error SQL: " + e.getMessage());
             throw new RuntimeException("Error en la consulta SQL", e);
-        }
-    }
-
-    @GetMapping("/nombrexml/{idMovDoc}")
-    public ResponseEntity<String> obtenerNombreXml(@PathVariable int idMovDoc) {
-        String numdoc = "";
-        String IdEmpresaGrupo = "";
-        String yearSuffix = String.valueOf(LocalDate.now().getYear()).substring(2);
-        Connection conn = null;
-
-        try {
-            String servidor1 = getServerFromRegistry();
-
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoftFinanciero_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                servidor1
-            );
-
-            conn = DriverManager.getConnection(connectionUrl);
-
-            String docQuery = "SELECT Prefijo, Numdoc FROM MovimientoDocumentos WHERE IdMovDoc = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(docQuery)) {
-                stmt.setInt(1, idMovDoc);
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    numdoc = rs.getString("Numdoc");
-                }
-            }
-
-            String empresaQuery = "SELECT IdEmpresaGrupo FROM MovimientoDocumentos as M INNER JOIN Empresas as E ON e.IdEmpresaKey = m.IdEmpresaKey WHERE IdMovDoc = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(empresaQuery)) {
-                stmt.setInt(1, idMovDoc);
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    IdEmpresaGrupo = rs.getString("IdEmpresaGrupo");
-                }
-            }
-
-            String formattedNumdoc = String.format("%08d", Integer.parseInt(numdoc));
-
-            String xmlFileName = "ad0" + IdEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml";
-
-            return ResponseEntity.ok(xmlFileName);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al obtener el nombre del archivo XML: " + e.getMessage());
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (SQLException e) {
-
-                }
-            }
         }
     }
 
