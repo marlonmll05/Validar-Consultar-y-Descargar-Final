@@ -923,7 +923,7 @@
               try {
                   showToast('Procesando', 'Buscando facturas...', 'success', 2000);
 
-                  const response = await fetch(`/api/sql/facturas?${params.toString()}`);
+                  const response = await fetch(`/filtros/facturas?${params.toString()}`);
                   const data = await response.json();
 
                   if (!response.ok) {
@@ -1237,7 +1237,7 @@
 
       async function cargarTerceros() {
           try {
-              const response = await fetch('/api/sql/terceros');
+              const response = await fetch('/filtros/terceros');
               const data = await response.json();
               const select = document.getElementById('idTercero');
 
@@ -1261,7 +1261,7 @@
 
           if (idTerceroKey) {
               try {
-                  const response = await fetch(`/api/sql/contratos?idTerceroKey=${idTerceroKey}`);
+                  const response = await fetch(`/filtros/contratos?idTerceroKey=${idTerceroKey}`);
                   const data = await response.json();
 
                   data.forEach(contrato => {
