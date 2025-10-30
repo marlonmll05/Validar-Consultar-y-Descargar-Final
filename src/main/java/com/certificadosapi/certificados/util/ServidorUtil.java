@@ -17,6 +17,7 @@ import com.sun.jna.platform.win32.WinReg;
 @Component
 public class ServidorUtil {
 
+    //Metodo para leer el servidor de registro
     public String getServerFromRegistry() throws Exception {
 
         String registryPath = "SOFTWARE\\VB and VBA Program Settings\\Asclepius\\Administrativo";
@@ -29,6 +30,7 @@ public class ServidorUtil {
         }
     }
 
+    //Metodo para crear un template inseguro para enviar al ministerio
     public RestTemplate crearRestTemplateInseguro() {
         try {
             TrustManager[] trustAllCerts = new TrustManager[]{
