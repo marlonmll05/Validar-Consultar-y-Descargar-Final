@@ -23,13 +23,13 @@ public class FiltrobusquedaService {
     }
 
     //BUSCAR FACTURAS MANUAL
-    public List<Map<String, Object>> buscarFacturas(LocalDate fechaDesde, LocalDate fechaHasta, String idTercero, String noContrato, String nFact) {
+    public List<Map<String, Object>> buscarFacturas(LocalDate fechaDesde, LocalDate fechaHasta, String idTercero, String noContrato, String nFact, Integer nCuentaCobro) {
         if (fechaDesde != null && fechaHasta != null && fechaDesde.isAfter(fechaHasta)) {
             throw new IllegalArgumentException("fechaDesde no puede ser posterior a fechaHasta");
         }
 
         try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
-            String sql = "EXEC dbo.pa_Net_Facturas_JSON ?, ?, ?, ?, ?, ?, ?, ?";
+            String sql = "EXEC dbo.pa_Net_Facturas_JSON ?, ?, ?, ?, ?, ?, ?, ?, ?";
             
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, "-1"); // Ips
@@ -40,6 +40,7 @@ public class FiltrobusquedaService {
                 pstmt.setString(6, (noContrato != null && !noContrato.trim().isEmpty()) ? noContrato : null); // NoContrato
                 pstmt.setString(7, (nFact != null && !nFact.trim().isEmpty()) ? nFact : null); // NumFactura
                 pstmt.setInt(8, -1); // EstadoValidacion
+                pstmt.setInt(9, (nCuentaCobro != null ? nCuentaCobro : null)); // nCuentacobro
 
                 try (ResultSet rs = pstmt.executeQuery()) {
                     List<Map<String, Object>> resultados = new ArrayList<>();
@@ -124,7 +125,6 @@ public class FiltrobusquedaService {
             throw new RuntimeException("Error en la consulta: " + e.getMessage(), e);
         }
     }
-
 
     //Buscador para el filtro de atenciones (CUADRO VERDE)  
     public List<Map<String, Object>> buscarAtenciones(

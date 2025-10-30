@@ -35,10 +35,11 @@ public class FiltrobusquedaController {
             @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fechaHasta,
             @RequestParam(required = false) String idTercero,
             @RequestParam(required = false) String noContrato,
-            @RequestParam(required = false) String nFact) {
+            @RequestParam(required = false) String nFact,
+            @RequestParam(required = false) Integer nCuentaCobro) {
         
         List<Map<String, Object>> resultados = filtrobusquedaService.buscarFacturas(
-            fechaDesde, fechaHasta, idTercero, noContrato, nFact
+            fechaDesde, fechaHasta, idTercero, noContrato, nFact, nCuentaCobro
         );
         return ResponseEntity.ok(resultados);
     }
@@ -69,15 +70,15 @@ public class FiltrobusquedaController {
             @RequestParam(required = false) String NoContrato,
             @RequestParam(required = false) Integer IdAreaAtencion,
             @RequestParam(required = false) Integer IdUnidadAtencion,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate FechaDesde,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate FechaHasta,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyyMMdd") LocalDate FechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyyMMdd") LocalDate FechaHasta,
             @RequestParam(required = false) String nFact,
             @RequestParam(required = false) Integer nCuentaCobro,
             @RequestParam(required = false) Boolean soloFacturados
     ) {
         System.out.printf(
             "Filtros recibidos: IdAtencion=%s, HistClinica=%s, Cliente=%s, NoContrato=%s, " +
-            "IdAreaAtencion=%s, IdUnidadAtencion=%s, FechaDesde=%s, FechaHasta=%s%n",
+            "IdAreaAtencion=%s, IdUnidadAtencion=%s, FechaDesde=%s, FechaHasta=%s, nFact=%s, nCuentaCobro=%s, soloFacturados=$s",
             IdAtencion, HistClinica, Cliente, NoContrato, IdAreaAtencion, IdUnidadAtencion, FechaDesde, FechaHasta, nFact, nCuentaCobro, soloFacturados
         );
 
