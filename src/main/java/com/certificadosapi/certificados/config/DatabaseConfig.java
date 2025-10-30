@@ -1,10 +1,10 @@
 package com.certificadosapi.certificados.config;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Configuration;
 import com.certificadosapi.certificados.util.ServidorUtil;
 
-@Component
+@Configuration
 public class DatabaseConfig {
 
     private final ServidorUtil servidorUtil;
