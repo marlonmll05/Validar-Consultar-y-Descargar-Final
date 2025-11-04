@@ -39,65 +39,21 @@ public class ValidadorController {
         return ResponseEntity.ok(resultado);
     }
 
+    // Método para exportar documento XML en Base64
     @GetMapping("/base64/{idMovDoc}")
     public ResponseEntity<String> exportDocXmlBase64(@PathVariable int idMovDoc) {
-        Connection conn = null;
-
-        try {
-
-            String servidor = getServerFromRegistry();
-
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoftFinanciero_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                servidor
-            );
-
-            conn = DriverManager.getConnection(connectionUrl);
-
-            String query = "SELECT CONVERT(XML, DocXmlEnvelope) AS DocXml FROM MovimientoDocumentos WHERE IdMovDoc = ?";
-            PreparedStatement pstmt = conn.prepareStatement(query);
-            pstmt.setInt(1, idMovDoc);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            if (rs.next()) {
-                String docXmlContent = rs.getString("DocXml");
-
-
-                if (docXmlContent == null) {
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                            .body("Error: El contenido XML está vacío o es nulo para el documento con IdMovDoc: " + idMovDoc);
-                }
-
-                byte[] xmlBytes = docXmlContent.getBytes(StandardCharsets.UTF_8);
-
-
-                String base64Encoded = Base64.getEncoder().encodeToString(xmlBytes);
-
-                return ResponseEntity.ok()
-                        .contentType(MediaType.TEXT_PLAIN)
-                        .body(base64Encoded);
-            } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("No se encontró un documento con el idMovDoc: " + idMovDoc);
-            }
-
-        } catch (Exception e) {
-
-            String errorMsg = "Error al procesar la solicitud: " + e.getMessage();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(errorMsg);
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (SQLException e) {
-                    System.err.println("Error cerrando la conexión: " + e.getMessage());
-                }
-            }
-        }
+        String resultado = validadorService.exportDocXmlBase64(idMovDoc);
+        return ResponseEntity.ok(resultado);
     }
 
+
+
+
+
+
+
+
+    
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody String jsonBody) {
     try {

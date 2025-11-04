@@ -90,5 +90,40 @@ public class ValidadorService {
         }
     }
 
+    //Para enviar al ministerio se necesita enviar el XML como base64
+    public String exportDocXmlBase64(int idMovDoc) {
+        try {
+            String connectionUrl = databaseConfig.getConnectionUrl("IPSoftFinanciero_ST");
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl);
+                PreparedStatement pstmt = conn.prepareStatement(
+                    "SELECT CONVERT(XML, DocXmlEnvelope) AS DocXml FROM MovimientoDocumentos WHERE IdMovDoc = ?")) {
+                
+                pstmt.setInt(1, idMovDoc);
+
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        String docXmlContent = rs.getString("DocXml");
+
+                        if (docXmlContent == null) {
+                            throw new IllegalStateException("El contenido XML está vacío o es nulo para el documento con IdMovDoc: " + idMovDoc);
+                        }
+
+                        byte[] xmlBytes = docXmlContent.getBytes(StandardCharsets.UTF_8);
+                        String base64Encoded = Base64.getEncoder().encodeToString(xmlBytes);
+
+                        return base64Encoded;
+
+                    } else {
+                        throw new IllegalArgumentException("No se encontró un documento con el idMovDoc: " + idMovDoc);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al procesar la solicitud: " + e.getMessage(), e);
+        }
+    }
+
     
+
 }
