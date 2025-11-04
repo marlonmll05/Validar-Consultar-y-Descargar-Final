@@ -66,55 +66,16 @@ public class ApisqlController {
     }
 
 
-
-
-    
     @PostMapping("/actualizarcuvrips")
-    public ResponseEntity<?> actualizarCuvRips(
+    public ResponseEntity<?> actualizarCuvRipsTransaccion(
         @RequestParam String nFact,
         @RequestParam(required = false) String cuv,
         @RequestParam Integer idEstadoValidacion
     ) {
-        if (nFact == null || nFact.isBlank()) {
-            return ResponseEntity.badRequest().body("El parámetro 'nFact' es obligatorio.");
-        }
+        Map<String, Object> resultado = apisqlService.actualizarCuvTransaccion(nFact, cuv, idEstadoValidacion);
 
-        if (cuv == null || cuv.isBlank()) {
-            cuv = null; 
-        }
+        return ResponseEntity.ok(resultado);
 
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                servidor
-            );
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                String sql = "UPDATE RP SET RP.CUV = ?, RP.IdEstadoValidacion = ? FROM Rips_Transaccion RP WHERE NFact = ?";
-
-                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                    stmt.setString(1, (cuv != null && !cuv.isBlank()) ? cuv : null);
-                    stmt.setInt(2, idEstadoValidacion);
-                    stmt.setString(3, nFact);
-
-                    int filasAfectadas = stmt.executeUpdate();
-
-                    if (filasAfectadas > 0) {
-                        return ResponseEntity.ok(Map.of(
-                            "mensaje", "CUV e IdEstadoValidacion actualizados correctamente",
-                            "filasAfectadas", filasAfectadas
-                        ));
-                    } else {
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                            .body("No se encontró una transacción RIPS con el NFact especificado.");
-                    }
-                }
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error al actualizar los datos de RIPS: " + e.getMessage());
-        }
     }
 
     @GetMapping("/estadovalidacion")

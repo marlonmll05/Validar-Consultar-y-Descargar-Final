@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PostMapping;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
@@ -92,5 +93,47 @@ public class ApisqlService {
         }
     }
 
+
+    public Map<String, Object> actualizarCuvTransaccion(String nFact, String cuv, Integer idEstadoValidacion) {
+        if (nFact == null || nFact.isBlank()) {
+            throw new IllegalArgumentException("El parámetro 'nFact' es obligatorio");
+        }
+
+        if (cuv == null || cuv.isBlank()) {
+            cuv = null; 
+        }
+
+        try {
+            String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+                String sql = "UPDATE RP SET RP.CUV = ?, RP.IdEstadoValidacion = ? FROM Rips_Transaccion RP WHERE NFact = ?";
+
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setString(1, (cuv != null && !cuv.isBlank()) ? cuv : null);
+                    stmt.setInt(2, idEstadoValidacion);
+                    stmt.setString(3, nFact);
+
+                    int filasAfectadas = stmt.executeUpdate();
+
+                    if (filasAfectadas > 0) {
+                        return Map.of(
+                            "mensaje", "CUV e IdEstadoValidacion actualizados correctamente",
+                            "filasAfectadas", filasAfectadas
+                        );
+                    } else {
+                        return Map.of(
+                            "mensaje", "No se encontró una transacción RIPS con el NFact especificado.",
+                            "filasAfectadas", 0
+                        );
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error de base de datos: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al actualizar los datos de RIPS: " + e.getMessage(), e);
+        }
+    }
 
 }
