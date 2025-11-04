@@ -136,4 +136,43 @@ public class ApisqlService {
         }
     }
 
+    public Map<String, Object> obtenerEstadoValidacion(String nFact) {
+        if (nFact == null || nFact.isBlank()) {
+            throw new IllegalArgumentException("El parámetro 'nFact' es requerido y no puede estar vacío");
+        }
+
+        try {
+            String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+                String sql = "SELECT RT.IdEstadoValidacion FROM Rips_Transaccion RT WHERE NFact = ?";
+
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setString(1, nFact);
+
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next()) {
+                            Integer idEstadoValidacion = rs.getInt("IdEstadoValidacion");
+                            if (rs.wasNull()) {
+                                idEstadoValidacion = null;
+                            }
+
+                            return Map.of(
+                                "nFact", nFact,
+                                "idEstadoValidacion", idEstadoValidacion != null ? idEstadoValidacion : "null"
+                            );
+                        } else {
+                            return Map.of(
+                                "mensaje", "No se encontró una transacción RIPS con el NFact especificado."
+                            );
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error de base de datos: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al consultar el estado de validación: " + e.getMessage(), e);
+        }
+    }
 }

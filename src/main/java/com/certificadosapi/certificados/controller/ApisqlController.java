@@ -55,7 +55,7 @@ public class ApisqlController {
     }
 
 
-    // Método para actualizar CUV
+    // Método para actualizar CUV de Factura Final
     @PostMapping("/agregarcuv")
     public ResponseEntity<Map<String, Object>> actualizarCuvFF(
         @RequestParam String nFact,
@@ -65,7 +65,7 @@ public class ApisqlController {
         return ResponseEntity.ok(resultado);
     }
 
-
+    // Método para actualizar CUV de Rips_Transaccion
     @PostMapping("/actualizarcuvrips")
     public ResponseEntity<?> actualizarCuvRipsTransaccion(
         @RequestParam String nFact,
@@ -78,48 +78,11 @@ public class ApisqlController {
 
     }
 
+    // Método para obtener estado de validación
     @GetMapping("/estadovalidacion")
-    public ResponseEntity<?> obtenerEstadoValidacion(@RequestParam String nFact) {
-
-        if (nFact == null || nFact.isBlank()) {
-            return ResponseEntity.badRequest().body("El parámetro 'nFact' es requerido y no puede estar vacío");
-        }
-
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                servidor
-            );
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                String sql = "SELECT RT.IdEstadoValidacion FROM Rips_Transaccion RT WHERE NFact = ?";
-
-                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                    stmt.setString(1, nFact);
-
-                    try (ResultSet rs = stmt.executeQuery()) {
-                        if (rs.next()) {
-                            Integer idEstadoValidacion = rs.getInt("IdEstadoValidacion");
-                            if (rs.wasNull()) {
-                                idEstadoValidacion = null;
-                            }
-
-                            return ResponseEntity.ok(Map.of(
-                                "nFact", nFact,
-                                "idEstadoValidacion", idEstadoValidacion != null ? idEstadoValidacion : "null"
-                            ));
-                        } else {
-                            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                                .body("No se encontró una transacción RIPS con el NFact especificado.");
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error al consultar el estado de validación: " + e.getMessage());
-        }
+    public ResponseEntity<Map<String, Object>> obtenerEstadoValidacion(@RequestParam String nFact) {
+        Map<String, Object> resultado = apisqlService.obtenerEstadoValidacion(nFact);
+        return ResponseEntity.ok(resultado);
     }
 
     @GetMapping("/ejecutarRips")
