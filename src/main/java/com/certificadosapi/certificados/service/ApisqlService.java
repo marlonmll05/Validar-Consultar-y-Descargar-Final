@@ -5,13 +5,16 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.stereotype.Service;
+
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
+@Service
 public class ApisqlService {
 
     private final DatabaseConfig databaseConfig;
@@ -173,6 +176,25 @@ public class ApisqlService {
             throw new RuntimeException("Error de base de datos: " + e.getMessage(), e);
         } catch (Exception e) {
             throw new RuntimeException("Error al consultar el estado de validación: " + e.getMessage(), e);
+        }
+    }
+
+    public String ejecutarRips(String Nfact) {
+        try {
+            String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+                String sql = "EXEC pa_Rips_JSON_Generar '" + Nfact + "', 0, 1, 1";
+
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute(sql); 
+                    return "Procedimiento ejecutado correctamente para el cliente: " + Nfact;
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error de base de datos: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al ejecutar RIPS: " + e.getMessage(), e);
         }
     }
 }
