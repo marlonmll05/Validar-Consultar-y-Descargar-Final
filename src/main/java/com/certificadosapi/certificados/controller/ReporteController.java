@@ -1,5 +1,6 @@
 package com.certificadosapi.certificados.controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -30,6 +31,7 @@ import java.sql.*;
 
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 
+import com.certificadosapi.certificados.util.ServidorUtil;
 import com.sun.jna.platform.win32.Advapi32Util;
 import com.sun.jna.platform.win32.WinReg;
 
@@ -38,15 +40,11 @@ import org.springframework.http.*;
 @RestController
 public class ReporteController {
 
-    private String getServerFromRegistry() throws Exception {
-        String registryPath = "SOFTWARE\\VB and VBA Program Settings\\Asclepius\\Administrativo";
-        String valueName = "Servidor";
-        
-        try {
-            return Advapi32Util.registryGetStringValue(WinReg.HKEY_CURRENT_USER, registryPath, valueName);
-        } catch (Exception e) {
-            throw new Exception("Error al leer el servidor desde el registro", e);
-        }
+    private ServidorUtil servidorUtil;
+
+    @Autowired
+    public ReporteController(ServidorUtil servidorUtil){
+        this.servidorUtil = servidorUtil;
     }
 
 
@@ -97,34 +95,7 @@ public class ReporteController {
             return ResponseEntity.internalServerError().body("No se encontró la URL del servidor de reportes.");
         }
 
-        String dominio = "servergihos";
-        String usuario = "Consulta";
-        String contrasena = "Informes.01";
-
-
-        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        NTCredentials ntCredentials = new NTCredentials(usuario, contrasena, null, dominio);
-        credentialsProvider.setCredentials(AuthScope.ANY, ntCredentials);
-
-
-        Registry<AuthSchemeProvider> authSchemeRegistry = RegistryBuilder.<AuthSchemeProvider>create()
-                .register("NTLM", new NTLMSchemeFactory())
-                .build();
-
-        RequestConfig requestConfig = RequestConfig.custom()
-                .setAuthenticationEnabled(true)
-                .setTargetPreferredAuthSchemes(Arrays.asList("NTLM"))
-                .setProxyPreferredAuthSchemes(Arrays.asList("NTLM"))
-                .build();
-
-        HttpClientBuilder clientBuilder = HttpClients.custom()
-                .setDefaultCredentialsProvider(credentialsProvider)
-                .setDefaultAuthSchemeRegistry(authSchemeRegistry)
-                .setDefaultRequestConfig(requestConfig);
-
-
-
-        try (CloseableHttpClient httpClient = clientBuilder.build()) {
+        try (CloseableHttpClient httpClient = servidorUtil.crearHttpClientConNTLM()) {
 
             String[] ids = idAdmision.split(",");
             PDFMergerUtility merger = new PDFMergerUtility();

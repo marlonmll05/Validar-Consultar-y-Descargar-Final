@@ -16,7 +16,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -27,24 +26,12 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.apache.http.config.Registry;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-
-import org.apache.http.auth.AuthSchemeProvider;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.NTCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.impl.auth.NTLMSchemeFactory;
-import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -52,7 +39,7 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
-
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -70,6 +57,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.certificadosapi.certificados.util.ServidorUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jna.platform.win32.Advapi32Util;
@@ -78,6 +66,14 @@ import com.sun.jna.platform.win32.WinReg;
 @RestController
 @RequestMapping("/api")
 public class AtencionesController {
+
+    private ServidorUtil servidorUtil;
+
+    @Autowired
+    public AtencionesController(ServidorUtil servidorUtil){
+        this.servidorUtil = servidorUtil;
+    }
+
 
     private String getServerFromRegistry() throws Exception {
         String registryPath = "SOFTWARE\\VB and VBA Program Settings\\Asclepius\\Administrativo";
@@ -730,30 +726,7 @@ public class AtencionesController {
             return ResponseEntity.internalServerError().body("No se encontró la URL del servidor de reportes.");
         }
 
-        String dominio = "servergihos";
-        String usuario = "Consulta";
-        String contrasena = "Informes.01";
-
-        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        NTCredentials ntCredentials = new NTCredentials(usuario, contrasena, null, dominio);
-        credentialsProvider.setCredentials(AuthScope.ANY, ntCredentials);
-
-        Registry<AuthSchemeProvider> authSchemeRegistry = RegistryBuilder.<AuthSchemeProvider>create()
-                .register("NTLM", new NTLMSchemeFactory())
-                .build();
-
-        RequestConfig requestConfig = RequestConfig.custom()
-                .setAuthenticationEnabled(true)
-                .setTargetPreferredAuthSchemes(Arrays.asList("NTLM"))
-                .setProxyPreferredAuthSchemes(Arrays.asList("NTLM"))
-                .build();
-
-        HttpClientBuilder clientBuilder = HttpClients.custom()
-                .setDefaultCredentialsProvider(credentialsProvider)
-                .setDefaultAuthSchemeRegistry(authSchemeRegistry)
-                .setDefaultRequestConfig(requestConfig);
-
-        try (CloseableHttpClient httpClient = clientBuilder.build()) {
+        try (CloseableHttpClient httpClient = servidorUtil.crearHttpClientConNTLM()) {
 
             String reportUrl = urlBase + "?" + nombreSoporte + "&IdAdmision=" + idAdmision + "&rs:Format=PDF";
             System.out.println("URL: " + reportUrl);
@@ -927,31 +900,7 @@ public class AtencionesController {
                     .body("No se pudo obtener RutaReporte o IdMovDoc del procedimiento almacenado.");
         }
 
-        System.out.println("Configurando NTLM...");
-        String dominio = "servergihos";
-        String usuario = "Consulta";
-        String contrasena = "Informes.01";
-
-        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        NTCredentials ntCredentials = new NTCredentials(usuario, contrasena, null, dominio);
-        credentialsProvider.setCredentials(AuthScope.ANY, ntCredentials);
-
-        Registry<AuthSchemeProvider> authSchemeRegistry = RegistryBuilder.<AuthSchemeProvider>create()
-                .register("NTLM", new NTLMSchemeFactory())
-                .build();
-
-        RequestConfig requestConfig = RequestConfig.custom()
-                .setAuthenticationEnabled(true)
-                .setTargetPreferredAuthSchemes(Arrays.asList("NTLM"))
-                .setProxyPreferredAuthSchemes(Arrays.asList("NTLM"))
-                .build();
-
-        HttpClientBuilder clientBuilder = HttpClients.custom()
-                .setDefaultCredentialsProvider(credentialsProvider)
-                .setDefaultAuthSchemeRegistry(authSchemeRegistry)
-                .setDefaultRequestConfig(requestConfig);
-
-        try (CloseableHttpClient httpClient = clientBuilder.build()) {
+        try (CloseableHttpClient httpClient = servidorUtil.crearHttpClientConNTLM()) {
 
             System.out.println("\n========== DESCARGANDO PDF ==========");
             String reportUrl = urlBase + "?" + rutaReporte + "&IdMovDoc=" + idMovDoc + "&rs:Format=PDF";
