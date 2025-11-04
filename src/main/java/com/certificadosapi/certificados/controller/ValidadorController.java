@@ -3,21 +3,7 @@ package com.certificadosapi.certificados.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpStatusCodeException;
-import org.springframework.web.client.RestTemplate;
-import com.sun.jna.platform.win32.WinReg;
 import com.certificadosapi.certificados.service.ValidadorService;
-import com.sun.jna.platform.win32.Advapi32Util;
-import javax.net.ssl.*;
-import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
-import java.time.LocalDate;
-import java.util.Base64;
-import java.util.Map;
-import java.sql.*;
-
-
 
 @RestController
 @RequestMapping("/api/validador")
@@ -58,53 +44,11 @@ public class ValidadorController {
     return ResponseEntity.ok().build();
     }
 
-
+    // Método para guardar la respuesta de la API (El CUV se guarda en una tabla y luego al descargar la factura aparece el TXT con el CUV)
     @PostMapping("/guardarrespuesta")
-    public ResponseEntity<?> guardarRespuestaApi(@RequestBody Map<String, Object> payload){
-        
-
-        String servidor;
-
-        try{
-            servidor = getServerFromRegistry();
-        }
-        catch(Exception e){
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al leer el servidor de registro: " + e.getMessage());
-        }
-
-        String nFact = (String) payload.get("nFact");
-        String mensajeRespuesta = (String) payload.get("mensajeRespuesta");
-
-        String connectionUrl = String.format("jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;", servidor);
-
-        String sql = "INSERT INTO RIPS_RespuestaAPI (Nfact, MensajeRespuesta) VALUES (?, ?)";
-        String checkSql = "SELECT COUNT(*) FROM RIPS_RespuestaAPI WHERE Nfact = ?";
-
-
-        try(Connection conn = DriverManager.getConnection(connectionUrl)) {
-
-            try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
-                checkStmt.setString(1, nFact);
-                try (ResultSet rs = checkStmt.executeQuery()) {
-                    if (rs.next() && rs.getInt(1) > 0) {
-                        return ResponseEntity.status(HttpStatus.CONFLICT)
-                                .body("Ya existe un registro para el Nfact: " + nFact);
-                    }
-               }
-            }
-                
-            try(PreparedStatement statement = conn.prepareStatement(sql)){
-                statement.setString(1, nFact);
-                statement.setString(2, mensajeRespuesta);
-                statement.executeUpdate();
-            }
-
-            return ResponseEntity.ok("Respuesta guardada correctamente");
-
-
-        } catch (SQLException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al guardar respuesta: " + e.getMessage());
-        }
-    }  
+    public ResponseEntity<String> guardarRespuestaApi(@RequestParam String nFact, 
+                                                      @RequestParam String mensajeRespuesta) {
+        String resultado = validadorService.guardarRespuestaApi(nFact, mensajeRespuesta);
+        return ResponseEntity.ok(resultado);
+    }
 }

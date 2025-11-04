@@ -12,13 +12,12 @@ import org.springframework.http.*;
 import com.certificadosapi.certificados.config.DatabaseConfig;
 import com.certificadosapi.certificados.util.ServidorUtil;
 
-import org.springframework.web.bind.annotation.*;
-
 import com.certificadosapi.certificados.service.ValidadorService;
 
 
 import java.sql.*;
 
+@Service
 public class ValidadorService {
 
     private DatabaseConfig databaseConfig;
@@ -144,6 +143,36 @@ public class ValidadorService {
         }
     }
 
+    // Método para guardar la respuesta de la API (El CUV se guarda en una tabla y luego al descargar la factura aparece el TXT con el CUV)
+    public String guardarRespuestaApi(String nFact, String mensajeRespuesta) {
+        try {
+            String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
 
+            String checkSql = "SELECT COUNT(*) FROM RIPS_RespuestaAPI WHERE Nfact = ?";
+            String insertSql = "INSERT INTO RIPS_RespuestaAPI (Nfact, MensajeRespuesta) VALUES (?, ?)";
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+
+                try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                    checkStmt.setString(1, nFact);
+                    try (ResultSet rs = checkStmt.executeQuery()) {
+                        if (rs.next() && rs.getInt(1) > 0) {
+                            throw new IllegalStateException("Ya existe un registro para el Nfact: " + nFact);
+                        }
+                    }
+                }
+
+                try (PreparedStatement statement = conn.prepareStatement(insertSql)) {
+                    statement.setString(1, nFact);
+                    statement.setString(2, mensajeRespuesta);
+                    statement.executeUpdate();
+                }
+
+                return "Respuesta guardada correctamente";
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al guardar respuesta: " + e.getMessage(), e);
+        }
+    }
 
 }
