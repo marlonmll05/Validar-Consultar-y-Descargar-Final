@@ -8,8 +8,9 @@ import org.springframework.web.bind.annotation.*;
 
 import com.certificadosapi.certificados.service.ApisqlService;
 import com.certificadosapi.certificados.service.EditarjsonService;
+import com.certificadosapi.certificados.service.LoginsqlService;
 
-
+import java.sql.SQLException;
 import java.util.Map;
 
 
@@ -19,11 +20,22 @@ public class ApisqlController {
 
     private final ApisqlService apisqlService;
     private EditarjsonService editarJsonService;
+    private LoginsqlService loginsqlService;
 
     @Autowired
-    public ApisqlController(EditarjsonService editarjsonService, ApisqlService apisqlService){
+    public ApisqlController(EditarjsonService editarjsonService, ApisqlService apisqlService, LoginsqlService loginsqlService){
         this.editarJsonService = editarjsonService;
         this.apisqlService = apisqlService;
+        this.loginsqlService = loginsqlService;
+    }
+
+    //Metodo para iniciar sesion a la aplicacion web
+    @PostMapping("/login")
+    public ResponseEntity<?> iniciarSesion(@RequestBody Map<String, String> datos) throws SQLException {
+        
+        Map<String, Object> respuesta = loginsqlService.iniciarSesion(datos);
+        
+        return ResponseEntity.ok(respuesta);
     }
 
     // Método para obtener CUV
@@ -70,7 +82,6 @@ public class ApisqlController {
         String resultado = apisqlService.ejecutarRips(Nfact);
         return ResponseEntity.ok(resultado);
     }
-
 
     // Método para actualizar campos
     @PostMapping("/actualizarCampos")
