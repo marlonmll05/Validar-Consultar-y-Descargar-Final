@@ -13,6 +13,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+import com.certificadosapi.certificados.service.ApisqlService;
 import com.certificadosapi.certificados.service.EditarjsonService;
 import com.sun.jna.platform.win32.Advapi32Util;
 import com.sun.jna.platform.win32.WinReg;
@@ -26,11 +27,13 @@ import java.util.LinkedHashMap;
 @RequestMapping("/api/sql")
 public class ApisqlController {
 
+    private final ApisqlService apisqlService;
     private EditarjsonService editarJsonService;
 
     @Autowired
-    public ApisqlController(EditarjsonService editarjsonService){
+    public ApisqlController(EditarjsonService editarjsonService, ApisqlService apisqlService){
         this.editarJsonService = editarjsonService;
+        this.apisqlService = apisqlService;
     }
 
     private String getServerFromRegistry() throws Exception {
@@ -44,34 +47,11 @@ public class ApisqlController {
         }
     }
 
+    // Método para obtener CUV
     @GetMapping("/cuv")
-    public ResponseEntity<?> obtenerCuv(@RequestParam String nFact) {
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                servidor
-            );
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                String sql = "SELECT Rips_CUV FROM FacturaFinal WHERE NFact = ? and Rips_CUV is not null";
-
-                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                    stmt.setString(1, nFact);
-
-                    try (ResultSet rs = stmt.executeQuery()) {
-                        if (rs.next()) {
-                            String cuv = rs.getString("Rips_CUV");
-                            return ResponseEntity.ok(Map.of("Rips_CUV", cuv));
-                        } else {
-                            return ResponseEntity.ok(Map.of("Rips_CUV", ""));
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
-        }
+    public ResponseEntity<Map<String, Object>> obtenerCuv(@RequestParam String nFact) {
+        Map<String, Object> resultado = apisqlService.obtenerCuv(nFact);
+        return ResponseEntity.ok(resultado);
     }
 
 

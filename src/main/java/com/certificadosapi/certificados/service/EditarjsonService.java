@@ -26,6 +26,7 @@ public class EditarjsonService {
         this.databaseConfig = databaseConfig;
     }
 
+    @SuppressWarnings("unchecked")
     public void actualizarCampos(Map<String, Object> datos, int idMovDoc) throws Exception {
 
         if (idMovDoc <= 0) {
