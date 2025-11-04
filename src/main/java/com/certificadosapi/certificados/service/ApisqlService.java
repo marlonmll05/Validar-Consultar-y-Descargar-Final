@@ -54,6 +54,43 @@ public class ApisqlService {
         }
     }
 
+    public Map<String, Object> actualizarCuvFF(String nFact, String ripsCuv) {
+        if (nFact == null || nFact.isBlank()) {
+            throw new IllegalArgumentException("El parámetro 'nFact' es requerido");
+        }
 
-    
+        try {
+            String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+                String sql = "UPDATE FF SET FF.Rips_Cuv = ? FROM FacturaFinal FF WHERE FF.NFact = ? AND EXISTS (SELECT 1 FROM Rips_Transaccion RT WHERE RT.NFact = FF.NFact)";
+
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    String cuvProcesado = (ripsCuv == null || ripsCuv.trim().isEmpty()) ? null : ripsCuv;
+                    stmt.setObject(1, cuvProcesado, java.sql.Types.VARCHAR);
+                    stmt.setString(2, nFact);
+
+                    int filasAfectadas = stmt.executeUpdate();
+
+                    if (filasAfectadas > 0) {
+                        return Map.of(
+                            "mensaje", "CUV actualizado correctamente",
+                            "filasAfectadas", filasAfectadas
+                        );
+                    } else {
+                        return Map.of(
+                            "mensaje", "No se encontró una factura con el NFact especificado.",
+                            "filasAfectadas", 0
+                        );
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error de base de datos: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Error inesperado al actualizar el CUV: " + e.getMessage(), e);
+        }
+    }
+
+
 }

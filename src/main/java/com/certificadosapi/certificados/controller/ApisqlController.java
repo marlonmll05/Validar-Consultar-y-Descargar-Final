@@ -55,50 +55,20 @@ public class ApisqlController {
     }
 
 
+    // Método para actualizar CUV
     @PostMapping("/agregarcuv")
-    public ResponseEntity<?> actualizarCuv(
+    public ResponseEntity<Map<String, Object>> actualizarCuvFF(
         @RequestParam String nFact,
         @RequestParam(required = false) String ripsCuv
     ) {
-        if (nFact.isBlank()) {
-            return ResponseEntity.badRequest().body("El parámetro 'nFact' es requerido");
-        }
-
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                servidor
-            );
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                String sql = "UPDATE FF SET FF.Rips_Cuv = ? FROM FacturaFinal FF WHERE FF.NFact = ? AND EXISTS (SELECT 1 FROM Rips_Transaccion RT WHERE RT.NFact = FF.NFact)";
-
-                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                    String cuvProcesado = (ripsCuv == null || ripsCuv.trim().isEmpty()) ? null : ripsCuv;
-                    stmt.setObject(1, cuvProcesado, java.sql.Types.VARCHAR);
-                    stmt.setString(2, nFact);
-
-                    int filasAfectadas = stmt.executeUpdate();
-
-                    if (filasAfectadas > 0) {
-                        return ResponseEntity.ok(Map.of(
-                            "mensaje", "CUV actualizado correctamente",
-                            "filasAfectadas", filasAfectadas
-                        ));
-                    } else {
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                            .body("No se encontró una factura con el NFact especificado.");
-                    }
-                }
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error al actualizar el CUV: " + e.getMessage());
-        }
+        Map<String, Object> resultado = apisqlService.actualizarCuvFF(nFact, ripsCuv);
+        return ResponseEntity.ok(resultado);
     }
 
 
+
+
+    
     @PostMapping("/actualizarcuvrips")
     public ResponseEntity<?> actualizarCuvRips(
         @RequestParam String nFact,
