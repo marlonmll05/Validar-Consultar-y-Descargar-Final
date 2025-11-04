@@ -46,35 +46,11 @@ public class ValidadorController {
         return ResponseEntity.ok(resultado);
     }
 
-
-
-
-
-
-
-
-    
+    // Método para el login
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody String jsonBody) {
-    try {
-        RestTemplate restTemplate = crearRestTemplateInseguro();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
-        String url = "https://localhost:9443/api/auth/LoginSISPRO";
-
-        ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-
-        return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
-
-    } catch (HttpStatusCodeException ex) {
-        return ResponseEntity.status(ex.getStatusCode()).body(ex.getResponseBodyAsString());
-    } catch (Exception e) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("{\"error\":\"Error en la solicitud de login\", \"detalle\":\"" + e.getMessage() + "\"}");
-    }
+        String resultado = validadorService.login(jsonBody);
+        return ResponseEntity.ok(resultado);
     }
 
     @RequestMapping(value = "/login", method = RequestMethod.OPTIONS)

@@ -124,6 +124,26 @@ public class ValidadorService {
         }
     }
 
-    
+    public String login(String jsonBody) {
+        try {
+            RestTemplate restTemplate = servidorUtil.crearRestTemplateInseguro();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
+            String url = "https://localhost:9443/api/auth/LoginSISPRO";
+
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            return response.getBody();
+            
+        } catch (HttpStatusCodeException ex) {
+            throw new RuntimeException("Error en login: " + ex.getResponseBodyAsString(), ex);
+        } catch (Exception e) {
+            throw new RuntimeException("Error en la solicitud de login: " + e.getMessage(), e);
+        }
+    }
+
+
 
 }
