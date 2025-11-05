@@ -122,5 +122,30 @@ public class ReporteService {
             throw new RuntimeException("Error al obtener los documentos de soporte: " + e.getMessage(), e);
         }
     }
+
+    public Map<String, Boolean> existeFactura(
+            String idAdmision,
+            Integer idDoc
+    ) {
+
+        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
+            String sql = "SELECT COUNT(*) FROM dbo.tbl_Net_Facturas_ListaPdf WHERE IdSoporteKey = ? AND IdAdmision = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, idDoc);
+                ps.setString(2, idAdmision);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) > 0) {
+                        return Map.of("existe", true);
+                    }
+                }
+            }
+            return Map.of("existe", false);
+            
+        }catch (Exception e) {
+            throw new RuntimeException("Error: " + e.getMessage(), e);
+        }
+    }
 }
+
 
