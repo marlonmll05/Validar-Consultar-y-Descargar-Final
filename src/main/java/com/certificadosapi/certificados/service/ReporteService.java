@@ -7,6 +7,11 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -95,4 +100,27 @@ public class ReporteService {
         }
     }
 
+    public List<Map<String, Object>> obtenerDocumentosSoporte() {
+        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
+            String sql = "SELECT Id, NombreDocSoporte, NombreRptService FROM tbl_Net_Facturas_DocSoporte WHERE Inactivo = 0";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql);
+                ResultSet rs = stmt.executeQuery()) {
+
+                List<Map<String, Object>> resultados = new ArrayList<>();
+                while (rs.next()) {
+                    Map<String, Object> fila = new LinkedHashMap<>();
+                    fila.put("Id", rs.getInt("Id"));
+                    fila.put("nombreDocSoporte", rs.getString("NombreDocSoporte"));
+                    fila.put("nombreRptService", rs.getString("NombreRptService"));
+                    resultados.add(fila);
+                }
+
+                return resultados;
+            }
+        }catch (SQLException e) {
+            throw new RuntimeException("Error al obtener los documentos de soporte: " + e.getMessage(), e);
+        }
+    }
 }
+

@@ -64,35 +64,9 @@ public class ReporteController {
 
 
     @GetMapping("/soporte")
-    public ResponseEntity<?> obtenerDocumentosSoporte() {
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                servidor);
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                String sql = "SELECT Id, NombreDocSoporte, NombreRptService FROM tbl_Net_Facturas_DocSoporte WHERE Inactivo = 0";
-
-                try (PreparedStatement stmt = conn.prepareStatement(sql);
-                    ResultSet rs = stmt.executeQuery()) {
-
-                    List<Map<String, Object>> resultados = new ArrayList<>();
-                    while (rs.next()) {
-                        Map<String, Object> fila = new LinkedHashMap<>();
-                        fila.put("Id", rs.getInt("Id"));
-                        fila.put("nombreDocSoporte", rs.getString("NombreDocSoporte"));
-                        fila.put("nombreRptService", rs.getString("NombreRptService"));
-                        resultados.add(fila);
-                    }
-
-                    return ResponseEntity.ok(resultados);
-                }
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error en la consulta: " + e.getMessage());
-        }
+    public ResponseEntity<List<Map<String, Object>>> obtenerDocumentosSoporte() {
+        List<Map<String, Object>> documentos = reporteService.obtenerDocumentosSoporte();
+        return ResponseEntity.ok(documentos);
     }
 
     @GetMapping("/facturas/existe")
