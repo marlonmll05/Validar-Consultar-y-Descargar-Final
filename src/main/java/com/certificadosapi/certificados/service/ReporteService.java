@@ -1,0 +1,98 @@
+package com.certificadosapi.certificados.service;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.util.EntityUtils;
+import org.apache.pdfbox.multipdf.PDFMergerUtility;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.certificadosapi.certificados.config.DatabaseConfig;
+import com.certificadosapi.certificados.util.ServidorUtil;
+
+
+@Service 
+public class ReporteService {
+
+    private DatabaseConfig databaseConfig;
+    private ServidorUtil servidorUtil;
+
+    @Autowired
+    public ReporteService(DatabaseConfig databaseConfig, ServidorUtil servidorUtil){
+        this.databaseConfig = databaseConfig;
+        this.servidorUtil = servidorUtil;
+    }
+
+    public byte[] descargarPdf(String idAdmision, String nombreArchivo, String nombreSoporte) {
+        if (nombreSoporte == null || nombreSoporte.trim().isEmpty()) {
+            throw new IllegalArgumentException("El nombre del soporte es requerido.");
+        }
+
+        String urlBase = null;
+        try {
+            try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
+                String sql = "SELECT ValorParametro FROM ParametrosServidor WHERE NomParametro = 'URLReportServerWS'";
+                try (PreparedStatement stmt = conn.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        urlBase = rs.getString("ValorParametro");
+                    } else {
+                        throw new IllegalStateException("No se encontró la URL del servidor de reportes.");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error al obtener la URL del servidor: " + e.getMessage(), e);
+        }
+
+        if (urlBase == null || urlBase.trim().isEmpty()) {
+            throw new IllegalArgumentException("No se encontró la URL del servidor de reportes.");
+        }
+
+        try (CloseableHttpClient httpClient = servidorUtil.crearHttpClientConNTLM()) {
+            String[] ids = idAdmision.split(",");
+            PDFMergerUtility merger = new PDFMergerUtility();
+            ByteArrayOutputStream mergedOutput = new ByteArrayOutputStream();
+            merger.setDestinationStream(mergedOutput);
+
+            boolean hayAlMenosUnPdf = false;
+
+            for (String id : ids) {
+                id = id.trim();
+                String reportUrl = urlBase + "?" + nombreSoporte + "&IdAdmision=" + id + "&rs:Format=PDF";
+                HttpGet request = new HttpGet(reportUrl);
+
+                try (CloseableHttpResponse response = httpClient.execute(request)) {
+                    int statusCode = response.getStatusLine().getStatusCode();
+
+                    if (statusCode == 200) {
+                        byte[] pdfBytes = EntityUtils.toByteArray(response.getEntity());
+                        merger.addSource(new ByteArrayInputStream(pdfBytes));
+                        hayAlMenosUnPdf = true;
+                    } else {
+                        String errorContent = EntityUtils.toString(response.getEntity(), "UTF-8");
+                        throw new RuntimeException("Error al descargar el informe. Código: " + statusCode + " - " + errorContent);
+                    }
+                }
+            }
+
+            if (!hayAlMenosUnPdf) {
+                throw new IllegalArgumentException("No se pudo procesar ninguna admisión.");
+            }
+
+            merger.mergeDocuments(null);
+            return mergedOutput.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Excepción al conectar o procesar los PDFs: " + e.getMessage(), e);
+        }
+    }
+
+}

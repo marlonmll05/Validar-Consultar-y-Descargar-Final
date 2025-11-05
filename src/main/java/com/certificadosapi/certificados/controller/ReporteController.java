@@ -31,6 +31,7 @@ import java.sql.*;
 
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 
+import com.certificadosapi.certificados.service.ReporteService;
 import com.certificadosapi.certificados.util.ServidorUtil;
 import com.sun.jna.platform.win32.Advapi32Util;
 import com.sun.jna.platform.win32.WinReg;
@@ -40,11 +41,10 @@ import org.springframework.http.*;
 @RestController
 public class ReporteController {
 
-    private ServidorUtil servidorUtil;
+    private ReporteService reporteService;
 
-    @Autowired
-    public ReporteController(ServidorUtil servidorUtil){
-        this.servidorUtil = servidorUtil;
+    public ReporteController(ReporteService reporteService){
+        this.reporteService = reporteService;
     }
 
 
@@ -52,118 +52,16 @@ public class ReporteController {
     public ResponseEntity<?> descargarPdf(
             @RequestParam String idAdmision,
             @RequestParam String nombreArchivo,
-            @RequestParam String nombreSoporte 
-            
-    ) {
+            @RequestParam String nombreSoporte) {
 
-        System.out.println("========== DATOS RECIBIDOS ==========");
-        System.out.println("idAdmision: " + idAdmision);
-        System.out.println("nombreArchivo: " + nombreArchivo);
-        System.out.println("nombreSoporte: " + nombreSoporte);
-        System.out.println("======================================");
-
-
-        if (nombreSoporte == null || nombreSoporte.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("El nombre del soporte es requerido.");
-        }
-
-        String urlBase = null;
-        try{
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format("jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-            servidor);
+        byte[] pdfBytes = reporteService.descargarPdf(idAdmision, nombreArchivo, nombreSoporte);
         
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl)){
-                String sql = "SELECT ValorParametro FROM ParametrosServidor WHERE NomParametro = 'URLReportServerWS'";
-                try (PreparedStatement stmt = conn.prepareStatement(sql);
-                     ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        urlBase = rs.getString("ValorParametro");
-                    } else {
-                        return ResponseEntity.internalServerError().body("No se encontró la URL del servidor de reportes.");
-                    }               
-                }
-            }
-            
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error al obtener la URL del servidor: " + e.getMessage());
-        }
-
-
-        if (urlBase == null || urlBase.trim().isEmpty()) {
-            return ResponseEntity.internalServerError().body("No se encontró la URL del servidor de reportes.");
-        }
-
-        try (CloseableHttpClient httpClient = servidorUtil.crearHttpClientConNTLM()) {
-
-            String[] ids = idAdmision.split(",");
-            PDFMergerUtility merger = new PDFMergerUtility();
-            ByteArrayOutputStream mergedOutput = new ByteArrayOutputStream();
-            merger.setDestinationStream(mergedOutput);
-
-            boolean hayAlMenosUnPdf = false;
-
-
-            for (String id : ids) {
-                id = id.trim();
-                
-                String reportUrl = urlBase + "?" + nombreSoporte + "&IdAdmision=" + id + "&rs:Format=PDF";
-                System.out.println("URL: " + reportUrl);
-
-                HttpGet request = new HttpGet(reportUrl);
-
-                try (CloseableHttpResponse response = httpClient.execute(request)) {
-                    int statusCode = response.getStatusLine().getStatusCode();
-
-                    if (statusCode == 200) {
-                        byte[] pdfBytes = EntityUtils.toByteArray(response.getEntity());
-                        merger.addSource(new ByteArrayInputStream(pdfBytes));
-                        hayAlMenosUnPdf = true;
-
-                    } else {
-                        String errorContent = "";
-                        if (response.getEntity() != null) {
-                            try {
-                                errorContent = EntityUtils.toString(response.getEntity(), "UTF-8");
-                            } catch (Exception e) {
-                                errorContent = "No se pudo leer el contenido del error: " + e.getMessage();
-                            }
-                        }
-
-                        System.err.println("ERROR REPORTING SERVICES:");
-                        System.err.println("Status Code: " + statusCode);
-                        System.err.println("Reason Phrase: " + response.getStatusLine().getReasonPhrase());
-                        System.err.println("URL solicitada: " + reportUrl);
-                        System.err.println("Contenido del error: " + errorContent);
-
-                        return ResponseEntity.status(statusCode)
-                                .body("Error al descargar el informe. Código: " + statusCode +
-                                        " - " + response.getStatusLine().getReasonPhrase() +
-                                        "\nDetalle: " + errorContent);
-                    }
-                }
-            }
-            
-            if(!hayAlMenosUnPdf) {
-                return ResponseEntity.badRequest().body("No se pudo procesar ninguna admisión.");
-            }
-
-            merger.mergeDocuments(null);
-
-            ByteArrayResource resource = new ByteArrayResource(mergedOutput.toByteArray());
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + nombreArchivo + ".pdf")
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(resource);
-
-
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError()
-                    .body("Excepción al conectar o procesar los PDFs: " + e.getMessage());
-        }
+        ByteArrayResource resource = new ByteArrayResource(pdfBytes);
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=" + nombreArchivo + ".pdf")
+                .body(resource);
     }
-    
+
 
     @GetMapping("/soporte")
     public ResponseEntity<?> obtenerDocumentosSoporte() {
