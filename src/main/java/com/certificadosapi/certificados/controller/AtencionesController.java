@@ -263,7 +263,7 @@ public class AtencionesController {
         try {
             String servidor = getServerFromRegistry();
             String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                "jdbc:sqlserver://%s;databaseName=Asclepius_Documentos;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
                 servidor
             );
 
@@ -295,7 +295,7 @@ public class AtencionesController {
         try {
             String servidor = getServerFromRegistry();
             String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                "jdbc:sqlserver://%s;databaseName=Asclepius_Documentos;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
                 servidor
             );
 
@@ -333,7 +333,7 @@ public class AtencionesController {
         try {
             String servidor = getServerFromRegistry();
             String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                "jdbc:sqlserver://%s;databaseName=Asclepius_Documentos;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
                 servidor
             );
 
@@ -378,7 +378,7 @@ public class AtencionesController {
         try {
             String servidor = getServerFromRegistry();
             String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                "jdbc:sqlserver://%s;databaseName=Asclepius_Documentos;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
                 servidor
             );
 
@@ -512,7 +512,7 @@ public class AtencionesController {
 
             String servidor = getServerFromRegistry();
             String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                "jdbc:sqlserver://%s;databaseName=Asclepius_Documentos;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
                 servidor
             );
 
@@ -552,16 +552,25 @@ public class AtencionesController {
 
                 merger.mergeDocuments(null);
                 pdfFinal = baos.toByteArray();
+            
+            }
 
+            String connectionUrlIPSoft = String.format(
+            "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+            servidor
+            );
+
+            // Conectar a la base de datos IPSoft100_ST para ejecutar el procedimiento almacenado
+            try (Connection connIPSoft = DriverManager.getConnection(connectionUrlIPSoft)) {
                 String sql = "EXEC dbo.pa_Net_Insertar_DocumentoPdf ?, ?, ?, ?, ?, ?, ?, ?";
-                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                try (PreparedStatement ps = connIPSoft.prepareStatement(sql)) {
                     ps.setLong(1, idAdmision);
                     ps.setLong(2, idPacienteKey);
                     ps.setLong(3, idSoporteKey);
                     ps.setBoolean(4, false);
                     ps.setString(5, tipoDocumento);
                     ps.setBinaryStream(6, new ByteArrayInputStream(pdfFinal), pdfFinal.length);
-                    ps.setBoolean(7, eliminarSiNo); 
+                    ps.setBoolean(7, eliminarSiNo);
                     ps.setBoolean(8, automatico);
 
                     try (ResultSet rs = ps.executeQuery()) {
@@ -1000,7 +1009,7 @@ public class AtencionesController {
         try {
             String servidor = getServerFromRegistry();
             String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
+                "jdbc:sqlserver://%s;databaseName=Asclepius_Documentos;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
                 servidor
             );
 

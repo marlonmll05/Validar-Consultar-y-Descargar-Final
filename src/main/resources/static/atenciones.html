@@ -2114,8 +2114,8 @@
       try {
         // Verificar si ya existe documentación
         const [respCheck1, respCheck2] = await Promise.all([
-          fetch(`https://${host}:9876/api/soporte-automatico?idAdmision=${idAdmision}`),
-          fetch(`https://${host}:9876/api/soporte-18?idAdmision=${idAdmision}`)
+          fetch(`https://${host}:9876/api/soportes-disponibles?idAdmision=${idAdmision}`),
+          fetch(`https://${host}:9876/api/verificar-factura-venta?idAdmision=${idAdmision}`)
         ]);
 
         if (respCheck1.ok && respCheck2.ok) {
@@ -2160,7 +2160,7 @@
           fd.append("nameFilePdf",   pdfBlob, "anexos.pdf");
           fd.append("automatico", "true");
 
-          const insertResp = await fetch(`https://${host}:9876/api/admisiones/anexos`, {
+          const insertResp = await fetch(`https://${host}:9876/api/insertar-pdf`, {
             method: "POST",
             body: fd
           });
@@ -2187,7 +2187,7 @@
         const toastFactura = showToast("Factura", "Generando documento de factura...", "info", 0, true);
 
         try {
-          const urlFactura = new URL(`https://${host}:9876/api/descargar-pdf-factura`);
+          const urlFactura = new URL(`https://${host}:9876/api/descargar-factura-venta`);
           urlFactura.searchParams.set("idAdmision", idAdmision);
           urlFactura.searchParams.set("idPacienteKey", idPacienteKey);
           urlFactura.searchParams.set("idSoporteKey", "1");
