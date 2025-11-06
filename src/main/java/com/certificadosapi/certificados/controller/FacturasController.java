@@ -1,6 +1,8 @@
 package com.certificadosapi.certificados.controller;
 
 
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.certificadosapi.certificados.model.ZipResult;
 import com.certificadosapi.certificados.service.FacturasService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 
 @RestController
@@ -35,7 +38,7 @@ public class FacturasController {
 
     // Endpoint para exportar el XML
     @GetMapping("/{idMovDoc}")
-    public ResponseEntity<ByteArrayResource> exportarXml(@PathVariable int idMovDoc) {
+    public ResponseEntity<ByteArrayResource> exportarXml(@PathVariable int idMovDoc) throws SQLException {
 
         byte[] xmlBytes = facturasService.exportDocXml(idMovDoc);
 
@@ -46,7 +49,7 @@ public class FacturasController {
 
     // Endpoint para generar json de facturas
     @GetMapping("/generarjson/{idMovDoc}")
-    public ResponseEntity<ByteArrayResource> generarjson(@PathVariable int idMovDoc) {
+    public ResponseEntity<ByteArrayResource> generarjson(@PathVariable int idMovDoc) throws SQLException, JsonProcessingException {
         
         byte[] jsonBytes = facturasService.generarjson(idMovDoc);
 
@@ -57,7 +60,7 @@ public class FacturasController {
 
     // Endpoint para generar txt de facturas
     @GetMapping("/generartxt/{idMovDoc}")
-    public ResponseEntity<Map<String, ByteArrayResource>> generarTxt(@PathVariable int idMovDoc) {
+    public ResponseEntity<Map<String, ByteArrayResource>> generarTxt(@PathVariable int idMovDoc) throws SQLException {
         
         Map<String, byte[]> txtFiles = facturasService.generarTxt(idMovDoc);
 
@@ -75,7 +78,7 @@ public class FacturasController {
     public ResponseEntity<ByteArrayResource> generarZip(
         @PathVariable int idMovDoc,
         @PathVariable String tipoArchivo,
-        @PathVariable boolean incluirXml) {
+        @PathVariable boolean incluirXml) throws IOException, SQLException {
 
         ZipResult zipResult = facturasService.generarzip(idMovDoc, tipoArchivo, incluirXml);
         byte[] zipBytes = zipResult.getZipBytes();
@@ -95,7 +98,7 @@ public class FacturasController {
     public ResponseEntity<?> generarAdmision(
         @RequestParam int idMovDoc,
         @RequestParam int idDoc
-    ) {
+    ) throws SQLException {
         List<Map<String, Object>> resultados = facturasService.generarAdmision(idMovDoc, idDoc);
 
         return ResponseEntity.ok(resultados);

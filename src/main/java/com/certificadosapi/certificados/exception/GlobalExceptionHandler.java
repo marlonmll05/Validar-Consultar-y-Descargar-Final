@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -85,5 +86,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleIOException(IOException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("Error de entrada/salida: " + ex.getMessage());
+    }
+
+    @ExceptionHandler(JsonProcessingException.class)
+    public ResponseEntity<String> handleJsonProcessingException(JsonProcessingException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error al procesar JSON: " + ex.getMessage());
     }
 }

@@ -2,6 +2,7 @@ package com.certificadosapi.certificados.service;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 import com.certificadosapi.certificados.model.ZipResult;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -37,7 +38,7 @@ public class FacturasService {
     }
     
     // Método para exportar el XML en el servicio
-    public byte[] exportDocXml(int idMovDoc) {
+    public byte[] exportDocXml(int idMovDoc) throws SQLException {
         try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoftFinanciero_ST"))) {
             
             String query = "SELECT CONVERT(XML, DocXmlEnvelope) AS DocXml FROM MovimientoDocumentos WHERE IdMovDoc = ?";
@@ -51,21 +52,18 @@ public class FacturasService {
                         if (docXmlContent != null) {
                             return docXmlContent.getBytes(StandardCharsets.UTF_8);
                         } else {
-                            throw new RuntimeException("El campo DocXmlEnvelope está vacío para el ID proporcionado.");
+                            throw new SQLException("El campo DocXmlEnvelope está vacío para el ID proporcionado.");
                         }
                     } else {
-                        throw new RuntimeException("No se encontró ningún documento para el ID proporcionado.");
+                        throw new IllegalArgumentException("No se encontró ningún documento para el ID proporcionado.");
                     }
                 }
-            }
-            
-        } catch (Exception e) {
-            throw new RuntimeException("Error obteniendo el DocXml: " + e.getMessage(), e);
-        }
+            }  
+        } 
     }
 
     //Metodo parar crear JSON de Facturas
-    public byte[] generarjson(int idMovDoc) {
+    public byte[] generarjson(int idMovDoc) throws SQLException, JsonProcessingException {
 
         try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
 
@@ -457,15 +455,11 @@ public class FacturasService {
                             .getBytes(StandardCharsets.UTF_8);
                 }
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Error al ejecutar las consultas SQL: " + e.getMessage(), e);
-        } catch (Exception e) {
-            throw new RuntimeException("Error al convertir a JSON: " + e.getMessage(), e);
         }
     }
 
     //Metodo para crear TXT de Facturas
-    public Map<String, byte[]> generarTxt(int idMovDoc) {
+    public Map<String, byte[]> generarTxt(int idMovDoc) throws SQLException {
         Map<String, byte[]> txtFiles = new HashMap<>();
     
         try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"));){
@@ -789,10 +783,6 @@ public class FacturasService {
             
             return txtFiles;
     
-        } catch (SQLException e) {
-            throw new RuntimeException("Error en la base de datos al generar TXT: " + e.getMessage(), e);
-        } catch (Exception e) {
-            throw new RuntimeException("Error al procesar la solicitud para generar TXT: " + e.getMessage(), e);
         }
     }
 
@@ -800,7 +790,7 @@ public class FacturasService {
     public ZipResult generarzip(
         int idMovDoc, 
         String tipoArchivo, 
-        boolean incluirXml) { 
+        boolean incluirXml) throws IOException, SQLException { 
 
         if (!tipoArchivo.equalsIgnoreCase("json") &&
             !tipoArchivo.equalsIgnoreCase("txt") &&
@@ -847,48 +837,36 @@ public class FacturasService {
 
 
             if (incluirXml) {
-                try {
-                    byte[] xmlBytes = exportDocXml(idMovDoc); 
-                    ZipEntry xmlEntry = new ZipEntry(folderName + "ad0" + IdEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml");
-                    zos.putNextEntry(xmlEntry);
-                    zos.write(xmlBytes); 
-                    zos.closeEntry();
-                } catch (Exception e) {
-                    throw new RuntimeException(e.getMessage());
-                }
-            }
+                byte[] xmlBytes = exportDocXml(idMovDoc); 
+                ZipEntry xmlEntry = new ZipEntry(folderName + "ad0" + IdEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml");
+                zos.putNextEntry(xmlEntry);
+                zos.write(xmlBytes); 
+                zos.closeEntry();
+            } 
+            
 
             boolean jsonRequired = "json".equals(tipoArchivo) || "ambos".equals(tipoArchivo);
             if (jsonRequired) {
-                try {
-
-                    byte[] jsonResponse = generarjson(idMovDoc);
-                    if (jsonResponse != null && jsonResponse.length > 0) {
-                        ZipEntry jsonEntry = new ZipEntry(folderName + "RipsFac_" + prefijo + numdoc + ".json");
-                        zos.putNextEntry(jsonEntry);
-                        zos.write(jsonResponse);
-                        zos.closeEntry();
-                    }
-                } catch (Exception e) {
-                    throw new RuntimeException(e.getMessage());
+                byte[] jsonResponse = generarjson(idMovDoc);
+                if (jsonResponse != null && jsonResponse.length > 0) {
+                    ZipEntry jsonEntry = new ZipEntry(folderName + "RipsFac_" + prefijo + numdoc + ".json");
+                    zos.putNextEntry(jsonEntry);
+                    zos.write(jsonResponse);
+                    zos.closeEntry();
                 }
             }
 
             boolean txtRequired = "txt".equals(tipoArchivo) || "ambos".equals(tipoArchivo);
             if (txtRequired) {
-                try {
-                    Map<String, byte[]> txtFiles = generarTxt(idMovDoc);
+                Map<String, byte[]> txtFiles = generarTxt(idMovDoc);
 
-                    if (txtFiles != null && !txtFiles.isEmpty()) {
-                        for (Map.Entry<String, byte[]> entry : txtFiles.entrySet()) {
-                            ZipEntry txtEntry = new ZipEntry(folderName + entry.getKey());
-                            zos.putNextEntry(txtEntry);
-                            zos.write(entry.getValue());
-                            zos.closeEntry();
-                        }
+                if (txtFiles != null && !txtFiles.isEmpty()) {
+                    for (Map.Entry<String, byte[]> entry : txtFiles.entrySet()) {
+                        ZipEntry txtEntry = new ZipEntry(folderName + entry.getKey());
+                        zos.putNextEntry(txtEntry);
+                        zos.write(entry.getValue());
+                        zos.closeEntry();
                     }
-                } catch (Exception e) {
-                    throw new RuntimeException(e.getMessage());
                 }
             }
 
@@ -933,58 +911,48 @@ public class FacturasService {
             byte[] zipBytes = baos.toByteArray();
             String fileName = "Fac_" + prefijo + numdoc + ".zip"; 
             return new ZipResult(zipBytes, fileName);
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e.getMessage());
-        } catch (IOException e) {
-            throw new RuntimeException(e.getMessage());
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
         }
     }
 
 
     //METODO PARA GENERAR ADMISION
-    public List<Map<String, Object>> generarAdmision(int idMovDoc, int idDoc) {
-        try {
-            String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
+    public List<Map<String, Object>> generarAdmision(int idMovDoc, int idDoc) throws SQLException {
 
-            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                String sql = "EXEC dbo.pa_Net_Facturas_GenSoportes ?, ?";
+        String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
 
-                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                    pstmt.setInt(1, idMovDoc);
-                    pstmt.setInt(2, idDoc);
-                    boolean hasResults = pstmt.execute();
+        try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+            String sql = "EXEC dbo.pa_Net_Facturas_GenSoportes ?, ?";
 
-                    while (!hasResults && pstmt.getUpdateCount() != -1) {
-                        hasResults = pstmt.getMoreResults();
-                    }
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, idMovDoc);
+                pstmt.setInt(2, idDoc);
+                boolean hasResults = pstmt.execute();
 
-                    if (hasResults) {
-                        try (ResultSet rs = pstmt.getResultSet()) {
-                            List<Map<String, Object>> resultados = new ArrayList<>();
-                            ResultSetMetaData metaData = rs.getMetaData();
-                            int columnCount = metaData.getColumnCount();
+                while (!hasResults && pstmt.getUpdateCount() != -1) {
+                    hasResults = pstmt.getMoreResults();
+                }
 
-                            while (rs.next()) {
-                                Map<String, Object> fila = new LinkedHashMap<>();
-                                for (int i = 1; i <= columnCount; i++) {
-                                    fila.put(metaData.getColumnName(i), rs.getObject(i));
-                                }
-                                resultados.add(fila);
+                if (hasResults) {
+                    try (ResultSet rs = pstmt.getResultSet()) {
+                        List<Map<String, Object>> resultados = new ArrayList<>();
+                        ResultSetMetaData metaData = rs.getMetaData();
+                        int columnCount = metaData.getColumnCount();
+
+                        while (rs.next()) {
+                            Map<String, Object> fila = new LinkedHashMap<>();
+                            for (int i = 1; i <= columnCount; i++) {
+                                fila.put(metaData.getColumnName(i), rs.getObject(i));
                             }
-
-                            return resultados;
+                            resultados.add(fila);
                         }
-                    } else {
-                        throw new RuntimeException("El procedimiento no devolvió resultados.");
+
+                        return resultados;
                     }
+                } else {
+                    throw new RuntimeException("El procedimiento no devolvió resultados.");
                 }
             }
-
-        } catch (Exception e) {
-            throw new RuntimeException("Error al ejecutar el procedimiento: " + e.getMessage());
         }
     }
 }
+
