@@ -53,6 +53,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.certificadosapi.certificados.service.atenciones.ExportarService;
+import com.certificadosapi.certificados.service.atenciones.ExportarService.XmlDocumento;
 import com.certificadosapi.certificados.service.atenciones.VerService;
 import com.certificadosapi.certificados.service.atenciones.VerService.PdfDocumento;
 import com.certificadosapi.certificados.util.ServidorUtil;
@@ -823,208 +824,40 @@ public class AtencionesController {
     }
 
 
+
+
     //ENDPOINT PARA EXPORTAR EL CONTENIDO DE UNA ADMISION
     @GetMapping("/exportar-pdf")
     public ResponseEntity<?> exportarPdfIndividual(
             @RequestParam Long idAdmision,
-            @RequestParam Long idSoporteKey) {
-        System.out.println("Exportando PDF para IdAdmision=" + idAdmision + ", IdSoporteKey=" + idSoporteKey);
-
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=Asclepius_Documentos;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
-                servidor
-            );
-
-            String sql = "SELECT NameFilePdf FROM tbl_Net_Facturas_ListaPdf WHERE IdAdmision = ? AND IdSoporteKey = ?";
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl);
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-
-                ps.setLong(1, idAdmision);
-                ps.setLong(2, idSoporteKey);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        try (InputStream is = rs.getBinaryStream("NameFilePdf")) {
-                            if (is == null) {
-                                System.out.println("NameFilePdf NULL para soporte=" + idSoporteKey + " → se salta");
-                                return ResponseEntity.noContent().build();
-                            }
-
-                            byte[] pdfBytes = is.readAllBytes();
-                            if (pdfBytes.length == 0) {
-                                System.out.println("NameFilePdf vacío (0 bytes) soporte=" + idSoporteKey + " → se salta");
-                                return ResponseEntity.noContent().build();
-                            }
-
-                            // Obtener nombre real
-                            String nombrePdf = "Documento_" + idSoporteKey + ".pdf";
-                            try (PreparedStatement psName = conn.prepareStatement(
-                                    "SELECT dbo.fn_Net_DocSoporte_NameFile(?, ?) AS Nombre")) {
-                                psName.setLong(1, idAdmision);
-                                psName.setLong(2, idSoporteKey);
-                                try (ResultSet rsName = psName.executeQuery()) {
-                                    if (rsName.next() && rsName.getString("Nombre") != null) {
-                                        nombrePdf = rsName.getString("Nombre");
-                                    }
-                                }
-                            }
-
-                            System.out.println("PDF válido encontrado soporte=" + idSoporteKey);
-                            return ResponseEntity.ok()
-                                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nombrePdf + "\"")
-                                    .contentType(MediaType.APPLICATION_PDF)
-                                    .body(pdfBytes);
-                        }
-                    } else {
-                        System.out.println("No existe fila en la tabla para soporte=" + idSoporteKey);
-                        return ResponseEntity.noContent().build();
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Error al exportar: " + e.getMessage());
-        }
+            @RequestParam Long idSoporteKey) throws SQLException, IOException {
+        
+        PdfDocumento pdf = exportarService.exportarPdf(idAdmision, idSoporteKey);
+        
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + pdf.getNombre() + "\"")
+            .contentType(MediaType.APPLICATION_PDF)
+            .body(pdf.getContenido());
     }
 
     //ENDPOINT PARA OBTENER EL CUV DE UNA FACTURA VALIDADA
     @GetMapping(value = "/rips/respuesta", produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> obtenerRespuestaRips(@RequestParam String nFact) throws Exception {
-        
-        final String servidor;
-        try {
-            servidor = getServerFromRegistry();
-        } catch (Exception ex) {
-            throw new RuntimeException("Error obteniendo servidor del registry", ex);
-        }
-
-        final String conn100 = String.format(
-            "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
-            servidor
-        );
-
-        final String sql =
-            "SELECT TOP 1 MensajeRespuesta " +
-            "FROM RIPS_RespuestaApi " +
-            "WHERE LTRIM(RTRIM(NFact)) = LTRIM(RTRIM(?)) " +
-            "ORDER BY 1 DESC";
-
-        String respuestaValidador = null;
-
-        try (Connection c = DriverManager.getConnection(conn100);
-            PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, nFact);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    respuestaValidador = rs.getString("MensajeRespuesta");
-                }
-            }
-        }
-
-        if (respuestaValidador == null || respuestaValidador.isBlank()) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.ok(respuestaValidador);
+    public ResponseEntity<String> obtenerRespuestaRips(@RequestParam String nFact) throws SQLException {
+        String respuesta = exportarService.obtenerRespuestaRips(nFact);
+        return ResponseEntity.ok(respuesta);
     }
 
     //ENDPOINT PARA OBTENER EL XML DE UNA FACTURA Y RENOMBRARLO
     @GetMapping("/generarxml/{nFact}")
-    public ResponseEntity<byte[]> generarXml(@PathVariable String nFact) {
-        Connection conn = null;
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
-                servidor
-            );
-
-            String sql = "SELECT FF.NFact, CONVERT(xml, M.DocXml) AS DocXml, T.CUV, FF.IdMovDoc " +
-                        "FROM IPSoft100_ST.dbo.FacturaFinal FF " +
-                        "INNER JOIN IPSoft100_ST.dbo.Rips_Transaccion T ON T.IdMovDoc = FF.IdMovDoc " +
-                        "INNER JOIN IPSoftFinanciero_ST.dbo.MovimientoDocumentos M ON M.IdMovDoc = FF.IdMovDoc " +
-                        "WHERE FF.NFact = ?";
-
-            conn = DriverManager.getConnection(connectionUrl);
-            
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, nFact);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) {
-                        System.out.println("No se encontró registro para nFact=" + nFact);
-                        return ResponseEntity.notFound().build();
-                    }
-
-                    String docXml = rs.getString("DocXml");
-                    int idMovDoc = rs.getInt("IdMovDoc");
-
-                    if (docXml == null || docXml.trim().isEmpty()) {
-                        System.out.println("No hay XML para nFact=" + nFact);
-                        return ResponseEntity.noContent().build();
-                    }
-
-                    String connectionUrlFinanciero = String.format(
-                        "jdbc:sqlserver://%s;databaseName=IPSoftFinanciero_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                        servidor
-                    );
-                    Connection connFinanciero = DriverManager.getConnection(connectionUrlFinanciero);
-
-                    String numdoc = "";
-                    String docQuery = "SELECT Numdoc FROM MovimientoDocumentos WHERE IdMovDoc = ?";
-                    try (PreparedStatement stmt = connFinanciero.prepareStatement(docQuery)) {
-                        stmt.setInt(1, idMovDoc);
-                        ResultSet rsDoc = stmt.executeQuery();
-                        if (rsDoc.next()) {
-                            numdoc = rsDoc.getString("Numdoc");
-                        }
-                    }
-
-                    String IdEmpresaGrupo = "";
-                    String empresaQuery = "SELECT IdEmpresaGrupo FROM MovimientoDocumentos as M INNER JOIN Empresas as E ON E.IdEmpresaKey = M.IdEmpresaKey WHERE IdMovDoc = ?";
-                    try (PreparedStatement stmt = connFinanciero.prepareStatement(empresaQuery)) {
-                        stmt.setInt(1, idMovDoc);
-                        ResultSet rsEmpresa = stmt.executeQuery();
-                        if (rsEmpresa.next()) {
-                            IdEmpresaGrupo = rsEmpresa.getString("IdEmpresaGrupo");
-                        }
-                    }
-
-                    connFinanciero.close();
-
-                    String yearSuffix = String.valueOf(LocalDate.now().getYear()).substring(2);
-
-                    String formattedNumdoc = String.format("%08d", Integer.parseInt(numdoc));
-
-                    String fileName = "ad0" + IdEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml";
-
-                    byte[] xmlBytes = docXml.getBytes(StandardCharsets.UTF_8);
-
-                    return ResponseEntity.ok()
-                        .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
-                        .header("X-IdMovDoc", String.valueOf(idMovDoc))
-                        .contentType(MediaType.APPLICATION_XML)
-                        .body(xmlBytes);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(("Error al generar XML: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+    public ResponseEntity<byte[]> generarXml(@PathVariable String nFact) throws SQLException {
+        XmlDocumento xml = exportarService.generarXml(nFact);
+        
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + xml.getFileName() + "\"")
+            .header("X-IdMovDoc", String.valueOf(xml.getIdMovDoc()))
+            .contentType(MediaType.APPLICATION_XML)
+            .body(xml.getContenido());
     }
-
 
 
     //ENDPOINT PARA VER LA LISTA DE PDFS INSERTADOS EN LA TABLA
@@ -1057,7 +890,7 @@ public class AtencionesController {
     }
 
 
-
+    //ENDPOINT PARA ARMAR ZIP AL SELECCIONAR POR LOTE (1 ZIP POR ATENCION)
     @PostMapping(
         value = "/armar-zip/{nFact}",
         consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
@@ -1077,6 +910,7 @@ public class AtencionesController {
                 .body(zipBytes);
     }
 
+    //ENDPOINT PARA EXPORTAR POR CUENTA DE COBRO 
     @PostMapping(
         value = "/exportar-cuenta-cobro",
         consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
