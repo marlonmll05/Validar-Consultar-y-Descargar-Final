@@ -3,6 +3,7 @@ package com.certificadosapi.certificados.exception;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.NoSuchElementException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .badRequest()
             .body("Parámetro inválido: " + ex.getMessage());
+    }
+    
+
+    /**
+     * Maneja errores de no contenido
+     * Retorna HTTP 204 - NO CONTENT
+     */
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<Void> handleNoSuchElement(NoSuchElementException ex) {
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     /**

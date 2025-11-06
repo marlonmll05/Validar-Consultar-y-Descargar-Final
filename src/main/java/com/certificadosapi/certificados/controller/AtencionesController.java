@@ -53,6 +53,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.certificadosapi.certificados.service.atenciones.ExportarService;
+import com.certificadosapi.certificados.service.atenciones.VerService;
+import com.certificadosapi.certificados.service.atenciones.VerService.PdfDocumento;
 import com.certificadosapi.certificados.util.ServidorUtil;
 
 import com.sun.jna.platform.win32.Advapi32Util;
@@ -64,11 +66,13 @@ public class AtencionesController {
 
     private ServidorUtil servidorUtil;
     private ExportarService exportarService;
+    private VerService verService;
 
     @Autowired
-    public AtencionesController(ServidorUtil servidorUtil, ExportarService exportarService){
+    public AtencionesController(ServidorUtil servidorUtil, ExportarService exportarService, VerService verService){
         this.servidorUtil = servidorUtil;
         this.exportarService = exportarService;
+        this.verService = verService;
     }
 
 
@@ -306,166 +310,6 @@ public class AtencionesController {
                     .body("Error al obtener anexos: " + e.getMessage());
         }
     }
-
-    //ENDPOINT PARA VER LA LISTA DE PDFS INSERTADOS EN LA TABLA
-    @GetMapping("/admisiones/lista-pdfs")
-    public ResponseEntity<?> listaPdfs(@RequestParam Long idAdmision) {
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=Asclepius_Documentos;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
-                servidor
-            );
-
-            String sql = """
-                SELECT l.IdSoporteKey,
-                    dbo.fn_Net_DocSoporte_NameFile(?, l.IdSoporteKey) AS Nombre
-                FROM tbl_Net_Facturas_ListaPdf l
-                WHERE l.IdAdmision = ?
-                ORDER BY l.IdSoporteKey
-            """;
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl);
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setLong(1, idAdmision);
-                ps.setLong(2, idAdmision);
-                try (ResultSet rs = ps.executeQuery()) {
-                    List<Map<String,Object>> out = new ArrayList<>();
-                    while (rs.next()) {
-                        Map<String,Object> fila = new LinkedHashMap<>();
-                        fila.put("idSoporteKey", rs.getLong("IdSoporteKey"));
-                        fila.put("nombre", rs.getString("Nombre"));
-                        out.add(fila);
-                    }
-                    if (out.isEmpty()) {
-                        return ResponseEntity.badRequest()
-                            .body("No hay documentos para la admisión " + idAdmision);
-                    }
-                    return ResponseEntity.ok(out);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Error al listar: " + e.getMessage());
-        }
-    }
-
-    //ENDPOINT PARA VER EL CONTENIDO DE UN PDF
-    @GetMapping("/admisiones/ver-pdf")
-    public ResponseEntity<?> verPdf(
-            @RequestParam Long idAdmision,
-            @RequestParam Long idSoporteKey) {
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=Asclepius_Documentos;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
-                servidor
-            );
-
-            String sql = """
-                SELECT NameFilePdf,
-                    dbo.fn_Net_DocSoporte_NameFile(?, ?) AS Nombre
-                FROM tbl_Net_Facturas_ListaPdf
-                WHERE IdAdmision = ? AND IdSoporteKey = ?
-            """;
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl);
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setLong(1, idAdmision);
-                ps.setLong(2, idSoporteKey);
-                ps.setLong(3, idAdmision);
-                ps.setLong(4, idSoporteKey);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) {
-                        return ResponseEntity.badRequest().body("Documento no encontrado.");
-                    }
-
-                    byte[] data = rs.getBytes("NameFilePdf");
-                    if (data == null || data.length == 0) {
-                        return ResponseEntity.badRequest().body("Contenido vacío del documento.");
-                    }
-
-                    String nombre = rs.getString("Nombre");
-                    if (nombre == null || nombre.isBlank()) {
-                        nombre = "Documento_" + idSoporteKey + ".pdf";
-                    }
-
-                    String contentType = detectarContentType(data);
-
-                    return ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nombre + "\"")
-                        .contentType(MediaType.parseMediaType(contentType))
-                        .body(data);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Error al obtener documento: " + e.getMessage());
-        }
-    }
-
-    // === Helper para detectar content-type por "magic numbers" ===
-    private String detectarContentType(byte[] data) {
-        if (data != null && data.length >= 4) {
-            // %PDF
-            if ((data[0] & 0xFF) == 0x25 && data[1] == 0x50 && data[2] == 0x44 && data[3] == 0x46) {
-                return "application/pdf";
-            }
-            // PNG
-            if ((data[0] & 0xFF) == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47) {
-                return "image/png";
-            }
-            // JPG
-            if ((data[0] & 0xFF) == 0xFF && (data[1] & 0xFF) == 0xD8) {
-                return "image/jpeg";
-            }
-            // GIF
-            if (data[0] == 'G' && data[1] == 'I' && data[2] == 'F') {
-                return "image/gif";
-            }
-            // WEBP (RIFF....WEBP)
-            if (data.length >= 12 &&
-                data[0]=='R' && data[1]=='I' && data[2]=='F' && data[3]=='F' &&
-                data[8]=='W' && data[9]=='E' && data[10]=='B' && data[11]=='P') {
-                return "image/webp";
-            }
-        }
-        // Por defecto, PDF
-        return "application/pdf";
-    }
-
-    //ENDPOINT PARA ELIMINAR PDFS MANUALMENTE
-    @GetMapping("/eliminar-pdf")
-    public ResponseEntity<?> eliminarPdf(
-            @RequestParam Long idAdmision,
-            @RequestParam Long idSoporteKey) {
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
-                servidor
-            );
-
-            String sql = "EXEC [dbo].[pa_Net_Eliminar_DocumentoPdf] @IdAdmision = ?, @IdSoporteKey = ?";
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl);
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-
-                ps.setLong(1, idAdmision);
-                ps.setLong(2, idSoporteKey);
-                ps.execute();
-
-                return ResponseEntity.ok("Documento eliminado correctamente");
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError()
-                .body("Error al ejecutar eliminación: " + e.getMessage());
-        }
-    }
-
 
     //ENDPOINT PARA INSERTAR PDFS
     @PostMapping("/insertar-pdf")
@@ -1183,7 +1027,34 @@ public class AtencionesController {
 
 
 
+    //ENDPOINT PARA VER LA LISTA DE PDFS INSERTADOS EN LA TABLA
+    @GetMapping("/admisiones/lista-pdfs")
+    public ResponseEntity<?> listaPdfs(@RequestParam Long idAdmision) throws SQLException {
+        List<Map<String, Object>> lista = verService.listaPdfs(idAdmision);
+        return ResponseEntity.ok(lista);
+    }
 
+    //ENDPOINT PARA VER EL CONTENIDO DE UN PDF
+    @GetMapping("/admisiones/ver-pdf")
+    public ResponseEntity<?> verPdf(
+            @RequestParam Long idAdmision,
+            @RequestParam Long idSoporteKey) throws SQLException {
+        PdfDocumento pdf = verService.obtenerPdf(idAdmision, idSoporteKey);
+        
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + pdf.getNombre() + "\"")
+            .contentType(MediaType.parseMediaType(pdf.getContentType()))
+            .body(pdf.getContenido());
+    }
+
+    //ENDPOINT PARA ELIMINAR PDFS MANUALMENTE
+    @GetMapping("/eliminar-pdf")
+    public ResponseEntity<?> eliminarPdf(
+            @RequestParam Long idAdmision,
+            @RequestParam Long idSoporteKey) throws SQLException {
+        verService.eliminarPdf(idAdmision, idSoporteKey);
+        return ResponseEntity.ok("Documento eliminado correctamente");
+    }
 
 
 

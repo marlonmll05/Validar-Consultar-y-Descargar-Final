@@ -12,12 +12,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
@@ -60,7 +56,31 @@ public class VerService {
         // Por defecto, PDF
         return "application/pdf";
     }
+    
 
+    public static class PdfDocumento {
+        private final byte[] contenido;
+        private final String nombre;
+        private final String contentType;
+
+        public PdfDocumento(byte[] contenido, String nombre, String contentType) {
+            this.contenido = contenido;
+            this.nombre = nombre;
+            this.contentType = contentType;
+        }
+
+        public byte[] getContenido() {
+            return contenido;
+        }
+
+        public String getNombre() {
+            return nombre;
+        }
+
+        public String getContentType() {
+            return contentType;
+        }
+    }
 
     //ENDPOINT PARA VER LA LISTA DE PDFS INSERTADOS EN LA TABLA
     public List<Map<String, Object>> listaPdfs(Long idAdmision) throws SQLException {
@@ -86,7 +106,7 @@ public class VerService {
                     out.add(fila);
                 }
                     if (out.isEmpty()) {
-                        throw new NoSuchElementException("No hay documentos para la admisión " + idAdmision);
+                        throw new IllegalArgumentException("No hay documentos para la admisión " + idAdmision);
                 
                     }
                 return out;
@@ -97,79 +117,56 @@ public class VerService {
     
 
     //ENDPOINT PARA VER EL CONTENIDO DE UN PDF
-    @GetMapping("/admisiones/ver-pdf")
-    public ResponseEntity<?> verPdf(
-            @RequestParam Long idAdmision,
-            @RequestParam Long idSoporteKey) {
-        try {
+    public PdfDocumento obtenerPdf(Long idAdmision, Long idSoporteKey) throws SQLException {
+        String sql = """
+            SELECT NameFilePdf,
+                dbo.fn_Net_DocSoporte_NameFile(?, ?) AS Nombre
+            FROM tbl_Net_Facturas_ListaPdf
+            WHERE IdAdmision = ? AND IdSoporteKey = ?
+        """;
 
-            String sql = """
-                SELECT NameFilePdf,
-                    dbo.fn_Net_DocSoporte_NameFile(?, ?) AS Nombre
-                FROM tbl_Net_Facturas_ListaPdf
-                WHERE IdAdmision = ? AND IdSoporteKey = ?
-            """;
+        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("Asclepius_Documentos"));
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, idAdmision);
+            ps.setLong(2, idSoporteKey);
+            ps.setLong(3, idAdmision);
+            ps.setLong(4, idSoporteKey);
 
-            try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("Asclepius_Documentos"));
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setLong(1, idAdmision);
-                ps.setLong(2, idSoporteKey);
-                ps.setLong(3, idAdmision);
-                ps.setLong(4, idSoporteKey);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) {
-                        return ResponseEntity.badRequest().body("Documento no encontrado.");
-                    }
-
-                    byte[] data = rs.getBytes("NameFilePdf");
-                    if (data == null || data.length == 0) {
-                        return ResponseEntity.badRequest().body("Contenido vacío del documento.");
-                    }
-
-                    String nombre = rs.getString("Nombre");
-                    if (nombre == null || nombre.isBlank()) {
-                        nombre = "Documento_" + idSoporteKey + ".pdf";
-                    }
-
-                    String contentType = detectarContentType(data);
-
-                    return ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nombre + "\"")
-                        .contentType(MediaType.parseMediaType(contentType))
-                        .body(data);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new NoSuchElementException("Documento no encontrado.");
                 }
+
+                byte[] data = rs.getBytes("NameFilePdf");
+                if (data == null || data.length == 0) {
+                    throw new NoSuchElementException("Contenido vacío del documento.");
+                }
+
+                String nombre = rs.getString("Nombre");
+                if (nombre == null || nombre.isBlank()) {
+                    nombre = "Documento_" + idSoporteKey + ".pdf";
+                }
+
+                String contentType = detectarContentType(data);
+
+                return new PdfDocumento(data, nombre, contentType);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Error al obtener documento: " + e.getMessage());
         }
     }
 
     //ENDPOINT PARA ELIMINAR PDFS MANUALMENTE
-    @GetMapping("/eliminar-pdf")
-    public ResponseEntity<?> eliminarPdf(
-            @RequestParam Long idAdmision,
-            @RequestParam Long idSoporteKey) {
-        try {
+    public void eliminarPdf(
+            Long idAdmision,
+            Long idSoporteKey) throws SQLException {
 
             String sql = "EXEC [dbo].[pa_Net_Eliminar_DocumentoPdf] @IdAdmision = ?, @IdSoporteKey = ?";
 
-            try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"));
-                PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"));
+            PreparedStatement ps = conn.prepareStatement(sql)) {
 
-                ps.setLong(1, idAdmision);
-                ps.setLong(2, idSoporteKey);
-                ps.execute();
-
-                return ResponseEntity.ok("Documento eliminado correctamente");
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError()
-                .body("Error al ejecutar eliminación: " + e.getMessage());
+            ps.setLong(1, idAdmision);
+            ps.setLong(2, idSoporteKey);
+            ps.execute();
         }
-    }
-    
+    } 
 }
