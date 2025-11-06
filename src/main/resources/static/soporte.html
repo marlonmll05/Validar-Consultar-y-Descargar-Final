@@ -308,7 +308,7 @@
             try {
                 document.getElementById('tablaBody').innerHTML = `<tr><td colspan="10" class="loading">Cargando...</td></tr>`;
 
-                const response = await fetch(`/certificados/admision?idMovDoc=${encodeURIComponent(idMovDoc)}&idDoc=${encodeURIComponent(idDoc)}`, {
+                const response = await fetch(`/facturas/admision?idMovDoc=${encodeURIComponent(idMovDoc)}&idDoc=${encodeURIComponent(idDoc)}`, {
                     signal
                 });
 

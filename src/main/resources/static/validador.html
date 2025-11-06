@@ -1044,7 +1044,7 @@
                     return;
                 }
 
-                const url = `https://${host}:9876/certificados/generarjson/${idMovDoc}`;
+                const url = `https://${host}:9876/facturas/generarjson/${idMovDoc}`;
                 const response = await fetch(url);
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -2309,7 +2309,7 @@
                             continue;
                         }
 
-                        const jsonResponse = await fetch(`https://${host}:9876/certificados/generarjson/${doc.idMovDoc}`);
+                        const jsonResponse = await fetch(`https://${host}:9876/facturas/generarjson/${doc.idMovDoc}`);
                         if (!jsonResponse.ok) {
                             const errorText = await jsonResponse.text();
                             resultadoDiv.textContent = `Error al obtener JSON: ${errorText}`;
@@ -2605,7 +2605,7 @@
 
                 actualizarToastProgreso(toast, 33);
 
-                const jsonResponse = await fetch(`https://${host}:9876/certificados/generarjson/${idMovDoc}`);
+                const jsonResponse = await fetch(`https://${host}:9876/facturas/generarjson/${idMovDoc}`);
                 if (!jsonResponse.ok) {
                     const errorText = await jsonResponse.text();
                     resultadoDiv.textContent = `Error al obtener JSON: ${errorText}`;
@@ -3093,7 +3093,7 @@
 
         async function descargarZip(id, tipo, xml, directoryHandle) {
             const host = window.location.hostname;
-            const url = `https://${host}:9876/certificados/generarzip/${id}/${tipo}/${xml}`; 
+            const url = `https://${host}:9876/facturas/generarzip/${id}/${tipo}/${xml}`; 
 
             try {
                 const response = await fetch(url);

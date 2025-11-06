@@ -1207,7 +1207,7 @@
 
       async function descargarZip(id, tipo, xml, cuv, directoryHandle) {
           const host = window.location.hostname;
-          const url = `https://${host}:9876/certificados/generarzip/${id}/${tipo}/${xml}?cuv=${encodeURIComponent(cuv || '')}`; 
+          const url = `https://${host}:9876/facturas/generarzip/${id}/${tipo}/${xml}?cuv=${encodeURIComponent(cuv || '')}`; 
           try {
               const response = await fetch(url);
 

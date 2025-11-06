@@ -854,7 +854,7 @@ public class FacturasService {
                     zos.write(xmlBytes); 
                     zos.closeEntry();
                 } catch (Exception e) {
-                    System.err.println("Advertencia: No se pudo incluir XML: " + e.getMessage());
+                    throw new RuntimeException(e.getMessage());
                 }
             }
 
@@ -870,7 +870,7 @@ public class FacturasService {
                         zos.closeEntry();
                     }
                 } catch (Exception e) {
-                    System.err.println("Advertencia: No se pudo generar JSON: " + e.getMessage());
+                    throw new RuntimeException(e.getMessage());
                 }
             }
 
@@ -888,7 +888,7 @@ public class FacturasService {
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("Advertencia: No se pudieron generar archivos TXT: " + e.getMessage());
+                    throw new RuntimeException(e.getMessage());
                 }
             }
 
@@ -935,11 +935,11 @@ public class FacturasService {
             return new ZipResult(zipBytes, fileName);
 
         } catch (SQLException e) {
-            throw new RuntimeException("Error de base de datos al generar ZIP: " + e.getMessage(), e);
+            throw new RuntimeException(e.getMessage());
         } catch (IOException e) {
-            throw new RuntimeException("Error al crear archivo ZIP: " + e.getMessage(), e);
+            throw new RuntimeException(e.getMessage());
         } catch (Exception e) {
-            throw new RuntimeException("Error interno al generar ZIP: " + e.getMessage(), e);
+            throw new RuntimeException(e.getMessage());
         }
     }
 

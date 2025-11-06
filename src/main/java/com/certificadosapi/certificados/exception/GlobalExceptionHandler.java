@@ -1,5 +1,6 @@
 package com.certificadosapi.certificados.exception;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDate;
 
@@ -26,7 +27,7 @@ public class GlobalExceptionHandler {
         }
         return ResponseEntity
             .badRequest()
-            .body("Parámetro inválido: " + ex.getMessage());
+            .body(ex.getMessage());
     }
 
     /**
@@ -51,7 +52,7 @@ public class GlobalExceptionHandler {
             WebRequest request) {
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error de base de datos: " + ex.getMessage());
+                .body(ex.getMessage());
     }
 
     /**
@@ -64,7 +65,7 @@ public class GlobalExceptionHandler {
             WebRequest request) {
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error en el servidor: " + ex.getMessage());
+                .body(ex.getMessage());
     }
 
     /**
@@ -77,6 +78,12 @@ public class GlobalExceptionHandler {
             WebRequest request) {
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error inesperado: " + ex.getMessage());
+                .body(ex.getMessage());
+    }
+
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<String> handleIOException(IOException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ex.getMessage());
     }
 }

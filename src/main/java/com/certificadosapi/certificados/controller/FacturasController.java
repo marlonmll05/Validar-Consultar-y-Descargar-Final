@@ -41,11 +41,7 @@ public class FacturasController {
 
         ByteArrayResource resource = new ByteArrayResource(xmlBytes);
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=documento.xml")
-                .contentType(MediaType.APPLICATION_XML)
-                .contentLength(xmlBytes.length)
-                .body(resource);
+        return ResponseEntity.ok(resource);
     }
 
     // Endpoint para generar json de facturas
@@ -56,10 +52,7 @@ public class FacturasController {
 
         ByteArrayResource jsonResponse = new ByteArrayResource(jsonBytes);
 
-        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=Ripsfac_" + idMovDoc)
-        .contentType(MediaType.APPLICATION_OCTET_STREAM)
-        .contentLength(jsonBytes.length)
-        .body(jsonResponse);
+        return ResponseEntity.ok(jsonResponse);
     }
 
     // Endpoint para generar txt de facturas

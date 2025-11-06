@@ -1305,7 +1305,7 @@
               // 3) JSON de la factura
               if (idMovDoc) {
                 try {
-                  const respJson = await fetch(`https://${host}:9876/certificados/generarjson/${idMovDoc}`);
+                  const respJson = await fetch(`https://${host}:9876/facturas/generarjson/${idMovDoc}`);
                   if (respJson.ok) {
                     const blobJson = await respJson.blob();
                     const headerJson = respJson.headers.get("Content-Disposition");
@@ -1470,7 +1470,7 @@
               // 3) JSON de la factura (opcional)
               if (idMovDoc) {
                 try {
-                  const respJson = await fetch(`https://${host}:9876/certificados/generarjson/${idMovDoc}`);
+                  const respJson = await fetch(`https://${host}:9876/facturas/generarjson/${idMovDoc}`);
                   if (respJson.ok) {
                     const blobJson = await respJson.blob();
                     const headerJson = respJson.headers.get("Content-Disposition");
@@ -2032,7 +2032,7 @@
             // 3️⃣ Descargar JSON usando el IdMovDoc
             // -------------------------------
             if (idMovDoc) {
-              const respJson = await fetch(`https://${host}:9876/certificados/generarjson/${idMovDoc}`);
+              const respJson = await fetch(`https://${host}:9876/facturas/generarjson/${idMovDoc}`);
               if (respJson.status === 204) {
                 showToast("Sin JSON", "No hay JSON asociado a esta factura", "warning", 3000);
               } else if (!respJson.ok) {

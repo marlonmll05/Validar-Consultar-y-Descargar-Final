@@ -185,7 +185,7 @@ public class ExportarService {
                     zos.closeEntry();
                     archivosAgregados++;
                 } else {
-                    System.out.println("⚠️ No llegó XML para nFact " + nFact + ", se omite esta factura.");
+                    System.out.println("No llegó XML para nFact " + nFact + ", se omite esta factura.");
                     continue;
                 }
 
