@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -40,13 +41,12 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.bind.annotation.ControllerAdvice;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -54,9 +54,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.certificadosapi.certificados.service.atenciones.ExportarService;
 import com.certificadosapi.certificados.util.ServidorUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,10 +68,12 @@ import com.sun.jna.platform.win32.WinReg;
 public class AtencionesController {
 
     private ServidorUtil servidorUtil;
+    private ExportarService exportarService;
 
     @Autowired
-    public AtencionesController(ServidorUtil servidorUtil){
+    public AtencionesController(ServidorUtil servidorUtil, ExportarService exportarService){
         this.servidorUtil = servidorUtil;
+        this.exportarService = exportarService;
     }
 
 
@@ -85,23 +87,6 @@ public class AtencionesController {
             throw new Exception("Error al leer el servidor desde el registro", e);
         }
     }
-
-    @ControllerAdvice
-    public class GlobalExceptionHandler {
-
-        @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-        public ResponseEntity<String> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-            if (ex.getRequiredType() == LocalDate.class) {
-                return ResponseEntity
-                    .badRequest()
-                    .body("⚠️ Formato de fecha inválido. Usa 'yyyy-MM-dd' sin espacios ni saltos de línea. Valor recibido: " + ex.getValue());
-            }
-            return ResponseEntity
-                .badRequest()
-                .body("Parámetro inválido: " + ex.getMessage());
-        }
-    }
-
 
     //ENDPOINT PARA LLENAR LOS SELECTS DE LOS FILTROS DE BUSQUEDA
     @GetMapping("/selects-filtro")
@@ -825,38 +810,38 @@ public class AtencionesController {
         String urlBase = null;
 
         try {
-            System.out.println("🔍 Obteniendo servidor del registro...");
+            System.out.println("Obteniendo servidor del registro...");
             servidor = getServerFromRegistry();
-            System.out.println("✅ Servidor obtenido: " + servidor);
+            System.out.println("Servidor obtenido: " + servidor);
             
             String connectionUrl = String.format(
                 "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
                 servidor
             );
 
-            System.out.println("🔍 Conectando a BD para obtener URLReportServerWS...");
+            System.out.println("Conectando a BD para obtener URLReportServerWS...");
             try (Connection conn = DriverManager.getConnection(connectionUrl)) {
                 String sql = "SELECT ValorParametro FROM ParametrosServidor WHERE NomParametro = 'URLReportServerWS'";
                 try (PreparedStatement stmt = conn.prepareStatement(sql);
                     ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
                         urlBase = rs.getString("ValorParametro");
-                        System.out.println("✅ URL Base obtenida: " + urlBase);
+                        System.out.println("URL Base obtenida: " + urlBase);
                     } else {
-                        System.err.println("❌ ERROR: No se encontró URLReportServerWS");
+                        System.err.println("ERROR: No se encontró URLReportServerWS");
                         return ResponseEntity.internalServerError().body("No se encontró la URL del servidor de reportes.");
                     }
                 }
             }
 
         } catch (Exception e) {
-            System.err.println("❌ ERROR al obtener URL del servidor: " + e.getMessage());
+            System.err.println("ERROR al obtener URL del servidor: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("Error al obtener la URL del servidor: " + e.getMessage());
         }
 
         if (urlBase == null || urlBase.trim().isEmpty()) {
-            System.err.println("❌ ERROR: urlBase vacía");
+            System.err.println("ERROR: urlBase vacía");
             return ResponseEntity.internalServerError().body("No se encontró la URL del servidor de reportes.");
         }
 
@@ -888,7 +873,7 @@ public class AtencionesController {
                             System.out.println("IdMovDoc: " + idMovDoc);
                             System.out.println("====================================");
                         } else {
-                            System.err.println("❌ ERROR: Proc no retornó resultados");
+                            System.err.println("ERROR: Proc no retornó resultados");
                             return ResponseEntity.internalServerError()
                                     .body("No se obtuvieron resultados del procedimiento almacenado.");
                         }
@@ -897,14 +882,14 @@ public class AtencionesController {
             }
 
         } catch (Exception e) {
-            System.err.println("❌ ERROR al ejecutar proc: " + e.getMessage());
+            System.err.println("ERROR al ejecutar proc: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.internalServerError()
                     .body("Error al ejecutar el procedimiento almacenado: " + e.getMessage());
         }
 
         if (rutaReporte == null || idMovDoc == null) {
-            System.err.println("❌ ERROR: rutaReporte o idMovDoc null");
+            System.err.println("ERROR: rutaReporte o idMovDoc null");
             return ResponseEntity.internalServerError()
                     .body("No se pudo obtener RutaReporte o IdMovDoc del procedimiento almacenado.");
         }
@@ -920,18 +905,18 @@ public class AtencionesController {
                 reportUrl = uri.toString();
                 System.out.println("URL codificada: " + reportUrl);
             } catch (Exception ex) {
-                System.err.println("❌ ERROR al codificar URL: " + ex.getMessage());
+                System.err.println("ERROR al codificar URL: " + ex.getMessage());
             }
 
             HttpGet request = new HttpGet(reportUrl);
 
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 int statusCode = response.getStatusLine().getStatusCode();
-                System.out.println("📥 Status: " + statusCode);
+                System.out.println("Status: " + statusCode);
 
                 if (statusCode == 200) {
                     byte[] pdfBytes = EntityUtils.toByteArray(response.getEntity());
-                    System.out.println("📄 Tamaño: " + pdfBytes.length + " bytes");
+                    System.out.println("Tamaño: " + pdfBytes.length + " bytes");
 
                     // ====== INSERTAR EN BD ======
                     String connectionUrl = String.format(
@@ -952,17 +937,17 @@ public class AtencionesController {
                             ps.setBoolean(7, true);
                             ps.setBoolean(8, true);
                             
-                            System.out.println("💾 Insertando en BD...");
+                            System.out.println("Insertando en BD...");
                             ResultSet rs = ps.executeQuery();
                             if (rs.next()) {
                                 long idGenerado = rs.getLong("IdpdfKey");
-                                System.out.println("✅ PDF insertado con ID: " + idGenerado);
+                                System.out.println("PDF insertado con ID: " + idGenerado);
                                 return ResponseEntity.ok("PDF factura insertado correctamente con ID: " + idGenerado);
                             }
                         }
 
                     } catch (SQLException ex) {
-                        System.err.println("❌ ERROR al insertar: " + ex.getMessage());
+                        System.err.println("ERROR al insertar: " + ex.getMessage());
                         ex.printStackTrace();
                         return ResponseEntity
                                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -972,7 +957,7 @@ public class AtencionesController {
                     return ResponseEntity.ok("PDF descargado correctamente");
 
                 } else {
-                    System.err.println("❌ ERROR al descargar. Código: " + statusCode);
+                    System.err.println("ERROR al descargar. Código: " + statusCode);
                     String errorContent = "";
                     if (response.getEntity() != null) {
                         try {
@@ -991,7 +976,7 @@ public class AtencionesController {
             }
 
         } catch (IOException e) {
-            System.err.println("❌ ERROR GENERAL: " + e.getMessage());
+            System.err.println("ERROR GENERAL: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.internalServerError()
                     .body("Excepción al conectar o procesar el PDF: " + e.getMessage());
@@ -1394,282 +1379,14 @@ public class AtencionesController {
     )
     public ResponseEntity<byte[]> exportarCuentaCobro(
             @RequestParam String numeroCuentaCobro,
-            @RequestPart(value = "datos", required = false) String datosJson,
             @RequestParam MultiValueMap<String, MultipartFile> fileParts
-    ) {
-        try {
-            final Pattern ILLEGAL = Pattern.compile("[\\\\/:*?\"<>|]+");
-            String sanitizeCuenta = ILLEGAL.matcher(numeroCuentaCobro == null ? "" : numeroCuentaCobro).replaceAll("_").trim();
-            String zipName = "CuentaCobro_" + (sanitizeCuenta.isBlank() ? "SIN_NUMERO" : sanitizeCuenta) + ".zip";
-            String folderCuenta = (sanitizeCuenta.isBlank() ? "SIN_NUMERO" : sanitizeCuenta) + "/";
+    ) throws Exception {
 
-            String servidor = getServerFromRegistry();
-            String conn100 = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
-                servidor
-            );
-            String connFin = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoftFinanciero_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
-                servidor
-            );
+        byte[] zipBytes = exportarService.exportarCuentaCobro(numeroCuentaCobro, fileParts);
 
-            // Agrupar por Numero de Factura
-            record PartItem(String tipo, MultipartFile file) {}
-            Map<String, List<PartItem>> porNfact = new LinkedHashMap<>();
-
-            for (Map.Entry<String, List<MultipartFile>> e : fileParts.entrySet()) {
-                String key = e.getKey();
-                if (key == null || key.isBlank()) continue;
-
-                int idx = key.indexOf('_');
-                if (idx <= 0 || idx >= key.length() - 1) {
-                    continue;
-                }
-
-                String nFact = key.substring(0, idx).trim();
-                String tipo  = key.substring(idx + 1).trim();
-                if (!( "xml".equals(tipo) || "jsonFactura".equals(tipo) || "pdfs".equals(tipo) )) {
-                    continue;
-                }
-
-                List<MultipartFile> files = e.getValue();
-                if (files == null || files.isEmpty()) continue;
-
-                for (MultipartFile mf : files) {
-                    if (mf == null || mf.isEmpty()) continue;
-                    porNfact.computeIfAbsent(nFact, k -> new ArrayList<>()).add(new PartItem(tipo, mf));
-                }
-            }
-
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            int archivosAgregados = 0;
-            
-            Set<String> nombresUsados = new HashSet<>();
-
-            try (ZipOutputStream zos = new ZipOutputStream(baos)) {
-                for (Map.Entry<String, List<PartItem>> entry : porNfact.entrySet()) {
-                    String nFact = entry.getKey();
-                    String sanitizeN = ILLEGAL.matcher(nFact == null ? "" : nFact).replaceAll("_").trim();
-                    String folderFactura = folderCuenta + (sanitizeN.isBlank() ? "SIN_FACTURA" : sanitizeN) + "/";
-
-                    // Clasificar por tipo
-                    List<MultipartFile> xmls  = new ArrayList<>();
-                    List<MultipartFile> jsons = new ArrayList<>();
-                    List<MultipartFile> pdfs  = new ArrayList<>();
-                    for (PartItem it : entry.getValue()) {
-                        String t = it.tipo();
-                        if ("xml".equals(t)) xmls.add(it.file());
-                        else if ("jsonFactura".equals(t)) jsons.add(it.file());
-                        else if ("pdfs".equals(t)) pdfs.add(it.file());
-                    }
-
-                    Integer idMovDoc = null;
-                    String numdoc = null, idEmpresaGrupo = null;
-
-                    try (Connection c = DriverManager.getConnection(conn100);
-                        PreparedStatement ps = c.prepareStatement("SELECT IdMovDoc FROM FacturaFinal WHERE NFact = ?")) {
-                        ps.setString(1, nFact);
-                        try (ResultSet rs = ps.executeQuery()) {
-                            if (rs.next()) idMovDoc = rs.getInt(1);
-                        }
-                    } catch (Exception ex) {
-                        System.err.println("Warn IdMovDoc " + nFact + ": " + ex.getMessage());
-                    }
-
-                    if (idMovDoc != null) {
-                        try (Connection c = DriverManager.getConnection(connFin)) {
-                            try (PreparedStatement ps = c.prepareStatement(
-                                    "SELECT Prefijo, Numdoc FROM MovimientoDocumentos WHERE IdMovDoc = ?")) {
-                                ps.setInt(1, idMovDoc);
-                                try (ResultSet rs = ps.executeQuery()) {
-                                    if (rs.next()) {
-                                        numdoc  = rs.getString("Numdoc");
-                                    }
-                                }
-                            }
-                            try (PreparedStatement ps = c.prepareStatement(
-                                    "SELECT E.IdEmpresaGrupo " +
-                                    "FROM MovimientoDocumentos M " +
-                                    "INNER JOIN Empresas E ON E.IdEmpresaKey = M.IdEmpresaKey " +
-                                    "WHERE M.IdMovDoc = ?")) {
-                                ps.setInt(1, idMovDoc);
-                                try (ResultSet rs = ps.executeQuery()) {
-                                    if (rs.next()) idEmpresaGrupo = rs.getString("IdEmpresaGrupo");
-                                }
-                            }
-                        } catch (Exception ex) {
-                            System.err.println("Warn Financiero " + nFact + ": " + ex.getMessage());
-                        }
-                    }
-
-                    // Respuesta validador
-                    String respuestaValidador = null;
-                    try (Connection c = DriverManager.getConnection(conn100)) {
-                        String sql = "SELECT MensajeRespuesta FROM RIPS_RespuestaApi " +
-                                    "WHERE LTRIM(RTRIM(NFact)) = LTRIM(RTRIM(?))";
-                        try (PreparedStatement ps = c.prepareStatement(sql)) {
-                            ps.setString(1, nFact);
-                            try (ResultSet rs = ps.executeQuery()) {
-                                if (rs.next()) {
-                                    respuestaValidador = rs.getString("MensajeRespuesta");
-                                }
-                            }
-                        }
-                    } catch (Exception ex) {
-                        System.err.println("Warn Validador " + nFact + ": " + ex.getMessage());
-                    }
-
-                    // === XML ===
-                    if (!xmls.isEmpty()) {
-                        MultipartFile xml = xmls.get(0);
-                        String xmlFileName;
-                        if (idEmpresaGrupo != null && numdoc != null) {
-                            String yearSuffix = String.valueOf(java.time.LocalDate.now().getYear()).substring(2);
-                            String formattedNumdoc;
-                            try {
-                                int num = Integer.parseInt(numdoc);
-                                formattedNumdoc = String.format("%08d", num);
-                            } catch (NumberFormatException nfe) {
-                                formattedNumdoc = numdoc;
-                            }
-                            xmlFileName = "ad0" + idEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml";
-                        } else {
-                            String original = xml.getOriginalFilename();
-                            xmlFileName = (original != null && !original.isBlank())
-                                    ? ILLEGAL.matcher(original).replaceAll("_").trim()
-                                    : ("Factura_" + (sanitizeN.isBlank() ? "SIN_FACTURA" : sanitizeN) + ".xml");
-                        }
-
-                        String xmlPath = obtenerNombreUnico(folderFactura, xmlFileName, nombresUsados);
-                        
-                        ZipEntry xmlEntry = new ZipEntry(xmlPath);
-                        zos.putNextEntry(xmlEntry);
-                        zos.write(xml.getBytes());
-                        zos.closeEntry();
-                        archivosAgregados++;
-                    } else {
-                        System.out.println("⚠️ No llegó XML para nFact " + nFact + ", se omite esta factura.");
-                        continue;
-                    }
-
-                    // === JSON ===
-                    for (MultipartFile jf : jsons) {
-                        String nombre = jf.getOriginalFilename();
-                        nombre = (nombre != null && !nombre.isBlank())
-                                ? ILLEGAL.matcher(nombre).replaceAll("_").trim()
-                                : ("Factura_" + (sanitizeN.isBlank() ? "SIN_FACTURA" : sanitizeN) + ".json");
-                        
-                        String jsonPath = obtenerNombreUnico(folderFactura, nombre, nombresUsados);
-                        
-                        ZipEntry jsonEntry = new ZipEntry(jsonPath);
-                        zos.putNextEntry(jsonEntry);
-                        zos.write(jf.getBytes());
-                        zos.closeEntry();
-                        archivosAgregados++;
-                    }
-
-                    // === PDFs ===
-                    for (MultipartFile pdf : pdfs) {
-                        if (pdf == null || pdf.isEmpty()) continue;
-                        String nombre = pdf.getOriginalFilename();
-                        nombre = (nombre != null && !nombre.isBlank())
-                                ? ILLEGAL.matcher(nombre).replaceAll("_").trim()
-                                : "Documento.pdf";
-                        
-                        String pdfPath = obtenerNombreUnico(folderFactura, nombre, nombresUsados);
-                        
-                        ZipEntry pdfEntry = new ZipEntry(pdfPath);
-                        zos.putNextEntry(pdfEntry);
-                        zos.write(pdf.getBytes());
-                        zos.closeEntry();
-                        archivosAgregados++;
-                    }
-
-                    // === TXT ===
-                    if (respuestaValidador != null && !respuestaValidador.isBlank()) {
-                        String procesoId = "";
-                        try {
-                            ObjectMapper om = new ObjectMapper();
-                            JsonNode node = om.readTree(respuestaValidador);
-                            if (node.has("ProcesoId")) procesoId = node.get("ProcesoId").asText("");
-                        } catch (Exception ex) {
-                            System.out.println("Warn parse ProcesoId " + nFact + ": " + ex.getMessage());
-                        }
-                        String safeProc = ILLEGAL.matcher(procesoId == null ? "" : procesoId).replaceAll("_").trim();
-                        String nombreTxt = "ResultadosMSPS_" + (sanitizeN.isBlank() ? "SIN_FACTURA" : sanitizeN)
-                                + (safeProc.isBlank() ? "" : ("_ID" + safeProc))
-                                + "_A_CUV.txt";
-                        
-                        String txtPath = obtenerNombreUnico(folderFactura, nombreTxt, nombresUsados);
-                        
-                        ZipEntry txtEntry = new ZipEntry(txtPath);
-                        zos.putNextEntry(txtEntry);
-                        zos.write(respuestaValidador.getBytes(StandardCharsets.UTF_8));
-                        zos.closeEntry();
-                        archivosAgregados++;
-                    }
-                }
-            }
-
-            if (archivosAgregados == 0) {
-                return ResponseEntity.status(HttpStatus.NO_CONTENT)
-                        .body("No se encontraron archivos para generar el ZIP".getBytes(StandardCharsets.UTF_8));
-            }
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + zipName + "\"")
-                    .contentType(MediaType.parseMediaType("application/zip"))
-                    .body(baos.toByteArray());
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(("Error al armar ZIP de cuenta: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
-        }
-    }
-
-    /**
-     * Genera un nombre único para un archivo en el ZIP.
-     * 
-     * @param folder Carpeta base (ej: "CuentaCobro_123/FEHS1736/")
-     * @param nombreOriginal Nombre del archivo (ej: "Factura_FEHS1736.json")
-     * @param nombresUsados Set con todos los paths ya usados en el ZIP
-     */
-    private String obtenerNombreUnico(String folder, String nombreOriginal, Set<String> nombresUsados) {
-        String pathCompleto = folder + nombreOriginal;
-        
-        // Return inicial si el nombre no esta repetido
-        if (nombresUsados.add(pathCompleto)) {
-            return pathCompleto;
-        }
-        
-        // Duplicado se separa el nombre de la extension
-        int lastDot = nombreOriginal.lastIndexOf('.');
-        String nombreBase;
-        String extension;
-        
-        if (lastDot > 0) {
-            nombreBase = nombreOriginal.substring(0, lastDot);
-            extension = nombreOriginal.substring(lastDot); // incluye el punto
-        } else {
-            nombreBase = nombreOriginal;
-            extension = "";
-        }
-        
-        // Buscar el primer número disponible 
-        int contador = 1;
-        String nuevoNombre;
-        String nuevoPath;
-        
-        do {
-            nuevoNombre = nombreBase + "_" + contador + extension;
-            nuevoPath = folder + nuevoNombre;
-            contador++;
-        } while (!nombresUsados.add(nuevoPath)); 
-        
-        System.out.println("Duplicado detectado: '" + nombreOriginal + "' → renombrado a '" + nuevoNombre + "'");
-        
-        return nuevoPath;
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .body(zipBytes);
     }
 
 }
