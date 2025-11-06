@@ -17,15 +17,11 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+
 
 
 import javax.imageio.ImageIO;
@@ -41,7 +37,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ContentDisposition;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -58,8 +54,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.certificadosapi.certificados.service.atenciones.ExportarService;
 import com.certificadosapi.certificados.util.ServidorUtil;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.sun.jna.platform.win32.Advapi32Util;
 import com.sun.jna.platform.win32.WinReg;
 
@@ -1186,6 +1181,12 @@ public class AtencionesController {
         }
     }
 
+
+
+
+
+
+
     @PostMapping(
         value = "/armar-zip/{nFact}",
         consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
@@ -1196,7 +1197,8 @@ public class AtencionesController {
             @RequestPart("xml") MultipartFile xml,
             @RequestPart(value = "jsonFactura", required = false) MultipartFile jsonFactura,
             @RequestPart(value = "pdfs", required = false) List<MultipartFile> pdfs
-    ) {
+    ) throws SQLException, IOException {
+
         byte[] zipBytes = exportarService.armarZip(nFact, xml, jsonFactura, pdfs);
 
         return ResponseEntity.ok()
@@ -1212,7 +1214,7 @@ public class AtencionesController {
     public ResponseEntity<byte[]> exportarCuentaCobro(
             @RequestParam String numeroCuentaCobro,
             @RequestParam MultiValueMap<String, MultipartFile> fileParts
-    ) throws Exception {
+    ) throws IOException {
 
         byte[] zipBytes = exportarService.exportarCuentaCobro(numeroCuentaCobro, fileParts);
 

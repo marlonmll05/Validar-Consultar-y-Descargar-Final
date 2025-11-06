@@ -20,7 +20,7 @@ public class DatabaseConfig {
     }
 
     public String getConnectionUrl(String dbName){
-        if (!dbName.equals("IPSoft100_ST" ) && !dbName.equals("IPSoftFinanciero_ST")){
+        if (!dbName.equals("IPSoft100_ST" ) && !dbName.equals("IPSoftFinanciero_ST") && !dbName.equals("Asclepius_Documentos")){
             throw new IllegalArgumentException("Nombre de la base de datos incorrecto" + dbName);
         }
 

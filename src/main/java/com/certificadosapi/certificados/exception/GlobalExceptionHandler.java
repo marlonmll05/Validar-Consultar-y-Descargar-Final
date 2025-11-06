@@ -23,11 +23,11 @@ public class GlobalExceptionHandler {
         if (ex.getRequiredType() == LocalDate.class) {
             return ResponseEntity
                 .badRequest()
-                .body("⚠️ Formato de fecha inválido. Usa 'yyyy-MM-dd' sin espacios ni saltos de línea. Valor recibido: " + ex.getValue());
+                .body("Formato de fecha inválido. Usa 'yyyy-MM-dd' sin espacios ni saltos de línea. Valor recibido: " + ex.getValue());
         }
         return ResponseEntity
             .badRequest()
-            .body(ex.getMessage());
+            .body("Parámetro inválido: " + ex.getMessage());
     }
 
     /**
@@ -39,7 +39,7 @@ public class GlobalExceptionHandler {
             IllegalArgumentException ex, 
             WebRequest request) {
         
-        return ResponseEntity.badRequest().body(ex.getMessage());
+        return ResponseEntity.badRequest().body("Error de parametros: " + ex.getMessage());
     }
 
     /**
@@ -52,7 +52,7 @@ public class GlobalExceptionHandler {
             WebRequest request) {
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ex.getMessage());
+                .body("Error de base de datos: " + ex.getMessage());
     }
 
     /**
@@ -65,7 +65,7 @@ public class GlobalExceptionHandler {
             WebRequest request) {
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ex.getMessage());
+                .body("Error en el servidor: " + ex.getMessage());
     }
 
     /**
@@ -78,12 +78,12 @@ public class GlobalExceptionHandler {
             WebRequest request) {
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ex.getMessage());
+                .body("Error inesperado: " + ex.getMessage());
     }
 
-    @ExceptionHandler(IOException.class)
+        @ExceptionHandler(IOException.class)
     public ResponseEntity<String> handleIOException(IOException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ex.getMessage());
+                .body("Error de entrada/salida: " + ex.getMessage());
     }
 }
