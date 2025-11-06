@@ -1187,9 +1187,9 @@ public class AtencionesController {
     }
 
     @PostMapping(
-    value = "/armar-zip/{nFact}",
-    consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
-    produces = "application/zip"
+        value = "/armar-zip/{nFact}",
+        consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+        produces = "application/zip"
     )
     public ResponseEntity<byte[]> armarZip(
             @PathVariable String nFact,
@@ -1197,179 +1197,11 @@ public class AtencionesController {
             @RequestPart(value = "jsonFactura", required = false) MultipartFile jsonFactura,
             @RequestPart(value = "pdfs", required = false) List<MultipartFile> pdfs
     ) {
-        try {
-            if (xml == null || xml.isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body("Falta el archivo XML en la parte 'xml'".getBytes(StandardCharsets.UTF_8));
-            }
+        byte[] zipBytes = exportarService.armarZip(nFact, xml, jsonFactura, pdfs);
 
-            final Pattern ILLEGAL = Pattern.compile("[\\\\/:*?\"<>|]+");
-            String sanitizeN = (nFact == null ? "" : ILLEGAL.matcher(nFact).replaceAll("_").trim());
-            String folderName = sanitizeN + "/"; 
-            String zipName = sanitizeN + ".zip";
-
-            String servidor = getServerFromRegistry();
-            String conn100 = String.format(
-                    "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                    servidor
-            );
-            String connFin = String.format(
-                    "jdbc:sqlserver://%s;databaseName=IPSoftFinanciero_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                    servidor
-            );
-
-            Integer idMovDoc = null;
-            String numdoc = null, idEmpresaGrupo = null;
-
-            // IdMovDoc
-            try (Connection c = DriverManager.getConnection(conn100);
-                PreparedStatement ps = c.prepareStatement("SELECT IdMovDoc FROM FacturaFinal WHERE NFact = ?")) {
-                ps.setString(1, nFact);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) idMovDoc = rs.getInt(1);
-                }
-            }
-
-            if (idMovDoc != null) {
-                // Prefijo, Numdoc
-                try (Connection c = DriverManager.getConnection(connFin)) {
-                    try (PreparedStatement ps = c.prepareStatement(
-                            "SELECT Prefijo, Numdoc FROM MovimientoDocumentos WHERE IdMovDoc = ?")) {
-                        ps.setInt(1, idMovDoc);
-                        try (ResultSet rs = ps.executeQuery()) {
-                            if (rs.next()) {
-                                numdoc  = rs.getString("Numdoc");
-                            }
-                        }
-                    }
-
-                    // IdEmpresaGrupo
-                    try (PreparedStatement ps = c.prepareStatement(
-                            "SELECT E.IdEmpresaGrupo " +
-                            "FROM MovimientoDocumentos M " +
-                            "INNER JOIN Empresas E ON E.IdEmpresaKey = M.IdEmpresaKey " +
-                            "WHERE M.IdMovDoc = ?")) {
-                        ps.setInt(1, idMovDoc);
-                        try (ResultSet rs = ps.executeQuery()) {
-                            if (rs.next()) {
-                                idEmpresaGrupo = rs.getString("IdEmpresaGrupo");
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Respuesta validador (CUV)
-            String respuestaValidador = null;
-            try (Connection c = DriverManager.getConnection(conn100)) {
-
-                String sql = "SELECT MensajeRespuesta FROM RIPS_RespuestaApi " +
-                            "WHERE LTRIM(RTRIM(NFact)) = LTRIM(RTRIM(?))";
-                try (PreparedStatement ps = c.prepareStatement(sql)) {
-                    ps.setString(1, nFact);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) {
-                            respuestaValidador = rs.getString("MensajeRespuesta");
-                        }
-                    }
-                }
-            } catch (Exception ex) {
-                System.err.println("Warn Validador " + nFact + ": " + ex.getMessage());
-            }
-
-            // ProcesoId
-            String procesoId = "";
-            if (respuestaValidador != null && !respuestaValidador.isBlank()) {
-                try {
-                    ObjectMapper om = new ObjectMapper();
-                    JsonNode node = om.readTree(respuestaValidador);
-                    if (node.has("ProcesoId")) procesoId = node.get("ProcesoId").asText("");
-                } catch (Exception e) {
-                    System.out.println("Error al parsear ProcesoId: " + e.getMessage());
-                }
-            }
-
-            // NombreXML
-            String xmlFileName;
-            if (idEmpresaGrupo != null && numdoc != null) {
-                String yearSuffix = String.valueOf(java.time.LocalDate.now().getYear()).substring(2);
-                String formattedNumdoc;
-                try {
-                    int num = Integer.parseInt(numdoc);
-                    formattedNumdoc = String.format("%08d", num);
-                } catch (NumberFormatException nfe) {
-                    formattedNumdoc = numdoc;
-                }
-                xmlFileName = "ad0" + idEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml";
-            } else {
-                String original = xml.getOriginalFilename();
-                xmlFileName = (original != null && !original.isBlank())
-                        ? ILLEGAL.matcher(original).replaceAll("_").trim()
-                        : ("Factura_" + sanitizeN + ".xml");
-            }
-
-            // Crear ZIP
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            try (ZipOutputStream zos = new ZipOutputStream(baos)) {
-
-                ZipEntry xmlEntry = new ZipEntry(folderName + xmlFileName);
-                zos.putNextEntry(xmlEntry);
-                zos.write(xml.getBytes());
-                zos.closeEntry();
-
-                // JSON
-                if (jsonFactura != null && !jsonFactura.isEmpty()) {
-                    String jsonName = jsonFactura.getOriginalFilename();
-                    jsonName = (jsonName != null && !jsonName.isBlank())
-                            ? ILLEGAL.matcher(jsonName).replaceAll("_").trim()
-                            : ("Factura_" + sanitizeN + ".json");
-                    ZipEntry jsonEntry = new ZipEntry(folderName + jsonName);
-                    zos.putNextEntry(jsonEntry);
-                    zos.write(jsonFactura.getBytes());
-                    zos.closeEntry();
-                }
-
-                // PDFs 
-                if (pdfs != null && !pdfs.isEmpty()) {
-                    int idx = 1;
-                    for (MultipartFile pdf : pdfs) {
-                        if (pdf == null || pdf.isEmpty()) continue;
-                        String nombre = pdf.getOriginalFilename();
-                        nombre = (nombre != null && !nombre.isBlank())
-                                ? ILLEGAL.matcher(nombre).replaceAll("_").trim()
-                                : ("Documento_" + idx + ".pdf");
-                        ZipEntry pdfEntry = new ZipEntry(folderName + nombre);
-                        zos.putNextEntry(pdfEntry);
-                        zos.write(pdf.getBytes());
-                        zos.closeEntry();
-                        idx++;
-                    }
-                }
-
-                // TXT CUV
-                if (respuestaValidador != null && !respuestaValidador.isBlank()) {
-                    String safeProc = ILLEGAL.matcher(procesoId == null ? "" : procesoId).replaceAll("_").trim();
-                    String nombreTxt = "ResultadosMSPS_" + sanitizeN
-                            + (safeProc.isBlank() ? "" : ("_ID" + safeProc))
-                            + "_A_CUV.txt";
-                    ZipEntry txtEntry = new ZipEntry(folderName + nombreTxt);
-                    zos.putNextEntry(txtEntry);
-                    zos.write(respuestaValidador.getBytes(StandardCharsets.UTF_8));
-                    zos.closeEntry();
-                }
-            }
-
-            byte[] zipBytes = baos.toByteArray();
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + zipName + "\"")
-                    .contentType(MediaType.parseMediaType("application/zip"))
-                    .body(zipBytes);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(("Error al armar ZIP: " + e.getMessage()).getBytes(StandardCharsets.UTF_8));
-        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .body(zipBytes);
     }
 
     @PostMapping(
