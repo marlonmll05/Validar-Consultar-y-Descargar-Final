@@ -53,9 +53,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.certificadosapi.certificados.service.atenciones.ExportarService;
-import com.certificadosapi.certificados.service.atenciones.ExportarService.XmlDocumento;
 import com.certificadosapi.certificados.service.atenciones.VerService;
-import com.certificadosapi.certificados.service.atenciones.VerService.PdfDocumento;
+import com.certificadosapi.certificados.dto.PdfDocumento;
+import com.certificadosapi.certificados.dto.XmlDocumento;
 import com.certificadosapi.certificados.util.ServidorUtil;
 
 import com.sun.jna.platform.win32.Advapi32Util;

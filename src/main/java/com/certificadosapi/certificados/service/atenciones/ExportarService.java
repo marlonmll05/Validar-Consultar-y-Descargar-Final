@@ -29,7 +29,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.certificadosapi.certificados.config.DatabaseConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import com.certificadosapi.certificados.dto.PdfDocumento;
+import com.certificadosapi.certificados.dto.XmlDocumento;
 
 @Service
 public class ExportarService {
@@ -40,55 +41,6 @@ public class ExportarService {
     public ExportarService(DatabaseConfig databaseConfig){
         this.databaseConfig = databaseConfig;
     }
-
-    public static class PdfDocumento {
-        private final byte[] contenido;
-        private final String nombre;
-        private final String contentType;
-
-        public PdfDocumento(byte[] contenido, String nombre, String contentType) {
-            this.contenido = contenido;
-            this.nombre = nombre;
-            this.contentType = contentType;
-        }
-
-        public byte[] getContenido() {
-            return contenido;
-        }
-
-        public String getNombre() {
-            return nombre;
-        }
-
-        public String getContentType() {
-            return contentType;
-        }
-    }
-
-    public static class XmlDocumento {
-        private final byte[] contenido;
-        private final String fileName;
-        private final int idMovDoc;
-
-        public XmlDocumento(byte[] contenido, String fileName, int idMovDoc) {
-            this.contenido = contenido;
-            this.fileName = fileName;
-            this.idMovDoc = idMovDoc;
-        }
-
-        public byte[] getContenido() {
-            return contenido;
-        }
-
-        public String getFileName() {
-            return fileName;
-        }
-
-        public int getIdMovDoc() {
-            return idMovDoc;
-        }
-    }
-
 
     //ENDPOINT PARA EXPORTAR EL CONTENIDO DE UNA ADMISION
     public PdfDocumento exportarPdf(Long idAdmision, Long idSoporteKey) throws SQLException, IOException {

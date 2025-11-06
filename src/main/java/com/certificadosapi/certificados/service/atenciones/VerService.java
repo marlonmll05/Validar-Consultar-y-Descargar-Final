@@ -13,7 +13,7 @@ import java.util.NoSuchElementException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
+import com.certificadosapi.certificados.dto.PdfDocumento;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
@@ -57,31 +57,6 @@ public class VerService {
         return "application/pdf";
     }
     
-
-    public static class PdfDocumento {
-        private final byte[] contenido;
-        private final String nombre;
-        private final String contentType;
-
-        public PdfDocumento(byte[] contenido, String nombre, String contentType) {
-            this.contenido = contenido;
-            this.nombre = nombre;
-            this.contentType = contentType;
-        }
-
-        public byte[] getContenido() {
-            return contenido;
-        }
-
-        public String getNombre() {
-            return nombre;
-        }
-
-        public String getContentType() {
-            return contentType;
-        }
-    }
-
     //ENDPOINT PARA VER LA LISTA DE PDFS INSERTADOS EN LA TABLA
     public List<Map<String, Object>> listaPdfs(Long idAdmision) throws SQLException {
     
