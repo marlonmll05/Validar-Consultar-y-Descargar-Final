@@ -67,7 +67,7 @@ public class ApisqlService {
             String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
 
             try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                String sql = "UPDATE FF SET FF.Rips_Cuv = ? FROM FacturaFinal FF WHERE FF.NFact = ? AND EXISTS (SELECT 1 FROM Rips_Transaccion RT WHERE RT.NFact = FF.NFact)";
+                String sql = "UPDATE FF SET FF.Rips_Cuv = ?, FF.Rips_FechaValidacion = GETDATE() FROM FacturaFinal FF WHERE FF.NFact = ? AND EXISTS (SELECT 1 FROM Rips_Transaccion RT WHERE RT.NFact = FF.NFact)";
 
                 try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                     String cuvProcesado = (ripsCuv == null || ripsCuv.trim().isEmpty()) ? null : ripsCuv;

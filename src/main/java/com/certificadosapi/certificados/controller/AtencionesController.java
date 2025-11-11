@@ -4,9 +4,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
+
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
+
 import java.sql.Connection;
 
 import java.sql.DriverManager;
@@ -14,7 +14,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.time.LocalDate;
+
 import java.util.ArrayList;
 import java.util.Collections;
 
@@ -825,6 +825,8 @@ public class AtencionesController {
 
 
 
+
+    
 
     //ENDPOINT PARA EXPORTAR EL CONTENIDO DE UNA ADMISION
     @GetMapping("/exportar-pdf")
