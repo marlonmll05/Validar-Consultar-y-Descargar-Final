@@ -369,6 +369,10 @@ public class AtencionesController {
 
 
 
+
+
+
+    
     //ENDPOINT PARA DESCARGAR LOS SOPORTES DISPONIBLES PARA UNA ADMISION
     @GetMapping("/soportes-disponibles")
     public ResponseEntity<List<Map<String, Object>>> obtenerSoportesDisponibles(
@@ -433,9 +437,6 @@ public class AtencionesController {
         
         return ResponseEntity.ok("PDF factura insertado correctamente con ID: " + idGenerado);
     }
-
-
-
 
 
     //ENDPOINT PARA EXPORTAR EL CONTENIDO DE UNA ADMISION
