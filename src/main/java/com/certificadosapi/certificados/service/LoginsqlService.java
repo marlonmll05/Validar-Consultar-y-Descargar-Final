@@ -7,6 +7,8 @@ import java.sql.SQLTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.certificadosapi.certificados.util.ServidorUtil;
 
@@ -15,6 +17,7 @@ public class LoginsqlService {
 
     private ServidorUtil servidorUtil;
 
+    @Autowired
     public LoginsqlService(ServidorUtil servidorUtil){
         this.servidorUtil = servidorUtil;
     }
