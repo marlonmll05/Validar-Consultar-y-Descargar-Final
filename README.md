@@ -74,7 +74,7 @@ https://[nombre-del-dominio]:9876/inicio.html
 
 ## Tiempo de Desarrollo
 
-**5 meses aproximadamente.**
+**10 meses aproximadamente.**
 
 ---
 
@@ -99,6 +99,7 @@ Esta aplicación ha sido instalada y se encuentra actualmente en funcionamiento 
 - Hospital de Palmar de Varela
 - Hospital de Polonuevo
 - E.S.E Unidad Local de Suan
+- Sanidad IPS
   
 ---
 
