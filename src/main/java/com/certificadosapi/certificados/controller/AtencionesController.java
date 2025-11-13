@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.certificadosapi.certificados.service.atenciones.ConsultaService;
 import com.certificadosapi.certificados.service.atenciones.ExportarService;
 import com.certificadosapi.certificados.service.atenciones.GenerarService;
 import com.certificadosapi.certificados.service.atenciones.VerService;
@@ -51,13 +52,15 @@ public class AtencionesController {
     private ExportarService exportarService;
     private VerService verService;
     private GenerarService generarService;
+    private ConsultaService consultaService;
 
     @Autowired
-    public AtencionesController(ServidorUtil servidorUtil, ExportarService exportarService, VerService verService, GenerarService generarService){
+    public AtencionesController(ServidorUtil servidorUtil, ExportarService exportarService, VerService verService, GenerarService generarService, ConsultaService consultaService){
 
         this.generarService = generarService;
         this.exportarService = exportarService;
         this.verService = verService;
+        this.consultaService = consultaService;
     }
 
 
@@ -72,51 +75,6 @@ public class AtencionesController {
         }
     }
 
-    //ENDPOINT PARA LLENAR LOS SELECTS DE LOS FILTROS DE BUSQUEDA
-    @GetMapping("/selects-filtro")
-    public ResponseEntity<?> obtenerTablas(
-            @RequestParam int idTabla,
-            @RequestParam(defaultValue = "-1") int id
-    ) {
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=IPSoft100_ST;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1;",
-                servidor
-            );
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                String sql = "EXEC dbo.pa_Net_Facturas_Tablas ?, ?";
-
-                try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                    ps.setInt(1, idTabla);
-                    ps.setInt(2, id);
-
-                    try (ResultSet rs = ps.executeQuery()) {
-                        List<Map<String, Object>> resultados = new ArrayList<>();
-                        ResultSetMetaData meta = rs.getMetaData();
-                        int colCount = meta.getColumnCount();
-
-                        while (rs.next()) {
-                            Map<String, Object> fila = new LinkedHashMap<>();
-                            for (int i = 1; i <= colCount; i++) {
-                                String colName = meta.getColumnName(i);
-                                Object value = rs.getObject(i);
-                                fila.put(colName, (value instanceof String) ? value.toString().trim() : value);
-                            }
-                            resultados.add(fila);
-                        }
-
-                        return ResponseEntity.ok(resultados);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al ejecutar pa_Net_Facturas_Tablas: " + e.getMessage());
-        }
-    }
 
     //ENDPOINT PARA VER TODAS LAS TIPIFICACIONES DE ANEXOS
     @GetMapping("/soportes-anexos-completo")
@@ -191,75 +149,7 @@ public class AtencionesController {
     }
 
 
-    //ENDPOINT PARA VERIFICAR SI HAY FACTURA DE VENTA
-    @GetMapping("/verificar-factura-venta")
-    public ResponseEntity<?> countSoporte18(@RequestParam Long idAdmision) {
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=Asclepius_Documentos;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
-                servidor
-            );
 
-            String sql = "SELECT COUNT(*) AS Cantidad " +
-                        "FROM dbo.tbl_Net_Facturas_ListaPdf " +
-                        "WHERE IdAdmision = ? AND IdSoporteKey = 18";
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl);
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-
-                ps.setLong(1, idAdmision);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    int cantidad = 0;
-                    if (rs.next()) cantidad = rs.getInt("Cantidad");
-                    return ResponseEntity.ok(Map.of("cantidad", cantidad));
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Error al contar: " + e.getMessage());
-        }
-    }
-
-
-    //ENDPOINT PARA VERIFICAR SI HAY SOPORTE INSERTADO PARA UN IDSOPORTE EN ESPECIFICO
-    @GetMapping("/soportes-por-anexos")
-    public ResponseEntity<?> obtenerAnexosPorAdmision(@RequestParam Long idAdmision) {
-        try {
-            String servidor = getServerFromRegistry();
-            String connectionUrl = String.format(
-                "jdbc:sqlserver://%s;databaseName=Asclepius_Documentos;user=ConexionApi;password=ApiConexion.77;encrypt=true;trustServerCertificate=true;sslProtocol=TLSv1.2;",
-                servidor
-            );
-
-            String sql = "SELECT IdSoporteKey FROM tbl_Net_Facturas_ListaPdf PDF INNER JOIN IPSoft100_ST.dbo.tbl_Net_Facturas_DocSoporte DS ON PDF.IdSoporteKey = DS.Id \n" + //
-                                "WHERE IdAdmision = ?\n" + //
-                                "ORDER BY IdSoporteKey";
-
-            try (Connection conn = DriverManager.getConnection(connectionUrl);
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-
-                ps.setLong(1, idAdmision);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    List<Long> anexos = new ArrayList<>();
-                    while (rs.next()) {
-                        anexos.add(rs.getLong("IdSoporteKey"));
-                    }
-
-                    if (anexos.isEmpty()) {
-                        return ResponseEntity.ok(Collections.emptyList());
-                    }
-                    return ResponseEntity.ok(anexos);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError()
-                    .body("Error al obtener anexos: " + e.getMessage());
-        }
-    }
 
     //ENDPOINT PARA INSERTAR PDFS
     @PostMapping("/insertar-pdf")
@@ -370,8 +260,31 @@ public class AtencionesController {
 
 
 
+    //ENDPOINT PARA LLENAR LOS SELECTS DE LOS FILTROS DE BUSQUEDA
+    @GetMapping("/selects-filtro")
+    public ResponseEntity<List<Map<String, Object>>> obtenerTablas(
+            @RequestParam int idTabla,
+            @RequestParam int id) throws SQLException {
+        
+        List<Map<String, Object>> resultados = consultaService.obtenerTablas(idTabla, id);
+        return ResponseEntity.ok(resultados);
+    }
 
+    //ENDPOINT PARA VERIFICAR SI HAY FACTURA DE VENTA
+    @GetMapping("/verificar-factura-venta")
+    public ResponseEntity<Map<String, Integer>> countSoporte18(@RequestParam Long idAdmision) throws SQLException {
+        
+        Map<String, Integer> cantidad = consultaService.countSoporte18(idAdmision);
+        return ResponseEntity.ok(cantidad);
+    }
 
+    //ENDPOINT PARA VERIFICAR SI HAY SOPORTE INSERTADO PARA UN IDSOPORTE EN ESPECIFICO
+    @GetMapping("/soportes-por-anexos")
+    public ResponseEntity<List<Long>> obtenerAnexosPorAdmision(@RequestParam Long idAdmision) throws SQLException {
+        
+        List<Long> anexos = consultaService.obtenerAnexosPorAdmision(idAdmision);
+        return ResponseEntity.ok(anexos);
+    }
     
     //ENDPOINT PARA DESCARGAR LOS SOPORTES DISPONIBLES PARA UNA ADMISION
     @GetMapping("/soportes-disponibles")

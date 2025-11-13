@@ -14,11 +14,13 @@ import java.util.Map;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
+@Service
 public class AnexarService {
 
     //ENDPOINT PARA VER TODAS LAS TIPIFICACIONES DE ANEXOS
