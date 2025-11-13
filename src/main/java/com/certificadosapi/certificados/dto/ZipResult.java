@@ -1,4 +1,4 @@
-package com.certificadosapi.certificados.model;
+package com.certificadosapi.certificados.dto;
 
 public class ZipResult {
 

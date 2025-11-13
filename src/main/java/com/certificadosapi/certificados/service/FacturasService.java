@@ -1,7 +1,7 @@
 package com.certificadosapi.certificados.service;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
-import com.certificadosapi.certificados.model.ZipResult;
+import com.certificadosapi.certificados.dto.ZipResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
