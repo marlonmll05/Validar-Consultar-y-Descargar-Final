@@ -121,6 +121,9 @@ public class FacturasService {
                                         try (ResultSet consultasRs = consultasStmt.executeQuery()) {
                                             ArrayNode consultasNode = mapper.createArrayNode();
                                             while (consultasRs.next()) {
+                                                String numAutorizacion = consultasRs.getString("numAutorizacion");
+                                                String numFEVPagoModerador = consultasRs.getString("numFEVPagoModerador");
+
                                                 ObjectNode consultaNode = mapper.createObjectNode();
                                                 consultaNode.put("codPrestador", consultasRs.getString("codPrestador"));
 
@@ -133,7 +136,7 @@ public class FacturasService {
                                                     consultaNode.putNull("fechaInicioAtencion");  
                                                 }
 
-                                                consultaNode.put("numAutorizacion", consultasRs.getString("numAutorizacion"));
+                                                consultaNode.put("numAutorizacion", (numAutorizacion != null && !numAutorizacion.isEmpty()) ? numAutorizacion : null);
                                                 consultaNode.put("codConsulta", consultasRs.getString("codConsulta"));
                                                 consultaNode.put("modalidadGrupoServicioTecSal", consultasRs.getString("modalidadGrupoServicioTecSal"));
                                                 consultaNode.put("grupoServicios", consultasRs.getString("grupoServicios"));
@@ -150,7 +153,7 @@ public class FacturasService {
                                                 consultaNode.put("vrServicio", consultasRs.getInt("vrServicio"));
                                                 consultaNode.put("conceptoRecaudo", consultasRs.getString("tipoPagoModerador")); 
                                                 consultaNode.put("valorPagoModerador", consultasRs.getInt("valorPagoModerador"));
-                                                consultaNode.put("numFEVPagoModerador", consultasRs.getString("numFEVPagoModerador"));
+                                                consultaNode.put("numFEVPagoModerador", (numFEVPagoModerador != null && !numFEVPagoModerador.isEmpty()) ? numFEVPagoModerador : null);
                                                 consultaNode.put("consecutivo", consultasRs.getInt("consecutivo"));
                                                 
                                                 consultasNode.add(consultaNode);
@@ -168,6 +171,10 @@ public class FacturasService {
                                         try (ResultSet procedimientosRs = procedimientosStmt.executeQuery()) {
                                             ArrayNode procedimientosNode = mapper.createArrayNode();
                                             while (procedimientosRs.next()) {
+                                                String idMIPRES = procedimientosRs.getString("idMIPRES");
+                                                String numAutorizacion = procedimientosRs.getString("numAutorizacion");
+                                                String numFEVPagoModerador = procedimientosRs.getString("numFEVPagoModerador");
+
                                                 ObjectNode procedimientoNode = mapper.createObjectNode();
                                                 procedimientoNode.put("codPrestador", procedimientosRs.getString("codPrestador"));
 
@@ -180,8 +187,8 @@ public class FacturasService {
                                                     procedimientoNode.putNull("fechaInicioAtencion");  
                                                 }
 
-                                                procedimientoNode.put("idMIPRES", procedimientosRs.getString("idMIPRES"));
-                                                procedimientoNode.put("numAutorizacion", procedimientosRs.getString("numAutorizacion"));
+                                                procedimientoNode.put("idMIPRES", (idMIPRES != null && !idMIPRES.isEmpty()) ? idMIPRES : null);
+                                                procedimientoNode.put("numAutorizacion", (numAutorizacion != null && !numAutorizacion.isEmpty()) ? numAutorizacion : null);
                                                 procedimientoNode.put("codProcedimiento", procedimientosRs.getString("codProcedimiento"));
                                                 procedimientoNode.put("viaIngresoServicioSalud", procedimientosRs.getString("viaIngresoServicioSalud"));
                                                 procedimientoNode.put("modalidadGrupoServicioTecSal", procedimientosRs.getString("modalidadGrupoServicioTecSal"));
@@ -196,7 +203,7 @@ public class FacturasService {
                                                 procedimientoNode.put("vrServicio", procedimientosRs.getInt("vrServicio"));
                                                 procedimientoNode.put("conceptoRecaudo", procedimientosRs.getString("tipoPagoModerador"));
                                                 procedimientoNode.put("valorPagoModerador", procedimientosRs.getInt("valorPagoModerador"));
-                                                procedimientoNode.put("numFEVPagoModerador", procedimientosRs.getString("numFEVPagoModerador"));
+                                                procedimientoNode.put("numFEVPagoModerador", (numFEVPagoModerador != null && !numFEVPagoModerador.isEmpty()) ? numFEVPagoModerador : null);
                                                 procedimientoNode.put("consecutivo", procedimientosRs.getInt("consecutivo"));
 
                                                 procedimientosNode.add(procedimientoNode);
@@ -260,6 +267,8 @@ public class FacturasService {
                                         try (ResultSet hospitalizacionesRs = hospitalizacionesStmt.executeQuery()) {
                                             ArrayNode hospitalizacionesNode = mapper.createArrayNode();
                                             while (hospitalizacionesRs.next()) {
+                                                String numAutorizacion = hospitalizacionesRs.getString("numAutorizacion");
+
                                                 ObjectNode hospitalizacionNode = mapper.createObjectNode();
                                                 hospitalizacionNode.put("codPrestador", hospitalizacionesRs.getString("codPrestador"));
                                                 hospitalizacionNode.put("viaIngresoServicioSalud", hospitalizacionesRs.getString("viaingresoServicioSalud"));
@@ -273,7 +282,7 @@ public class FacturasService {
                                                     hospitalizacionNode.putNull("fechaInicioAtencion");  
                                                 }
 
-                                                hospitalizacionNode.put("numAutorizacion", hospitalizacionesRs.getString("numAutorizacion"));
+                                                hospitalizacionNode.put("numAutorizacion", (numAutorizacion != null && !numAutorizacion.isEmpty()) ? numAutorizacion : null);
                                                 hospitalizacionNode.put("causaMotivoAtencion", hospitalizacionesRs.getString("causaMotivoAtencion"));
                                                 hospitalizacionNode.put("codDiagnosticoPrincipal", hospitalizacionesRs.getString("codDiagnosticoPrincipal"));
                                                 hospitalizacionNode.put("codDiagnosticoPrincipalE", hospitalizacionesRs.getString("codDiagnosticoPrincipalE"));
@@ -353,10 +362,15 @@ public class FacturasService {
                                         try (ResultSet medicamentosRs = medicamentosStmt.executeQuery()) {
                                             ArrayNode medicamentosNode = mapper.createArrayNode();
                                             while (medicamentosRs.next()) {
+
+                                                String numAutorizacion = medicamentosRs.getString("numAutorizacion");
+                                                String idMIPRES = medicamentosRs.getString("idMIPRES");
+                                                String numFEVPagoModerador = medicamentosRs.getString("numFEVPagoModerador");
+
                                                 ObjectNode medicamentoNode = mapper.createObjectNode();
                                                 medicamentoNode.put("codPrestador", medicamentosRs.getString("codPrestador"));
-                                                medicamentoNode.put("numAutorizacion", medicamentosRs.getString("numAutorizacion"));
-                                                medicamentoNode.put("idMIPRES", medicamentosRs.getString("idMIPRES"));
+                                                medicamentoNode.put("numAutorizacion", (numAutorizacion != null && !numAutorizacion.isEmpty()) ? numAutorizacion : null);
+                                                medicamentoNode.put("idMIPRES", (idMIPRES != null && !idMIPRES.isEmpty()) ? idMIPRES : null);
 
                                                 Timestamp fechaDispensAdmonTimestamp = medicamentosRs.getTimestamp("fechaDispensAdmon");
                                                 if (fechaDispensAdmonTimestamp != null) {
@@ -384,7 +398,7 @@ public class FacturasService {
                                                 medicamentoNode.put("vrServicio", medicamentosRs.getBigDecimal("vrServicio"));
                                                 medicamentoNode.put("conceptoRecaudo", medicamentosRs.getString("tipoPagoModerador"));
                                                 medicamentoNode.put("valorPagoModerador", medicamentosRs.getInt("valorPagoModerador"));
-                                                medicamentoNode.put("numFEVPagoModerador", medicamentosRs.getString("numFEVPagoModerador"));
+                                                medicamentoNode.put("numFEVPagoModerador", (numFEVPagoModerador != null && !numFEVPagoModerador.isEmpty()) ? numFEVPagoModerador : null);
                                                 medicamentoNode.put("consecutivo", medicamentosRs.getInt("consecutivo"));
                                                 medicamentosNode.add(medicamentoNode);
                                             }
@@ -401,10 +415,15 @@ public class FacturasService {
                                         try (ResultSet otroServiciosRs = otroServiciosStmt.executeQuery()) {
                                             ArrayNode otroServiciosNode = mapper.createArrayNode();
                                             while (otroServiciosRs.next()) {
+                                                String numAutorizacion = otroServiciosRs.getString("numAutorizacion");
+                                                String idMIPRES = otroServiciosRs.getString("idMIPRES");
+                                                String numFEVPagoModerador = otroServiciosRs.getString("numFEVPagoModerador");
+
                                                 ObjectNode otroServicioNode = mapper.createObjectNode();
                                                 otroServicioNode.put("codPrestador", otroServiciosRs.getString("codPrestador"));
-                                                otroServicioNode.put("numAutorizacion", otroServiciosRs.getString("numAutorizacion"));
-                                                otroServicioNode.put("idMIPRES", otroServiciosRs.getString("idMIPRES"));
+
+                                                otroServicioNode.put("numAutorizacion", (numAutorizacion != null && !numAutorizacion.isEmpty()) ? numAutorizacion : null);
+                                                otroServicioNode.put("idMIPRES", (idMIPRES != null && !idMIPRES.isEmpty()) ? idMIPRES : null);
 
                                                 Timestamp fechaSuministroTecnologiaTimestamp = otroServiciosRs.getTimestamp("fechaSuministroTecnologia");
                                                 if (fechaSuministroTecnologiaTimestamp != null) {
@@ -423,7 +442,7 @@ public class FacturasService {
                                                 otroServicioNode.put("vrServicio", otroServiciosRs.getBigDecimal("vrServicio"));
                                                 otroServicioNode.put("conceptoRecaudo", otroServiciosRs.getString("conceptoRecaudo"));
                                                 otroServicioNode.put("valorPagoModerador", otroServiciosRs.getInt("valorPagoModerador"));
-                                                otroServicioNode.put("numFEVPagoModerador", otroServiciosRs.getString("numFEVPagoModerador"));
+                                                otroServicioNode.put("numFEVPagoModerador", (numFEVPagoModerador != null && !numFEVPagoModerador.isEmpty() ? numFEVPagoModerador : null));
                                                 otroServicioNode.put("consecutivo", otroServiciosRs.getInt("consecutivo"));
                                                 
                                                 otroServiciosNode.add(otroServicioNode);
@@ -524,11 +543,16 @@ public class FacturasService {
             try (PreparedStatement consultasStmt = conn.prepareStatement(consultasQuery)) {
                 consultasStmt.setInt(1, idMovDoc);
                 try (ResultSet consultasRs = consultasStmt.executeQuery()) {
+
                     while (consultasRs.next()) {
+                        String numAutorizacion = consultasRs.getString("numAutorizacion");
+                        String numFevPagoModerador = consultasRs.getString("numFEVPagoModerador");
+
+
                         sbConsultas.append(String.format("%s,%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%s,%d,%s,%d\n",
                                 consultasRs.getString("codPrestador"),
                                 consultasRs.getTimestamp("fechaInicioAtencion") != null ? new SimpleDateFormat("yyyy-MM-dd HH:mm").format(consultasRs.getTimestamp("fechaInicioAtencion")) : null,
-                                consultasRs.getString("numAutorizacion"),
+                                numAutorizacion != null ? numAutorizacion : null, 
                                 consultasRs.getString("codConsulta"),
                                 consultasRs.getString("modalidadGrupoServicioTecSal"),
                                 consultasRs.getString("grupoServicios"),
@@ -545,7 +569,7 @@ public class FacturasService {
                                 consultasRs.getInt("vrServicio"),
                                 consultasRs.getString("tipoPagoModerador"),
                                 consultasRs.getInt("valorPagoModerador"),
-                                consultasRs.getString("numFEVPagoModerador"),
+                                numFevPagoModerador != null ? numFevPagoModerador : null,
                                 consultasRs.getInt("consecutivo")));
                     }
                 }
@@ -562,11 +586,16 @@ public class FacturasService {
                 procedimientosStmt.setInt(1, idMovDoc);
                 try (ResultSet procedimientosRs = procedimientosStmt.executeQuery()) {
                     while (procedimientosRs.next()) {
+
+                        String numAutorizacion = procedimientosRs.getString("numAutorizacion");
+                        String idMIPRES = procedimientosRs.getString("idMIPRES");
+                        String numFevPagoModerador = procedimientosRs.getString("numFEVPagoModerador");
+        
                         sbProcedimientos.append(String.format("%s,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%s,%s,%d,%s,%d,%s,%d\n",
                                 procedimientosRs.getString("codPrestador"),
                                 procedimientosRs.getTimestamp("fechaInicioAtencion") != null ? new SimpleDateFormat("yyyy-MM-dd HH:mm").format(procedimientosRs.getTimestamp("fechaInicioAtencion")) : null,
-                                procedimientosRs.getString("idMIPRES"),
-                                procedimientosRs.getString("numAutorizacion"),
+                                idMIPRES != null ? idMIPRES : null,
+                                numAutorizacion != null ? numAutorizacion : null, 
                                 procedimientosRs.getString("codProcedimiento"),
                                 procedimientosRs.getString("viaIngresoServicioSalud"),
                                 procedimientosRs.getString("modalidadGrupoServicioTecSal"),
@@ -581,7 +610,7 @@ public class FacturasService {
                                 procedimientosRs.getInt("vrServicio"),
                                 procedimientosRs.getString("tipoPagoModerador"),
                                 procedimientosRs.getInt("valorPagoModerador"),
-                                procedimientosRs.getString("numFEVPagoModerador"),
+                                numFevPagoModerador != null ? numFevPagoModerador : null,
                                 procedimientosRs.getInt("consecutivo")));
                     }
                 }
@@ -633,11 +662,13 @@ public class FacturasService {
                 hospitalizacionesStmt.setInt(1, idMovDoc);
                 try (ResultSet hospitalizacionesRs = hospitalizacionesStmt.executeQuery()) {
                     while (hospitalizacionesRs.next()) {
+                        String numAutorizacion = hospitalizacionesRs.getString("numAutorizacion");
+
                         sbHospitalizaciones.append(String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d\n",
                                 hospitalizacionesRs.getString("codPrestador"),
                                 hospitalizacionesRs.getString("viaingresoServicioSalud"),
                                 hospitalizacionesRs.getTimestamp("fechaInicioAtencion") != null ? new SimpleDateFormat("yyyy-MM-dd HH:mm").format(hospitalizacionesRs.getTimestamp("fechaInicioAtencion")) : null,
-                                hospitalizacionesRs.getString("numAutorizacion"),
+                                numAutorizacion != null ? numAutorizacion : null,
                                 hospitalizacionesRs.getString("causaMotivoAtencion"),
                                 hospitalizacionesRs.getString("codDiagnosticoPrincipal"),
                                 hospitalizacionesRs.getString("codDiagnosticoPrincipalE"),
@@ -707,10 +738,14 @@ public class FacturasService {
                 medicamentosStmt.setInt(1, idMovDoc);
                 try (ResultSet medicamentosRs = medicamentosStmt.executeQuery()) {
                     while (medicamentosRs.next()) {
+                        String numAutorizacion = medicamentosRs.getString("numAutorizacion");
+                        String idMIPRES = medicamentosRs.getString("idMIPRES");
+                        String numFevPagoModerador = medicamentosRs.getString("numFEVPagoModerador");
+
                         sbMedicamentos.append(String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%s,%d,%s,%d,%s,%s,%s,%s,%s,%d,%s,%d\n",
                                 medicamentosRs.getString("codPrestador"),
-                                medicamentosRs.getString("numAutorizacion"),
-                                medicamentosRs.getString("idMIPRES"),
+                                numAutorizacion != null ? numAutorizacion : null,
+                                idMIPRES != null ? idMIPRES : null,
                                 medicamentosRs.getTimestamp("fechaDispensAdmon") != null ? new SimpleDateFormat("yyyy-MM-dd HH:mm").format(medicamentosRs.getTimestamp("fechaDispensAdmon")) : null,
                                 medicamentosRs.getString("codDiagnosticoPrincipal"),
                                 medicamentosRs.getString("codDiagnosticoRelacionado"),
@@ -729,7 +764,7 @@ public class FacturasService {
                                 medicamentosRs.getBigDecimal("vrServicio"),
                                 medicamentosRs.getString("tipoPagoModerador"),
                                 medicamentosRs.getInt("valorPagoModerador"),
-                                medicamentosRs.getString("numFEVPagoModerador"),
+                                numFevPagoModerador != null ? numFevPagoModerador : null,
                                 medicamentosRs.getInt("consecutivo")));
                     }
                 }
@@ -752,10 +787,14 @@ public class FacturasService {
                 otroServiciosStmt.setInt(1, idMovDoc);
                 try(ResultSet otroServiciosRs = otroServiciosStmt.executeQuery()){
                     while (otroServiciosRs.next()) {
+                        String numAutorizacion = otroServiciosRs.getString("numAutorizacion");
+                        String idMIPRES = otroServiciosRs.getString("idMIPRES");
+                        String numFevPagoModerador = otroServiciosRs.getString("numFEVPagoModerador");
+
                         sbOtrosServicios.append(String.format("%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s,%s,%s,%d,%s,%d\n",
                                 otroServiciosRs.getString("codPrestador"),
-                                otroServiciosRs.getString("numAutorizacion"),
-                                otroServiciosRs.getString("idMIPRES"),
+                                numAutorizacion != null ? numAutorizacion : null,
+                                idMIPRES != null ? idMIPRES : null,
                                 otroServiciosRs.getTimestamp("fechaSuministroTecnologia") != null ? new SimpleDateFormat("yyyy-MM-dd HH:mm").format(otroServiciosRs.getTimestamp("fechaSuministroTecnologia")) : null,
                                 otroServiciosRs.getString("tipoOS"),
                                 otroServiciosRs.getString("codTecnologiaSalud"),
@@ -767,7 +806,7 @@ public class FacturasService {
                                 otroServiciosRs.getBigDecimal("vrServicio"),
                                 otroServiciosRs.getString("conceptoRecaudo"),
                                 otroServiciosRs.getInt("valorPagoModerador"),
-                                otroServiciosRs.getString("numFEVPagoModerador"),
+                                numFevPagoModerador != null ? numFevPagoModerador : null,
                                 otroServiciosRs.getInt("consecutivo")));
                     }
                 }          
