@@ -1,4 +1,3 @@
-
 let abortController; 
 
 async function cargarDatosTabla() {

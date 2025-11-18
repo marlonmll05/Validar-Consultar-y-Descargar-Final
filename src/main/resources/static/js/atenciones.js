@@ -1,3 +1,7 @@
+if (!sessionStorage.getItem('tokenSQL')) {
+    window.location.href = 'loginsql.html';
+}
+
 const host = window.location.hostname;
 const tabla = document.getElementById('resultadosTabla');
 
@@ -172,7 +176,7 @@ document.getElementById('filtrosForm').addEventListener('submit', function (e) {
     });
 
     const url = `https://${host}:9876/filtros/atenciones?${params.toString()}`;
-    console.log("➡️ URL generada:", url);
+    console.log("URL generada:", url);
 
     fetch(url, { signal: currentController.signal })
     .then(response => {
