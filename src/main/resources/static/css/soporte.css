@@ -1,0 +1,231 @@
+:root {
+--primary: #9b87f5;
+--primary-dark: #7a68c3;
+--secondary: #33C3F0;
+--dark: #1A1F2C;
+--gray: #8E9196;
+--light: #f8f9fa;
+--border: #e2e8f0;
+--success: #10b981;
+--danger: #ef4444;
+}
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f4f5fb;
+    margin: 0;
+    padding: 0;
+    color: var(--dark);
+}
+
+header {
+    width: 100%;
+    background-color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 30px 60px;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.main-content {
+    padding: 40px;
+}
+
+.container {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    max-width: 1200px;
+    margin: auto;
+}
+
+
+h2#tituloFactura {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: var(--primary-dark);
+}
+
+select, label {
+    font-size: 14px;
+}
+
+select {
+    background-color: white;
+    color: var(--dark);
+}
+
+#formatoSelect {
+    min-width: 100px;
+}
+
+.table-container {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+th, td {
+    vertical-align: middle;
+    text-align: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border);
+}
+
+th {
+    background-color: var(--light);
+    font-weight: 600;
+    color: var(--dark);
+}
+
+#resultados td:nth-last-child(3),
+#resultados th:nth-last-child(3){
+    text-align: center;
+    width: 110px;
+    max-width: 110px;
+    word-wrap: break-word;     
+    white-space: normal;        
+    overflow-wrap: break-word;
+}
+
+.filaCheckbox {
+    transform: scale(1.25);
+    cursor: pointer;
+}
+
+.btn-ver-doc {
+    background-color: var(--success);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.1s;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+.btn-ver-doc:hover{
+    background-color: #0da271;
+}
+
+.btn-ver-doc:active{
+    transform: translateY(1px);
+}
+
+.btn-ver-docu {
+    background-color: var(--success);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.1s;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+.btn-ver-docu:hover{
+    background-color: #0da271;
+}
+
+.btn-ver-docu:active{
+    transform: translateY(1px);
+}
+
+.table-toolbar {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px; 
+    font-size: 105%; 
+}
+
+.table-toolbar label {
+    font-weight: 600;
+}
+
+.table-toolbar select {
+    padding: 7px 12px; 
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-size: 100%;
+}
+
+.table-toolbar .btn-ver-doc {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 100%; 
+    padding: 8px 14px;
+    border-radius: 6px;
+    background-color: var(--success);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.table-toolbar .btn-ver-doc:hover {
+    background-color: #0da271;
+}
+
+.table-toolbar .btn-ver-doc.white {
+    background-color: white;
+    color: var(--dark);
+    border: 1px solid var(--border);
+}
+
+.table-toolbar .btn-ver-doc.white:hover {
+    background-color: #f8f9fa;
+}
+
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    min-width: 250px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    color: #fff;
+    font-family: sans-serif;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    opacity: 0.95;
+    animation: slideIn 0.3s ease-out;
+}
+
+.toast-success { background-color: #28a745; }
+.toast-error { background-color: #dc3545; }
+.toast-info { background-color: #007bff; }
+
+
+#idSoporte:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(155, 135, 245, 0.1);
+}
