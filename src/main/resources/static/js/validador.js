@@ -1428,7 +1428,7 @@ async function enviarPaquetes() {
                             showToast('Advertencia', 'Paquete fue exitoso pero no se guardó el CUV', 'warning');
                         }
                     } else {
-                        console.warn(`⚠️ Respuesta exitosa sin CUV para NFact ${nFact}`);
+                        console.warn(`Respuesta exitosa sin CUV para NFact ${nFact}`);
                         showToast('Advertencia', `Paquete exitoso pero sin CUV para NFact ${nFact}`, 'warning');
                     }
 
@@ -1446,7 +1446,7 @@ async function enviarPaquetes() {
 
                         const exitoso = await agregarCUVCompleto(nFact, ripsCuv, idEstadoValidacion);
                         if (exitoso) {
-                            console.log(`✅ CUV agregado para NFact ${nFact}`);
+                            console.log(`CUV agregado para NFact ${nFact}`);
                             await actualizarCUVEnFila(doc.fila, nFact);
                             showToast('Éxito', `CUV agregado para NFact ${nFact}`, 'success');
                             cuvAgregado = true;
