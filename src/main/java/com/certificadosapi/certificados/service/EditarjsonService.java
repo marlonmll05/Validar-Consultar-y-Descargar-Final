@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 
 import java.sql.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.stereotype.Service;
@@ -18,7 +21,9 @@ import com.certificadosapi.certificados.config.DatabaseConfig;
 
 @Service
 public class EditarjsonService {    
-    
+
+    private static final Logger log = LoggerFactory.getLogger(EditarjsonService.class);
+
     private final DatabaseConfig databaseConfig;
 
     @Autowired
@@ -30,12 +35,16 @@ public class EditarjsonService {
     public void actualizarCampos(Map<String, Object> datos, int idMovDoc) throws Exception {
 
         if (idMovDoc <= 0) {
+            log.error("El ID del documento es inválido: {}", idMovDoc);
             throw new IllegalArgumentException("El ID del documento debe ser mayor a 0");
         }
 
         if (datos == null || datos.isEmpty()) {
+            log.error("No se recibieron datos para actualizar");
             throw new IllegalArgumentException("No se recibieron datos para actualizar");
         }
+
+        log.info("Iniciando actualización de campos para IdMovDoc={}", idMovDoc);
 
         String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
 
@@ -44,12 +53,14 @@ public class EditarjsonService {
 
             if (datos.containsKey("numDocumentoIdObligado") || datos.containsKey("numFactura") || 
                 datos.containsKey("tipoNota") || datos.containsKey("numNota")) {
+                log.info("Actualizando transacción para IdMovDoc={}", idMovDoc);
                 actualizarTransaccion(conn, datos, idMovDoc);
             }
 
             if (datos.containsKey("usuarios")) {
                 List<Map<String, Object>> usuarios = (List<Map<String, Object>>) datos.get("usuarios");
                 for (Map<String, Object> usuario : usuarios) {
+                    log.info("Actualizando usuario para IdMovDoc={} y consecutivo={}", idMovDoc, usuario.get("consecutivo"));
                     actualizarUsuarios(conn, usuario, idMovDoc);
                     
                     if (usuario.containsKey("servicios")) {
@@ -58,6 +69,7 @@ public class EditarjsonService {
                         if (servicios.containsKey("consultas")) {
                             List<Map<String, Object>> consultas = (List<Map<String, Object>>) servicios.get("consultas");
                             for (Map<String, Object> consulta : consultas) {
+                                log.info("Actualizando consulta para IdMovDoc={}", idMovDoc);
                                 actualizarConsulta(conn, consulta, idMovDoc);
                             }
                         }
@@ -65,6 +77,7 @@ public class EditarjsonService {
                         if (servicios.containsKey("procedimientos")) {
                             List<Map<String, Object>> procedimientos = (List<Map<String, Object>>) servicios.get("procedimientos");
                             for (Map<String, Object> procedimiento : procedimientos) {
+                                log.info("Actualizando procedimiento para IdMovDoc={}", idMovDoc);
                                 actualizarProcedimientos(conn, procedimiento, idMovDoc);
                             }
                         }
@@ -72,6 +85,7 @@ public class EditarjsonService {
                         if (servicios.containsKey("urgencias")) {
                             List<Map<String, Object>> urgencias = (List<Map<String, Object>>) servicios.get("urgencias");
                             for (Map<String, Object> urgencia : urgencias) {
+                                log.info("Actualizando urgencia para IdMovDoc={}", idMovDoc);
                                 actualizarUrgencias(conn, urgencia, idMovDoc);
                             }
                         }
@@ -79,6 +93,7 @@ public class EditarjsonService {
                         if (servicios.containsKey("hospitalizacion")) {
                             List<Map<String, Object>> hospitalizacion = (List<Map<String, Object>>) servicios.get("hospitalizacion");
                             for (Map<String, Object> hospi : hospitalizacion) {
+                                log.info("Actualizando hospitalización para IdMovDoc={}", idMovDoc);
                                 actualizarHospitalizacion(conn, hospi, idMovDoc);
                             }
                         }
@@ -86,6 +101,7 @@ public class EditarjsonService {
                         if (servicios.containsKey("recienNacidos")) {
                             List<Map<String, Object>> recienNacidos = (List<Map<String, Object>>) servicios.get("recienNacidos");
                             for (Map<String, Object> rn : recienNacidos) {
+                                log.info("Actualizando recién nacidos para IdMovDoc={}", idMovDoc);
                                 actualizarRecienNacidos(conn, rn, idMovDoc);
                             }
                         }
@@ -93,6 +109,7 @@ public class EditarjsonService {
                         if (servicios.containsKey("medicamentos")) {
                             List<Map<String, Object>> medicamentos = (List<Map<String, Object>>) servicios.get("medicamentos");
                             for (Map<String, Object> med : medicamentos) {
+                                log.info("Actualizando medicamentos para IdMovDoc={}", idMovDoc);
                                 actualizarMedicamentos(conn, med, idMovDoc);
                             }
                         }
@@ -100,6 +117,7 @@ public class EditarjsonService {
                         if (servicios.containsKey("otrosServicios")) {
                             List<Map<String, Object>> otrosServicios = (List<Map<String, Object>>) servicios.get("otrosServicios");
                             for (Map<String, Object> otro : otrosServicios) {
+                                log.info("Actualizando otros servicios para IdMovDoc={}", idMovDoc);
                                 actualizarOtrosServicios(conn, otro, idMovDoc);
                             }
                         }
@@ -108,12 +126,13 @@ public class EditarjsonService {
             }
 
             conn.commit();
+            log.info("Actualización de campos completada exitosamente para IdMovDoc={}", idMovDoc);
 
         } catch (SQLException sqlEx) {
+            log.error("Error al actualizar los campos en la base de datos para IdMovDoc={}: {}", idMovDoc, sqlEx.getMessage(), sqlEx);
             throw new RuntimeException("Error al actualizar los campos en la base de datos: " + sqlEx.getMessage(), sqlEx);
         }
     }
-
 
 
     // ==================== FUNCIONES PARA CAMPOS QUE PERMITEN NULL ====================
@@ -131,6 +150,7 @@ public class EditarjsonService {
                 LocalDateTime dateTime = LocalDateTime.parse(str, formatter);
                 return Timestamp.valueOf(dateTime);
             } catch (DateTimeParseException e) {
+                log.error("Fecha con hora inválida (esperado yyyy-MM-dd HH:mm): {}", valor, e);
                 throw new IllegalArgumentException("Fecha con hora inválida (esperado yyyy-MM-dd HH:mm): " + str, e);
             }
         }
@@ -200,14 +220,12 @@ public class EditarjsonService {
             }
             return Integer.parseInt(str);
         } catch (NumberFormatException e) {
-            System.err.println("Entero inválido: " + valor);
+            log.error("Entero inválido: {}", valor);
             return null;
         }
     }
 
-
-
-// ==================== FUNCIONES PARA CAMPOS QUE NO PERMITEN NULL ====================
+    // ==================== FUNCIONES PARA CAMPOS QUE NO PERMITEN NULL ====================
 
     private Object parseFechaSinHoraNoNull(Object valor) {
         if (valor == null) {
@@ -226,7 +244,7 @@ public class EditarjsonService {
                 LocalDate localDate = LocalDate.parse(str, formatter);
                 return java.sql.Date.valueOf(localDate);
             } catch (DateTimeParseException e) {
-                System.err.println("Fecha inválida (esperado yyyy-MM-dd): " + str);
+                log.error("Fecha inválida (esperado yyyy-MM-dd): {}", str, e);
             }
         }
 
@@ -250,7 +268,7 @@ public class EditarjsonService {
                 LocalDateTime dateTime = LocalDateTime.parse(str, formatter);
                 return Timestamp.valueOf(dateTime);
             } catch (DateTimeParseException e) {
-                System.err.println("Fecha con hora inválida (esperado yyyy-MM-dd HH:mm): " + str);
+                log.error("Fecha con hora inválida (esperado yyyy-MM-dd HH:mm): {}", str, e);
             }
         }
 
@@ -320,7 +338,10 @@ public class EditarjsonService {
         throw new IllegalArgumentException("Tipo de dato no soportado para Integer: " + valor.getClass());
     }
 
+
     private void actualizarTransaccion(Connection conn, Map<String, Object> datos, int idMovDoc) throws SQLException {
+        log.info("Iniciando actualización de transacción para IdMovDoc={}", idMovDoc);
+
         String sql = "UPDATE dbo.Rips_Transaccion SET IdEmpresaGrupo = ?, NFact = ?, tipoNota = ?, numNota = ? WHERE IdMovDoc = ?";
         
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -331,11 +352,13 @@ public class EditarjsonService {
             stmt.setInt(5, idMovDoc); 
 
             int rowsAffected = stmt.executeUpdate();
-            System.out.println("Transacción actualizada: " + rowsAffected + " filas afectadas");
+            log.info("Transacción actualizada: {} fila(s) afectada(s)", rowsAffected);
         }
     }
 
     private void actualizarUsuarios(Connection conn, Map<String, Object> usuarios, int idMovDoc) throws SQLException {
+        log.info("Iniciando actualización de usuarios para IdMovDoc={}", idMovDoc);
+
         String sql = """
             UPDATE dbo.Rips_Usuarios
             SET tipoDocumentoIdentificacion = ?, numDocumentoIdentificacion = ?, tipoUsuario = ?, 
@@ -361,11 +384,13 @@ public class EditarjsonService {
             stmt.setInt(12, (Integer) parseIntegerNoNull(usuarios.get("consecutivo")));
 
             int rowsAffected = stmt.executeUpdate();
-            System.out.println("Usuarios actualizado: " + rowsAffected + " fila(s) afectada(s)");
+            log.info("Usuarios actualizados: {} fila(s) afectada(s)", rowsAffected);
         }
     }
 
     private void actualizarConsulta(Connection conn, Map<String, Object> consulta, int idMovDoc) throws SQLException {
+        log.info("Iniciando actualización de consulta para IdMovDoc={}", idMovDoc);
+
         String sql = """
             UPDATE dbo.Rips_Consulta
             SET codPrestador = ?, fechaInicioAtencion = ?, numAutorizacion = ?, codConsulta = ?, 
@@ -406,11 +431,13 @@ public class EditarjsonService {
             stmt.setInt(22, (Integer) parseIntegerNoNull(consulta.get("consecutivo")));                                        
 
             int rowsAffected = stmt.executeUpdate();
-            System.out.println("Consulta actualizada: " + rowsAffected + " fila(s) afectada(s)");
+            log.info("Consulta actualizada: {} fila(s) afectada(s)", rowsAffected);
         }
     }
 
     private void actualizarProcedimientos(Connection conn, Map<String, Object> procedimientos, int idMovDoc) throws SQLException {
+        log.info("Iniciando actualización de procedimientos para IdMovDoc={}", idMovDoc);
+
         String sql = """
             UPDATE dbo.Rips_Procedimientos
             SET codPrestador = ?, fechaInicioAtencion = ?, idMIPRES = ?, numAutorizacion = ?,
@@ -427,33 +454,35 @@ public class EditarjsonService {
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, parseStringNoNull(procedimientos.get("codPrestador"), 12));                    
-            stmt.setTimestamp(2, (Timestamp) parseFechaConHoraNull(procedimientos.get("fechaInicioAtencion")));                                                         
+            stmt.setTimestamp(2, (Timestamp) parseFechaConHoraNull(procedimientos.get("fechaInicioAtencion")));                                                
             stmt.setString(3, parseStringNull(procedimientos.get("idMIPRES"), 20));                         
             stmt.setString(4, parseStringNull(procedimientos.get("numAutorizacion"), 30));                  
-            stmt.setString(5, parseStringNoNull(procedimientos.get("codProcedimiento"), 9));                  
-            stmt.setString(6, parseStringNull(procedimientos.get("viaIngresoServicioSalud"), 3));          
+            stmt.setString(5, parseStringNoNull(procedimientos.get("codProcedimiento"), 9));                   
+            stmt.setString(6, parseStringNull(procedimientos.get("viaIngresoServicioSalud"), 3));            
             stmt.setString(7, parseStringNoNull(procedimientos.get("modalidadGrupoServicioTecSal"), 2));      
             stmt.setString(8, parseStringNull(procedimientos.get("grupoServicios"), 2));                    
             stmt.setInt(9, (Integer) parseIntegerNoNull(procedimientos.get("codServicio")));                                  
-            stmt.setString(10, parseStringNull(procedimientos.get("finalidadTecnologiaSalud"), 3));        
+            stmt.setString(10, parseStringNull(procedimientos.get("finalidadTecnologiaSalud"), 3));          
             stmt.setString(11, parseStringNoNull(procedimientos.get("tipoDocumentoIdentificacion"), 2));     
             stmt.setString(12, parseStringNoNull(procedimientos.get("numDocumentoIdentificacion"), 20));     
-            stmt.setString(13, parseStringNull(procedimientos.get("codDiagnosticoPrincipal"), 25));        
-            stmt.setString(14, parseStringNull(procedimientos.get("codDiagnosticoRelacionado"), 25));      
-            stmt.setString(15, parseStringNull(procedimientos.get("codComplicacion"), 25));                 
+            stmt.setString(13, parseStringNull(procedimientos.get("codDiagnosticoPrincipal"), 25));          
+            stmt.setString(14, parseStringNull(procedimientos.get("codDiagnosticoRelacionado"), 25));        
+            stmt.setString(15, parseStringNull(procedimientos.get("codComplicacion"), 25));                  
             stmt.setInt(16, (Integer) parseIntegerNoNull(procedimientos.get("vrServicio")));                                  
-            stmt.setString(17, parseStringNoNull(procedimientos.get("conceptoRecaudo"), 2));               
-            stmt.setInt(18, (Integer) parseIntegerNoNull(procedimientos.get("valorPagoModerador")));                          
+            stmt.setString(17, parseStringNoNull(procedimientos.get("conceptoRecaudo"), 2));                
+            stmt.setInt(18, (Integer) parseIntegerNoNull(procedimientos.get("valorPagoModerador")));                           
             stmt.setString(19, parseStringNull(procedimientos.get("numFEVPagoModerador"), 20));            
             stmt.setInt(20, idMovDoc);
-            stmt.setInt(21, (Integer) parseIntegerNoNull(procedimientos.get("consecutivo")));                                 
+            stmt.setInt(21, (Integer) parseIntegerNoNull(procedimientos.get("consecutivo")));                                  
 
             int rowsAffected = stmt.executeUpdate();
-            System.out.println("Procedimientos actualizado: " + rowsAffected + " fila(s) afectada(s)");
+            log.info("Procedimientos actualizado: {} fila(s) afectada(s)", rowsAffected);
         }
     }
 
     private void actualizarUrgencias(Connection conn, Map<String, Object> urgencias, int idMovDoc) throws SQLException {
+        log.info("Iniciando actualización de urgencias para IdMovDoc={}", idMovDoc);
+
         String sql = """
             UPDATE dbo.Rips_Urg
             SET codPrestador = ?, fechaInicioAtencion = ?, causaMotivoAtencion = ?, codDiagnosticoPrincipal = ?,
@@ -467,7 +496,7 @@ public class EditarjsonService {
             """;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, parseStringNoNull(urgencias.get("codPrestador"), 12));                 
+            stmt.setString(1, parseStringNoNull(urgencias.get("codPrestador"), 12));                  
             stmt.setTimestamp(2, (Timestamp) parseFechaConHoraNull(urgencias.get("fechaInicioAtencion")));                                                   
             stmt.setString(3, parseStringNoNull(urgencias.get("causaMotivoAtencion"), 2));           
             stmt.setString(4, parseStringNull(urgencias.get("codDiagnosticoPrincipal"), 6));       
@@ -482,11 +511,13 @@ public class EditarjsonService {
             stmt.setInt(13, (Integer) parseIntegerNoNull(urgencias.get("consecutivo")));                             
 
             int rowsAffected = stmt.executeUpdate();
-            System.out.println("Urgencias actualizado: " + rowsAffected + " fila(s) afectada(s)");
+            log.info("Urgencias actualizado: {} fila(s) afectada(s)", rowsAffected);
         }
     }
 
     private void actualizarHospitalizacion(Connection conn, Map<String, Object> hospitalizacion, int idMovDoc) throws SQLException {
+        log.info("Iniciando actualización de hospitalización para IdMovDoc={}", idMovDoc);
+
         String sql = """
             UPDATE dbo.Rips_Hospitalizacion
             SET codPrestador = ?, viaingresoServicioSalud = ?, fechaInicioAtencion = ?, numAutorizacion = ?,
@@ -503,7 +534,7 @@ public class EditarjsonService {
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, parseStringNoNull(hospitalizacion.get("codPrestador"), 12));                
             stmt.setString(2, parseStringNull(hospitalizacion.get("viaIngresoServicioSalud"), 3));    
-            stmt.setTimestamp(3, (Timestamp) parseFechaConHoraNull(hospitalizacion.get("fechaInicioAtencion")));                                                         
+            stmt.setTimestamp(3, (Timestamp) parseFechaConHoraNull(hospitalizacion.get("fechaInicioAtencion")));                                                    
             stmt.setString(4, parseStringNull(hospitalizacion.get("numAutorizacion"), 30));           
             stmt.setString(5, parseStringNoNull(hospitalizacion.get("causaMotivoAtencion"), 2));          
             stmt.setString(6, parseStringNull(hospitalizacion.get("codDiagnosticoPrincipal"), 6));    
@@ -519,11 +550,13 @@ public class EditarjsonService {
             stmt.setInt(16, (Integer) parseIntegerNoNull(hospitalizacion.get("consecutivo"))); 
 
             int rowsAffected = stmt.executeUpdate();
-            System.out.println("Hospitalización actualizada: " + rowsAffected + " fila(s) afectada(s)");
-        }
+            log.info("Hospitalización actualizado: {} fila(s) afectada(s)", rowsAffected);
+        } 
     }
 
     private void actualizarRecienNacidos(Connection conn, Map<String, Object> recienNacidos, int idMovDoc) throws SQLException {
+        log.info("Iniciando actualización de recién nacidos para IdMovDoc={}", idMovDoc);
+
         String sql = """
             UPDATE dbo.Rips_RecienNacidos
             SET codPrestador = ?, tipoDocumentoIdentificacion = ?, numDocumentoIdentificacion = ?, fechaNacimiento = ?,
@@ -554,11 +587,13 @@ public class EditarjsonService {
             stmt.setInt(14, (Integer) parseIntegerNoNull(recienNacidos.get("consecutivo"))); 
 
             int rowsAffected = stmt.executeUpdate();
-            System.out.println("Recién Nacidos actualizado: " + rowsAffected + " filas afectadas");
+            log.info("Recién Nacidos actualizado: {} filas afectadas", rowsAffected);
         }
     }
 
     private void actualizarMedicamentos(Connection conn, Map<String, Object> medicamentos, int idMovDoc) throws SQLException {
+        log.info("Iniciando actualización de medicamentos para IdMovDoc={}", idMovDoc);
+
         String sql = """
             UPDATE dbo.Rips_Medicamentos
             SET codPrestador = ?, numAutorizacion = ?, idMIPRES = ?, fechaDispensAdmon = ?, 
@@ -575,7 +610,7 @@ public class EditarjsonService {
             """;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, parseStringNoNull(medicamentos.get("codPrestador"), 12));                 
+            stmt.setString(1, parseStringNoNull(medicamentos.get("codPrestador"), 12));                  
             stmt.setString(2, parseStringNull(medicamentos.get("numAutorizacion"), 30));              
             stmt.setString(3, parseStringNull(medicamentos.get("idMIPRES"), 20));                     
             stmt.setTimestamp(4, (Timestamp) parseFechaConHoraNull(medicamentos.get("fechaDispensAdmon")));       
@@ -601,11 +636,13 @@ public class EditarjsonService {
             stmt.setInt(24, (Integer) parseIntegerNoNull(medicamentos.get("consecutivo"))); 
 
             int rowsAffected = stmt.executeUpdate();
-            System.out.println("Medicamentos actualizado: " + rowsAffected + " fila(s) afectada(s)");
+            log.info("Medicamentos actualizado: {} fila(s) afectada(s)", rowsAffected);
         }
     }
 
     private void actualizarOtrosServicios(Connection conn, Map<String, Object> otrosServicios, int idMovDoc) throws SQLException {
+        log.info("Iniciando actualización de OtrosServicios para IdMovDoc={}", idMovDoc);
+
         String sql = """
             UPDATE dbo.Rips_OtrosServicios
             SET codPrestador = ?, numAutorizacion = ?, idMIPRES = ?, fechaSuministroTecnologia = ?, tipoOS = ?,
@@ -638,10 +675,7 @@ public class EditarjsonService {
             stmt.setInt(17, (Integer) parseIntegerNoNull(otrosServicios.get("consecutivo")));
 
             int rowsAffected = stmt.executeUpdate();
-            System.out.println("Otros Servicios actualizado: " + rowsAffected + " fila(s) afectada(s)");
-        } catch (SQLException e) {
-            System.err.println("Error en actualizarOtrosServicios: " + e.getMessage());
-            throw e;
+            log.info("OtrosServicios actualizado: {} fila(s) afectada(s)", rowsAffected);
         }
     }
 }
