@@ -3,6 +3,9 @@ package com.certificadosapi.certificados.service;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -12,16 +15,15 @@ import org.springframework.http.*;
 import com.certificadosapi.certificados.config.DatabaseConfig;
 import com.certificadosapi.certificados.util.ServidorUtil;
 
-import com.certificadosapi.certificados.service.ValidadorService;
-
-
 import java.sql.*;
 
 @Service
 public class ValidadorService {
 
-    private DatabaseConfig databaseConfig;
-    private ServidorUtil servidorUtil;
+    private static final Logger log = LoggerFactory.getLogger(ValidadorService.class);
+
+    private final DatabaseConfig databaseConfig;
+    private final ServidorUtil servidorUtil;
 
     @Autowired
     public ValidadorService(DatabaseConfig databaseConfig, ServidorUtil servidorUtil){
@@ -29,17 +31,18 @@ public class ValidadorService {
         this.servidorUtil = servidorUtil;
     }
 
-    //ENVIAR FACTURA AL MINISTERIO
+    // ENVIAR FACTURA AL MINISTERIO
     public String subirArchivoJson(String jsonContenido, String bearerToken, String nFact) {
-        System.out.println("NFact recibido: " + nFact);
+        log.info("Iniciando envío de JSON al ministerio para NFact={}", nFact);
 
         Integer idTipoCapita = obtenerIdTipoCapita(nFact);
-        
+
         if (idTipoCapita == null) {
+            log.warn("No se encontró IdTipoCapita para NFact={}", nFact);
             throw new IllegalArgumentException("No se encontró registro con NFact: " + nFact);
         }
-        
-        System.out.println("IdTipoCapita obtenido: " + idTipoCapita);
+
+        log.debug("IdTipoCapita detectado para NFact {} -> {}", nFact, idTipoCapita);
 
         RestTemplate restTemplate = servidorUtil.crearRestTemplateInseguro();
 
@@ -53,77 +56,104 @@ public class ValidadorService {
 
         if (idTipoCapita == 1) {
             urlApiDocker = "https://localhost:9443/api/PaquetesFevRips/CargarFevRips";
-            System.out.println("Enviado a CargarFevRips");
+            log.info("Solicitud enviada a endpoint CargarFevRips para NFact={}", nFact);
         } else if (idTipoCapita == 3) {
             urlApiDocker = "https://localhost:9443/api/PaquetesFevRips/CargarCapitaPeriodo";
+            log.info("Solicitud enviada a endpoint CargarCapitaPeriodo para NFact={}", nFact);
         } else {
+            log.error("IdTipoCapita no soportado para NFact={} -> {}", nFact, idTipoCapita);
             throw new IllegalArgumentException("IdTipoCapita no soportado: " + idTipoCapita);
         }
 
-        ResponseEntity<String> respuesta = restTemplate.postForEntity(urlApiDocker, entidad, String.class);
-        return respuesta.getBody();
+        try {
+            ResponseEntity<String> respuesta = restTemplate.postForEntity(urlApiDocker, entidad, String.class);
+            log.info("Respuesta recibida correctamente para NFact={} Status={}", nFact, respuesta.getStatusCode());
+            return respuesta.getBody();
+
+        } catch (HttpStatusCodeException ex) {
+            log.error("Error HTTP al enviar JSON para NFact={} Detalle={}", nFact, ex.getResponseBodyAsString());
+            throw new RuntimeException("Error en login: " + ex.getResponseBodyAsString(), ex);
+
+        } catch (Exception e) {
+            log.error("Error inesperado al enviar archivo JSON para NFact={} Error={}", nFact, e.getMessage());
+            throw new RuntimeException("Error en la solicitud de login: " + e.getMessage(), e);
+        }
     }
 
-    /**
-     * Obtiene el tipo de capita desde la BD para saber si se envía como capita o como evento
-     */
 
+    // ObtenerIdTipoCapita
     private Integer obtenerIdTipoCapita(String nFact) {
+        log.debug("Consultando IdTipoCapita para NFact={}", nFact);
+
         String sql = "SELECT IdTipoCapita FROM FacturaFinal WHERE NFact = ?";
-        
+
         try (Connection connection = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"));
-            PreparedStatement statement = connection.prepareStatement(sql)) {
+             PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setString(1, nFact);
 
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
-                    return resultSet.getInt("IdTipoCapita");
+                    int idTipo = resultSet.getInt("IdTipoCapita");
+                    log.debug("IdTipoCapita encontrado para {} -> {}", nFact, idTipo);
+                    return idTipo;
                 }
+                log.warn("No se encontró IdTipoCapita para NFact={}", nFact);
                 return null;
             }
 
-        } catch (Exception e) {
-            System.err.println("Error SQL: " + e.getMessage());
+        } catch (SQLException e) {
+            log.error("Error SQL al consultar IdTipoCapita para NFact={} Error={}", nFact, e.getMessage());
             throw new RuntimeException("Error en la consulta SQL", e);
         }
     }
 
-    //Para enviar al ministerio se necesita enviar el XML como base64
+
+    // Obtener XML como Base64
     public String exportDocXmlBase64(int idMovDoc) {
+        log.info("Solicitando XML Base64 para IdMovDoc={}", idMovDoc);
+
         try {
             String connectionUrl = databaseConfig.getConnectionUrl("IPSoftFinanciero_ST");
 
             try (Connection conn = DriverManager.getConnection(connectionUrl);
-                PreparedStatement pstmt = conn.prepareStatement(
-                    "SELECT CONVERT(XML, DocXmlEnvelope) AS DocXml FROM MovimientoDocumentos WHERE IdMovDoc = ?")) {
-                
+                 PreparedStatement pstmt = conn.prepareStatement(
+                         "SELECT CONVERT(XML, DocXmlEnvelope) AS DocXml FROM MovimientoDocumentos WHERE IdMovDoc = ?")) {
+
                 pstmt.setInt(1, idMovDoc);
 
                 try (ResultSet rs = pstmt.executeQuery()) {
+
                     if (rs.next()) {
                         String docXmlContent = rs.getString("DocXml");
 
                         if (docXmlContent == null) {
-                            throw new IllegalStateException("El contenido XML está vacío o es nulo para el documento con IdMovDoc: " + idMovDoc);
+                            log.error("XML vacío o nulo para IdMovDoc={}", idMovDoc);
+                            throw new IllegalStateException("El contenido XML está vacío para IdMovDoc: " + idMovDoc);
                         }
 
                         byte[] xmlBytes = docXmlContent.getBytes(StandardCharsets.UTF_8);
                         String base64Encoded = Base64.getEncoder().encodeToString(xmlBytes);
 
+                        log.debug("XML convertido a Base64 correctamente para IdMovDoc={}", idMovDoc);
                         return base64Encoded;
-
-                    } else {
-                        throw new IllegalArgumentException("No se encontró un documento con el idMovDoc: " + idMovDoc);
                     }
+
+                    log.warn("No se encontró documento XML para IdMovDoc={}", idMovDoc);
+                    throw new IllegalArgumentException("No se encontró documento con IdMovDoc: " + idMovDoc);
                 }
             }
         } catch (SQLException e) {
+            log.error("Error al procesar XML Base64 para IdMovDoc={} Detalle={}", idMovDoc, e.getMessage());
             throw new RuntimeException("Error al procesar la solicitud: " + e.getMessage(), e);
         }
     }
 
+
+    // Login API DOCKER
     public String login(String jsonBody) {
+        log.info("Ingresando a la Api Docker");
+
         try {
             RestTemplate restTemplate = servidorUtil.crearRestTemplateInseguro();
 
@@ -134,17 +164,25 @@ public class ValidadorService {
             String url = "https://localhost:9443/api/auth/LoginSISPRO";
 
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+
+            log.debug("Login exitoso Status={} ", response.getStatusCode());
             return response.getBody();
-            
+
         } catch (HttpStatusCodeException ex) {
+            log.error("Error en login externo. Detalle={}", ex.getResponseBodyAsString());
             throw new RuntimeException("Error en login: " + ex.getResponseBodyAsString(), ex);
+
         } catch (Exception e) {
+            log.error("Error inesperado en login externo: {}", e.getMessage());
             throw new RuntimeException("Error en la solicitud de login: " + e.getMessage(), e);
         }
     }
 
-    // Método para guardar la respuesta de la API (El CUV se guarda en una tabla y luego al descargar la factura aparece el TXT con el CUV)
+
+    // Guardar respuesta API (CUV)
     public String guardarRespuestaApi(String nFact, String mensajeRespuesta) {
+        log.info("Guardando respuesta API para NFact={}", nFact);
+
         try {
             String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
 
@@ -157,6 +195,7 @@ public class ValidadorService {
                     checkStmt.setString(1, nFact);
                     try (ResultSet rs = checkStmt.executeQuery()) {
                         if (rs.next() && rs.getInt(1) > 0) {
+                            log.warn("Intento de duplicado: ya existe registro para NFact={}", nFact);
                             throw new IllegalStateException("Ya existe un registro para el Nfact: " + nFact);
                         }
                     }
@@ -168,11 +207,12 @@ public class ValidadorService {
                     statement.executeUpdate();
                 }
 
+                log.info("Respuesta API guardada exitosamente para NFact={}", nFact);
                 return "Respuesta guardada correctamente";
             }
         } catch (SQLException e) {
+            log.error("Error al guardar respuesta API para NFact={} Detalle={}", nFact, e.getMessage());
             throw new RuntimeException("Error al guardar respuesta: " + e.getMessage(), e);
         }
     }
-
 }
