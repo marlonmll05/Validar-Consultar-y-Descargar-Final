@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +31,8 @@ import java.util.zip.ZipOutputStream;
 @Service
 public class FacturasService {
 
+    private static final Logger log = LoggerFactory.getLogger(FacturasService.class);
+
     private final DatabaseConfig databaseConfig;
 
 
@@ -39,31 +43,45 @@ public class FacturasService {
     
     // Método para exportar el XML en el servicio
     public byte[] exportDocXml(int idMovDoc) throws SQLException {
+
+        log.info("Iniciando exportación de XML para idMovDoc={}", idMovDoc);
+
         try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoftFinanciero_ST"))) {
-            
+
             String query = "SELECT CONVERT(XML, DocXmlEnvelope) AS DocXml FROM MovimientoDocumentos WHERE IdMovDoc = ?";
-            
+
             try (PreparedStatement pstmt = conn.prepareStatement(query)) {
                 pstmt.setInt(1, idMovDoc);
-                
+
+                log.debug("Ejecutando consulta SQL para obtener XML. Query={}, idMovDoc={}", query, idMovDoc);
+
                 try (ResultSet rs = pstmt.executeQuery()) {
-                    if (rs.next()) {
-                        String docXmlContent = rs.getString("DocXml");
-                        if (docXmlContent != null) {
-                            return docXmlContent.getBytes(StandardCharsets.UTF_8);
-                        } else {
-                            throw new SQLException("El campo DocXmlEnvelope está vacío para el ID proporcionado.");
-                        }
-                    } else {
+
+                    if (!rs.next()) {
+                        log.warn("No se encontró registro en MovimientoDocumentos para idMovDoc={}", idMovDoc);
                         throw new IllegalArgumentException("No se encontró ningún documento para el ID proporcionado.");
                     }
+
+                    String docXmlContent = rs.getString("DocXml");
+
+                    if (docXmlContent == null || docXmlContent.isBlank()) {
+                        log.error("El campo DocXmlEnvelope está vacío o nulo para idMovDoc={}", idMovDoc);
+                        throw new SQLException("El campo DocXmlEnvelope está vacío para el ID proporcionado.");
+                    }
+
+                    log.info("XML obtenido correctamente para idMovDoc={}. Tamaño del XML: {} bytes",
+                            idMovDoc, docXmlContent.getBytes(StandardCharsets.UTF_8).length);
+
+                    return docXmlContent.getBytes(StandardCharsets.UTF_8);
                 }
-            }  
+            }
         } 
     }
 
     //Metodo parar crear JSON de Facturas
     public byte[] generarjson(int idMovDoc) throws SQLException, JsonProcessingException {
+
+        log.info("Iniciando generación de JSON RIPS para idMovDoc={}", idMovDoc);
 
         try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
 
@@ -81,6 +99,9 @@ public class FacturasService {
                         String tipoNota = facturasRs.getString("tipoNota");
                         String numNota = facturasRs.getString("numNota");
 
+                        log.debug("Factura encontrada: NFact={} tipoNota={} numNota={}",
+                            numFactura, tipoNota, numNota);
+
                         resultado.put("numDocumentoIdObligado", numDocumentoIdObligado);
                         resultado.put("numFactura", numFactura);
                         resultado.put("tipoNota", tipoNota);
@@ -90,7 +111,10 @@ public class FacturasService {
                         try (PreparedStatement usuariosStmt = conn.prepareStatement(usuariosQuery)) {
                             usuariosStmt.setInt(1, idMovDoc);
                             try (ResultSet usuariosRs = usuariosStmt.executeQuery()) {
+                                int contadorUsuarios = 0;
                                 while (usuariosRs.next()) {
+                                    contadorUsuarios++;
+                                    
                                     ObjectNode usuarioNode = mapper.createObjectNode();
                                     int idRipsUsuario = usuariosRs.getInt("IdRips_Usuario");
 
@@ -458,6 +482,8 @@ public class FacturasService {
                                         usuarioNode.set("servicios", serviciosNode);
                                         usuariosNode.add(usuarioNode);
                                     }
+                                    log.info("Total usuarios procesados para idMovDoc={}: {}",
+                                        idMovDoc, contadorUsuarios);
                                 }
                             }
                         }
@@ -466,8 +492,14 @@ public class FacturasService {
                     resultado.set("usuarios", usuariosNode);
                     
                     if (usuariosNode.size() == 0) {
+                        log.warn("Factura sin usuarios asociados. idMovDoc={}, numFactura={}",
+                            idMovDoc, resultado.get("numFactura").asText());
+
                         throw new RuntimeException("No se encontraron datos en Usuarios");
                     }
+
+                    log.info("JSON RIPS generado correctamente para idMovDoc={} (usuarios={})",
+                        idMovDoc, usuariosNode.size());
                     
                     return mapper.writerWithDefaultPrettyPrinter()
                             .writeValueAsString(resultado)
@@ -479,6 +511,7 @@ public class FacturasService {
 
     //Metodo para crear TXT de Facturas
     public Map<String, byte[]> generarTxt(int idMovDoc) throws SQLException {
+        log.info("Iniciando generarTxt para IdMovDoc={}", idMovDoc);
         Map<String, byte[]> txtFiles = new HashMap<>();
     
         try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"));){
@@ -817,9 +850,11 @@ public class FacturasService {
             }
             
             if (txtFiles.isEmpty()) {
+                log.warn("No se generó ningún TXT. No se encontraron datos para IdMovDoc={}", idMovDoc);
                 throw new RuntimeException("No se encontraron datos para el ID propocionado");
             }
             
+            log.info("TXT generados correctamente para IdMovDoc={} -> archivos={}", idMovDoc, txtFiles.keySet());
             return txtFiles;
     
         }
@@ -827,169 +862,265 @@ public class FacturasService {
 
     // Metodo para generar Zip de Facturas y XML
     public ZipResult generarzip(
-        int idMovDoc, 
-        String tipoArchivo, 
-        boolean incluirXml) throws IOException, SQLException { 
+        int idMovDoc,
+        String tipoArchivo,
+        boolean incluirXml) throws IOException, SQLException {
 
-        if (!tipoArchivo.equalsIgnoreCase("json") &&
-            !tipoArchivo.equalsIgnoreCase("txt") &&
-            !tipoArchivo.equalsIgnoreCase("ambos")) {
-            throw new IllegalArgumentException("Tipo de archivo no válido. Debe ser 'json', 'txt' o 'ambos'");
+    log.info("Iniciando generarzip(idMovDoc={}, tipoArchivo={}, incluirXml={})",
+            idMovDoc, tipoArchivo, incluirXml);
+
+    if (!tipoArchivo.equalsIgnoreCase("json")
+            && !tipoArchivo.equalsIgnoreCase("txt")
+            && !tipoArchivo.equalsIgnoreCase("ambos")) {
+        log.warn("Tipo de archivo inválido recibido: {}", tipoArchivo);
+        throw new IllegalArgumentException("Tipo de archivo no válido. Debe ser 'json', 'txt' o 'ambos'");
+    }
+
+    String prefijo = "";
+    String numdoc = "";
+    String idEmpresaGrupo = "";
+
+    String connectionFinanciero = databaseConfig.getConnectionUrl("IPSoftFinanciero_ST");
+    log.debug("Conectando a BD financiera para generar ZIP. connectionUrl={}", connectionFinanciero);
+
+    try (Connection conn = DriverManager.getConnection(connectionFinanciero);
+         ByteArrayOutputStream baos = new ByteArrayOutputStream();
+         ZipOutputStream zos = new ZipOutputStream(baos)) {
+
+        // Obtener prefijo y numdoc
+        String docQuery = "SELECT Prefijo, Numdoc FROM MovimientoDocumentos WHERE IdMovDoc = ?";
+        log.debug("Ejecutando consulta de prefijo y numdoc: {} con IdMovDoc={}", docQuery, idMovDoc);
+
+        try (PreparedStatement stmt = conn.prepareStatement(docQuery)) {
+            stmt.setInt(1, idMovDoc);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    prefijo = rs.getString("Prefijo");
+                    numdoc = rs.getString("Numdoc");
+                    log.debug("Datos documento obtenidos: prefijo='{}', numdoc='{}'", prefijo, numdoc);
+                } else {
+                    log.error("No se encontró documento para IdMovDoc={}", idMovDoc);
+                    throw new IllegalArgumentException("No se encontró documento con IdMovDoc: " + idMovDoc);
+                }
+            }
         }
 
-        String prefijo = "";
-        String numdoc = "";
-        String IdEmpresaGrupo = "";
+        // Obtener IdEmpresaGrupo
+        String empresaQuery =
+                "SELECT IdEmpresaGrupo " +
+                "FROM MovimientoDocumentos AS M " +
+                "INNER JOIN Empresas AS E ON E.IdEmpresaKey = M.IdEmpresaKey " +
+                "WHERE IdMovDoc = ?";
 
-        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoftFinanciero_ST"));
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ZipOutputStream zos = new ZipOutputStream(baos)) {
+        log.debug("Ejecutando consulta de IdEmpresaGrupo: {} con IdMovDoc={}", empresaQuery, idMovDoc);
 
-            // Obtener prefijo y numdoc
-            String docQuery = "SELECT Prefijo, Numdoc FROM MovimientoDocumentos WHERE IdMovDoc = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(docQuery)) {
-                stmt.setInt(1, idMovDoc);
-                try (ResultSet rs = stmt.executeQuery()) {  
-                    if (rs.next()) {
-                        prefijo = rs.getString("Prefijo");
-                        numdoc = rs.getString("Numdoc");
-                    } else {
-                        throw new IllegalArgumentException("No se encontró documento con IdMovDoc: " + idMovDoc);
-                    }
+        try (PreparedStatement stmt = conn.prepareStatement(empresaQuery)) {
+            stmt.setInt(1, idMovDoc);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    idEmpresaGrupo = rs.getString("IdEmpresaGrupo");
+                    log.debug("IdEmpresaGrupo obtenido: {}", idEmpresaGrupo);
+                } else {
+                    log.warn("No se encontró IdEmpresaGrupo para IdMovDoc={}", idMovDoc);
                 }
             }
+        }
 
-            // Obtener IdEmpresaGrupo
-            String empresaQuery = "SELECT IdEmpresaGrupo FROM MovimientoDocumentos as M INNER JOIN Empresas as E ON e.IdEmpresaKey =m.IdEmpresaKey  WHERE IdMovDoc = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(empresaQuery)) {
-                stmt.setInt(1, idMovDoc);
-                try (ResultSet rs = stmt.executeQuery()) {  
-                    if (rs.next()) {
-                        IdEmpresaGrupo = rs.getString("IdEmpresaGrupo");
-                    }
-                }
-            }
+        String yearSuffix = String.valueOf(LocalDate.now().getYear()).substring(2);
+        String formattedNumdoc = String.format("%08d", Integer.parseInt(numdoc));
+        String folderName = "Fac_" + prefijo + numdoc + "/";
 
-            String yearSuffix = String.valueOf(LocalDate.now().getYear()).substring(2);
-            String formattedNumdoc = String.format("%08d", Integer.parseInt(numdoc));
-            String folderName = "Fac_" + prefijo + numdoc + "/";
+        log.debug("Construyendo nombres: yearSuffix={}, formattedNumdoc={}, folderName={}",
+                yearSuffix, formattedNumdoc, folderName);
 
+        // XML
+        if (incluirXml) {
+            log.debug("incluirXml=true, exportando XML para IdMovDoc={}", idMovDoc);
+            byte[] xmlBytes = exportDocXml(idMovDoc);
+            String xmlName = "ad0" + idEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml";
+            log.debug("Nombre XML dentro del ZIP: {}", xmlName);
 
-            if (incluirXml) {
-                byte[] xmlBytes = exportDocXml(idMovDoc); 
-                ZipEntry xmlEntry = new ZipEntry(folderName + "ad0" + IdEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml");
-                zos.putNextEntry(xmlEntry);
-                zos.write(xmlBytes); 
+            ZipEntry xmlEntry = new ZipEntry(folderName + xmlName);
+            zos.putNextEntry(xmlEntry);
+            zos.write(xmlBytes);
+            zos.closeEntry();
+            log.info("XML agregado al ZIP: {} (bytes: {})", xmlName, xmlBytes.length);
+        } else {
+            log.debug("incluirXml=false, se omite XML en ZIP para IdMovDoc={}", idMovDoc);
+        }
+
+        // JSON
+        boolean jsonRequired = "json".equalsIgnoreCase(tipoArchivo) || "ambos".equalsIgnoreCase(tipoArchivo);
+        if (jsonRequired) {
+            log.debug("tipoArchivo={} requiere JSON, generando JSON para IdMovDoc={}", tipoArchivo, idMovDoc);
+            byte[] jsonResponse = generarjson(idMovDoc);
+            if (jsonResponse != null && jsonResponse.length > 0) {
+                String jsonName = "RipsFac_" + prefijo + numdoc + ".json";
+                ZipEntry jsonEntry = new ZipEntry(folderName + jsonName);
+                zos.putNextEntry(jsonEntry);
+                zos.write(jsonResponse);
                 zos.closeEntry();
-            } 
-            
+                log.info("JSON agregado al ZIP: {} (bytes: {})", jsonName, jsonResponse.length);
+            } else {
+                log.warn("generarjson(IdMovDoc={}) devolvió JSON vacío o nulo", idMovDoc);
+            }
+        } else {
+            log.debug("tipoArchivo={} no requiere JSON", tipoArchivo);
+        }
 
-            boolean jsonRequired = "json".equals(tipoArchivo) || "ambos".equals(tipoArchivo);
-            if (jsonRequired) {
-                byte[] jsonResponse = generarjson(idMovDoc);
-                if (jsonResponse != null && jsonResponse.length > 0) {
-                    ZipEntry jsonEntry = new ZipEntry(folderName + "RipsFac_" + prefijo + numdoc + ".json");
-                    zos.putNextEntry(jsonEntry);
-                    zos.write(jsonResponse);
+        // TXT
+        boolean txtRequired = "txt".equalsIgnoreCase(tipoArchivo) || "ambos".equalsIgnoreCase(tipoArchivo);
+        if (txtRequired) {
+            log.debug("tipoArchivo={} requiere TXT, generando TXT para IdMovDoc={}", tipoArchivo, idMovDoc);
+            Map<String, byte[]> txtFiles = generarTxt(idMovDoc);
+
+            if (txtFiles != null && !txtFiles.isEmpty()) {
+                log.info("Se generaron {} archivos TXT para IdMovDoc={}", txtFiles.size(), idMovDoc);
+                for (Map.Entry<String, byte[]> entry : txtFiles.entrySet()) {
+                    String txtName = entry.getKey();
+                    byte[] txtContent = entry.getValue();
+
+                    ZipEntry txtEntry = new ZipEntry(folderName + txtName);
+                    zos.putNextEntry(txtEntry);
+                    zos.write(txtContent);
                     zos.closeEntry();
+                    log.debug("TXT agregado al ZIP: {} (bytes: {})", txtName, txtContent.length);
                 }
+            } else {
+                log.warn("generarTxt(IdMovDoc={}) no devolvió archivos TXT", idMovDoc);
             }
+        } else {
+            log.debug("tipoArchivo={} no requiere TXT", tipoArchivo);
+        }
 
-            boolean txtRequired = "txt".equals(tipoArchivo) || "ambos".equals(tipoArchivo);
-            if (txtRequired) {
-                Map<String, byte[]> txtFiles = generarTxt(idMovDoc);
+        // TXT CUV (respuesta validador)
+        String respuestaValidador = null;
+        String connectionRips = databaseConfig.getConnectionUrl("IPSoft100_ST");
+        log.debug("Conectando a BD RIPS para obtener MensajeRespuesta. connectionUrl={}", connectionRips);
 
-                if (txtFiles != null && !txtFiles.isEmpty()) {
-                    for (Map.Entry<String, byte[]> entry : txtFiles.entrySet()) {
-                        ZipEntry txtEntry = new ZipEntry(folderName + entry.getKey());
-                        zos.putNextEntry(txtEntry);
-                        zos.write(entry.getValue());
-                        zos.closeEntry();
+        try (Connection connRips = DriverManager.getConnection(connectionRips)) {
+            String respuestaSQL = "SELECT MensajeRespuesta FROM RIPS_RespuestaApi WHERE Nfact = ?";
+            log.debug("Ejecutando consulta RIPS_RespuestaApi: {} con NFact={}", respuestaSQL, prefijo + numdoc);
+
+            try (PreparedStatement stmt = connRips.prepareStatement(respuestaSQL)) {
+                stmt.setString(1, prefijo + numdoc);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        respuestaValidador = rs.getString("MensajeRespuesta");
+                        log.debug("MensajeRespuesta obtenido para factura {}: longitud={}",
+                                prefijo + numdoc,
+                                respuestaValidador != null ? respuestaValidador.length() : 0);
+                    } else {
+                        log.info("No se encontró registro en RIPS_RespuestaApi para NFact={}", prefijo + numdoc);
                     }
                 }
             }
+        } catch (SQLException e) {
+            log.warn("Error al consultar RIPS_RespuestaApi para NFact={}: {}", prefijo + numdoc, e.getMessage(), e);
+        }
 
-            String respuestaValidador = null;
-            try (Connection connRips = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
-                String respuestaSQL = "SELECT MensajeRespuesta From RIPS_RespuestaApi WHERE Nfact = ?";
-                try (PreparedStatement stmt = connRips.prepareStatement(respuestaSQL)) {
-                    stmt.setString(1, prefijo + numdoc);
-                    try (ResultSet rs = stmt.executeQuery()) {  
-                        if (rs.next()) {
-                            respuestaValidador = rs.getString("MensajeRespuesta");
-                        }
-                    }
+        if (respuestaValidador != null && !respuestaValidador.isBlank()) {
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode jsonNode = mapper.readTree(respuestaValidador);
+
+                String procesoId = "";
+                if (jsonNode.has("ProcesoId")) {
+                    procesoId = jsonNode.get("ProcesoId").asText("");
                 }
-            } catch (SQLException e) {
-                System.err.println("Error al consultar rips_RespuestaAPI: " + e.getMessage());
+
+                String nombreTxt = folderName + "ResultadosMSPS_" + prefijo + numdoc
+                        + (procesoId.isBlank() ? "" : "_ID" + procesoId)
+                        + "_A_CUV.txt";
+
+                log.debug("Agregando TXT CUV al ZIP: {}", nombreTxt);
+
+                ZipEntry zipEntry = new ZipEntry(nombreTxt);
+                zos.putNextEntry(zipEntry);
+                zos.write(respuestaValidador.getBytes(StandardCharsets.UTF_8));
+                zos.closeEntry();
+
+                log.info("TXT CUV agregado al ZIP para factura {} (ProcesoId={})", prefijo + numdoc, procesoId);
+            } catch (Exception e) {
+                log.warn("Error al procesar respuesta del validador para factura {}: {}",
+                        prefijo + numdoc, e.getMessage(), e);
             }
+        } else {
+            log.debug("No se incluye TXT CUV, respuestaValidador nula o en blanco para factura {}", prefijo + numdoc);
+        }
 
-            if (respuestaValidador != null && !respuestaValidador.isBlank()) {
-                try {
-                    String procesoId = "";
-                    ObjectMapper mapper = new ObjectMapper();
-                    JsonNode jsonNode = mapper.readTree(respuestaValidador);
+        zos.finish();
+        zos.flush();
 
-                    if (jsonNode.has("ProcesoId")) {
-                        procesoId = jsonNode.get("ProcesoId").asText();
-                    }
+        byte[] zipBytes = baos.toByteArray();
+        String fileName = "Fac_" + prefijo + numdoc + ".zip";
 
-                    String nombreTxt = folderName + "ResultadosMSPS_" + prefijo + numdoc + "_ID" + procesoId + "_A_CUV.txt";
-                    ZipEntry zipEntry = new ZipEntry(nombreTxt);
-                    zos.putNextEntry(zipEntry);
-                    zos.write(respuestaValidador.getBytes(StandardCharsets.UTF_8));
-                    zos.closeEntry();
-                } catch (Exception e) {
-                    System.err.println("Error al procesar respuesta del validador: " + e.getMessage());
-                }
-            }
+        log.info("ZIP generado exitosamente para factura {}. Tamaño={} bytes, fileName={}",
+                prefijo + numdoc, zipBytes.length, fileName);
 
-            zos.finish();
-            zos.flush();
+        return new ZipResult(zipBytes, fileName);
 
-            byte[] zipBytes = baos.toByteArray();
-            String fileName = "Fac_" + prefijo + numdoc + ".zip"; 
-            return new ZipResult(zipBytes, fileName);
         }
     }
 
-
-    //METODO PARA GENERAR ADMISION
+    // METODO PARA GENERAR ADMISION
     public List<Map<String, Object>> generarAdmision(int idMovDoc, int idDoc) throws SQLException {
+
+        log.info("Iniciando generarAdmision(idMovDoc={}, idDoc={})", idMovDoc, idDoc);
 
         String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
 
         try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+
             String sql = "EXEC dbo.pa_Net_Facturas_GenSoportes ?, ?";
+            log.debug("Ejecutando procedimiento almacenado: {} con parámetros idMovDoc={}, idDoc={}", sql, idMovDoc, idDoc);
 
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
                 pstmt.setInt(1, idMovDoc);
                 pstmt.setInt(2, idDoc);
+
                 boolean hasResults = pstmt.execute();
+                log.debug("Resultado inicial de ejecución: hasResults={}", hasResults);
 
                 while (!hasResults && pstmt.getUpdateCount() != -1) {
                     hasResults = pstmt.getMoreResults();
+                    log.debug("Obteniendo más resultados del procedimiento... hasResults={}", hasResults);
                 }
 
-                if (hasResults) {
-                    try (ResultSet rs = pstmt.getResultSet()) {
-                        List<Map<String, Object>> resultados = new ArrayList<>();
-                        ResultSetMetaData metaData = rs.getMetaData();
-                        int columnCount = metaData.getColumnCount();
-
-                        while (rs.next()) {
-                            Map<String, Object> fila = new LinkedHashMap<>();
-                            for (int i = 1; i <= columnCount; i++) {
-                                fila.put(metaData.getColumnName(i), rs.getObject(i));
-                            }
-                            resultados.add(fila);
-                        }
-
-                        return resultados;
-                    }
-                } else {
+                if (!hasResults) {
+                    log.warn("El procedimiento pa_Net_Facturas_GenSoportes no devolvió ResultSet para idMovDoc={} idDoc={}", 
+                            idMovDoc, idDoc);
                     throw new RuntimeException("El procedimiento no devolvió resultados.");
                 }
+
+                try (ResultSet rs = pstmt.getResultSet()) {
+
+                    List<Map<String, Object>> resultados = new ArrayList<>();
+                    ResultSetMetaData metaData = rs.getMetaData();
+                    int columnCount = metaData.getColumnCount();
+
+                    log.debug("Procesando ResultSet. Columnas encontradas: {}", columnCount);
+
+                    while (rs.next()) {
+                        Map<String, Object> fila = new LinkedHashMap<>();
+                        for (int i = 1; i <= columnCount; i++) {
+                            fila.put(metaData.getColumnName(i), rs.getObject(i));
+                        }
+                        resultados.add(fila);
+                    }
+
+                    if (resultados.isEmpty()) {
+                        log.warn("El procedimiento devolvió un ResultSet pero no contenía filas. idMovDoc={}, idDoc={}", 
+                                idMovDoc, idDoc);
+                    } else {
+                        log.info("generarAdmision(idMovDoc={}, idDoc={}) devolvió {} filas", 
+                                idMovDoc, idDoc, resultados.size());
+                    }
+
+                    return resultados;
+                }
+
             }
         }
     }
