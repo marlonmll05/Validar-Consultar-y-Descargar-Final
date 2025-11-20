@@ -1433,7 +1433,7 @@ tabla.addEventListener('click', async (e) => {
         }
         
         const soportes = await respSoporte.json();
-        console.log("📦 Soportes adicionales obtenidos:", soportes.length);
+        console.log("Soportes adicionales obtenidos:", soportes.length);
 
         if (soportes.length === 0) {
         console.log("No hay soportes adicionales para procesar");

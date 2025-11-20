@@ -105,7 +105,7 @@ public class ApisqlService {
                     log.debug("Parámetros SQL: p1={}, p2={}", cuvProcesado, nFact);
 
                     int filasAfectadas = stmt.executeUpdate();
-                    log.info("Filas afectadas en actualizarCuvFF: {}", filasAfectadas);
+                    log.info("CUV Actualizado para Factura: {}", nFact);
 
                     if (filasAfectadas > 0) {
                         return Map.of(
@@ -171,7 +171,7 @@ public class ApisqlService {
                     log.debug("Parámetros SQL: p1={}, p2={}, p3={}", cuv, idEstadoValidacion, nFact);
 
                     int filasAfectadas = stmt.executeUpdate();
-                    log.info("Filas afectadas en actualizarCuvTransaccion: {}", filasAfectadas);
+                    log.info("CUV actualizado en Transacciones para Factura: {}", nFact);
 
                     if (filasAfectadas > 0) {
                         return Map.of(

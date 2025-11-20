@@ -77,11 +77,6 @@ public class FiltrobusquedaController {
             @RequestParam(required = false) Integer nCuentaCobro,
             @RequestParam(required = false) Boolean soloFacturados
     ) {
-        System.out.printf(
-            "Filtros recibidos: IdAtencion=%s, HistClinica=%s, Cliente=%s, NoContrato=%s, " +
-            "IdAreaAtencion=%s, IdUnidadAtencion=%s, FechaDesde=%s, FechaHasta=%s, nFact=%s, nCuentaCobro=%s, soloFacturados=$s",
-            IdAtencion, HistClinica, Cliente, NoContrato, IdAreaAtencion, IdUnidadAtencion, FechaDesde, FechaHasta, nFact, nCuentaCobro, soloFacturados
-        );
 
         List<Map<String, Object>> data = filtrobusquedaService.buscarAtenciones(
                 IdAtencion, HistClinica, Cliente, NoContrato,
