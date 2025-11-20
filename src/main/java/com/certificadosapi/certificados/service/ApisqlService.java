@@ -29,9 +29,6 @@ public class ApisqlService {
     // OBTENER CUV POR NFACT
     public Map<String, Object> obtenerCuv(String nFact) {
 
-        log.info("Iniciando obtenerCuv");
-        log.debug("Parámetro recibido: nFact={}", nFact);
-
         try {
             String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
             log.debug("Conectando a BD: {}", connectionUrl);
@@ -39,20 +36,18 @@ public class ApisqlService {
             try (Connection conn = DriverManager.getConnection(connectionUrl)) {
 
                 String sql = "SELECT Rips_CUV FROM FacturaFinal WHERE NFact = ? AND Rips_CUV IS NOT NULL";
-                log.debug("SQL ejecutado: {}", sql);
 
                 try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                     stmt.setString(1, nFact);
-                    log.debug("Parámetro SQL: p1={}", nFact);
 
                     try (ResultSet rs = stmt.executeQuery()) {
                         if (rs.next()) {
                             String cuv = rs.getString("Rips_CUV");
-                            log.info("CUV encontrado para {}: {}", nFact, cuv);
+                            log.debug("CUV encontrado para {}: {}", nFact, cuv);
 
                             return Map.of("success", true, "Rips_CUV", cuv);
                         } else {
-                            log.warn("No se encontró CUV para factura {}", nFact);
+                            log.debug("No se encontró CUV para factura {}", nFact);
 
                             return Map.of(
                                     "success", false,

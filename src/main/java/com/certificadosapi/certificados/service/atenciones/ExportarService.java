@@ -44,7 +44,6 @@ public class ExportarService {
     @Autowired
     public ExportarService(DatabaseConfig databaseConfig){
         this.databaseConfig = databaseConfig;
-        log.info("ExportarService inicializado correctamente");
     }
 
     //ENDPOINT PARA EXPORTAR EL CONTENIDO DE UNA ADMISION

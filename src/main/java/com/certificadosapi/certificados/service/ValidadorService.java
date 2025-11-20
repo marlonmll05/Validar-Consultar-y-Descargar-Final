@@ -152,7 +152,7 @@ public class ValidadorService {
 
     // Login API DOCKER
     public String login(String jsonBody) {
-        log.info("Ingresando a la Api Docker");
+        log.info("Intentando ingresar a la Api Docker");
 
         try {
             RestTemplate restTemplate = servidorUtil.crearRestTemplateInseguro();
@@ -165,7 +165,7 @@ public class ValidadorService {
 
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
 
-            log.debug("Login exitoso Status={} ", response.getStatusCode());
+            log.info("Envio de respuesta exitosa | Respuesta = {} ", response.getBody());
             return response.getBody();
 
         } catch (HttpStatusCodeException ex) {
