@@ -34,11 +34,13 @@ public class FiltrobusquedaService {
             String idTercero,
             String noContrato,
             String nFact,
-            Integer cuentaCobro) {
+            Integer cuentaCobro,
+            boolean tipoFecha
+        ) {
 
         log.info("Iniciando búsqueda manual de facturas");
-        log.debug("Parametros recibidos: fechaDesde={}, fechaHasta={}, idTercero={}, noContrato={}, nFact={}, cuentaCobro={}",
-            fechaDesde, fechaHasta, idTercero, noContrato, nFact, cuentaCobro);
+        log.debug("Parametros recibidos: fechaDesde={}, fechaHasta={}, idTercero={}, noContrato={}, nFact={}, cuentaCobro={}, tipoFecha={}",
+            fechaDesde, fechaHasta, idTercero, noContrato, nFact, cuentaCobro, tipoFecha);
 
 
         if (fechaDesde != null && fechaHasta != null && fechaDesde.isAfter(fechaHasta)) {
@@ -50,7 +52,7 @@ public class FiltrobusquedaService {
 
             log.debug("Conexión establecida para consultar pa_Net_Facturas_JSON");
 
-            String sql = "EXEC dbo.pa_Net_Facturas_JSON ?, ?, ?, ?, ?, ?, ?, ?, ?";
+            String sql = "EXEC dbo.pa_Net_Facturas_JSON ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?";
 
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -64,7 +66,6 @@ public class FiltrobusquedaService {
 
                 pstmt.setString(4, "-1");
 
-                // Tercero
                 try {
                     pstmt.setInt(5, (idTercero != null && !idTercero.isBlank()) ? Integer.parseInt(idTercero) : -1);
                 } catch (NumberFormatException ex) {
@@ -72,15 +73,17 @@ public class FiltrobusquedaService {
                     pstmt.setInt(5, -1);
                 }
 
-                // Contrato
                 pstmt.setObject(6, (noContrato != null && !noContrato.isBlank()) ? noContrato : null);
 
-                // NFact
                 pstmt.setObject(7, (nFact != null && !nFact.isBlank()) ? nFact : null);
 
                 pstmt.setInt(8, -1);
 
-                pstmt.setObject(9, cuentaCobro);
+                pstmt.setObject(9, (cuentaCobro != null) ? cuentaCobro : null);
+
+                pstmt.setNull(10, Types.BIT);
+
+                pstmt.setBoolean(11, tipoFecha); 
 
                 log.debug("Ejecutando procedimiento pa_Net_Facturas_JSON");
 

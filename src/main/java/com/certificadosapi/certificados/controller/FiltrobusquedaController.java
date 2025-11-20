@@ -36,14 +36,11 @@ public class FiltrobusquedaController {
         @RequestParam(required = false) String idTercero,
         @RequestParam(required = false) String noContrato,
         @RequestParam(required = false) String nFact,
-        @RequestParam(required = false) Integer cuentaCobro) {
-
-        
-        System.out.printf("FechaDesde: %s, FechaHasta: %s, IdTercero: %s, NoContrato: %s, NFact: %s, NCuentaCobro: %s%n",
-            fechaDesde, fechaHasta, idTercero, noContrato, nFact, cuentaCobro);
+        @RequestParam(required = false) Integer cuentaCobro,
+        @RequestParam(required = true) boolean tipoFecha) {
 
         List<Map<String, Object>> resultados = filtrobusquedaService.buscarFacturas(
-            fechaDesde, fechaHasta, idTercero, noContrato, nFact, cuentaCobro
+            fechaDesde, fechaHasta, idTercero, noContrato, nFact, cuentaCobro, tipoFecha
         );
         return ResponseEntity.ok(resultados);
     }

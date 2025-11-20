@@ -882,6 +882,8 @@ document.getElementById('facturasForm').addEventListener('submit', async functio
     try {
         const fechaDesde = document.getElementById('fechaDesde').value;
         const fechaHasta = document.getElementById('fechaHasta').value;
+        const tipoFechaCheckbox = document.getElementById('tipoFecha');
+
 
         if (!fechaDesde) {
             showToast('Error', 'La Fecha Desde es obligatoria.', 'error');
@@ -898,6 +900,9 @@ document.getElementById('facturasForm').addEventListener('submit', async functio
 
         const formData = new FormData(e.target);
         const params = new URLSearchParams();
+
+        params.append('tipoFecha', tipoFechaCheckbox.checked)
+
         for (const [key, value] of formData.entries()) {
             if (value.trim()) params.append(key, value);
         }
