@@ -224,19 +224,20 @@ public class FiltrobusquedaService {
             LocalDate FechaHasta,
             String nFact,
             Integer nCuentaCobro,
-            Boolean soloFacturados) {
+            Boolean soloFacturados,
+            Integer cantSoportes) {
 
         log.info("Iniciando búsqueda de atenciones");
 
-        log.debug("Parametros recibidos: " +
+        log.info("Parametros recibidos: " +
             "IdAtencion={}, HistClinica={}, Cliente={}, NoContrato={}, IdAreaAtencion={}, IdUnidadAtencion={}, " +
-            "FechaDesde={}, FechaHasta={}, nFact={}, nCuentaCobro={}, soloFacturados={}",
+            "FechaDesde={}, FechaHasta={}, nFact={}, nCuentaCobro={}, soloFacturados={}, cantSoportes={}",
             IdAtencion, HistClinica, Cliente, NoContrato, IdAreaAtencion, IdUnidadAtencion,
-            FechaDesde, FechaHasta, nFact, nCuentaCobro, soloFacturados);
+            FechaDesde, FechaHasta, nFact, nCuentaCobro, soloFacturados, cantSoportes);
 
         try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
 
-            String sql = "EXEC dbo.pa_Net_Facturas_Historico_GenSoportes ?,?,?,?,?,?,?,?,?,?,?";
+            String sql = "EXEC dbo.pa_Net_Facturas_Historico_GenSoportes ?,?,?,?,?,?,?,?,?,?,?,?";
 
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -251,6 +252,7 @@ public class FiltrobusquedaService {
                 stmt.setObject(9, nFact);
                 stmt.setObject(10, nCuentaCobro);
                 stmt.setObject(11, soloFacturados);
+                stmt.setObject(12, cantSoportes);
 
                 log.debug("Ejecutando procedimiento pa_Net_Facturas_Historico_GenSoportes");
 

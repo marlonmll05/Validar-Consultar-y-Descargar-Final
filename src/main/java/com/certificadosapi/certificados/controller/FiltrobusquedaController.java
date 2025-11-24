@@ -75,13 +75,14 @@ public class FiltrobusquedaController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyyMMdd") LocalDate FechaHasta,
             @RequestParam(required = false) String nFact,
             @RequestParam(required = false) Integer nCuentaCobro,
-            @RequestParam(required = false) Boolean soloFacturados
+            @RequestParam(required = false) Boolean soloFacturados,
+            @RequestParam(required = false, defaultValue = "4") Integer cantSoportes
     ) {
 
         List<Map<String, Object>> data = filtrobusquedaService.buscarAtenciones(
                 IdAtencion, HistClinica, Cliente, NoContrato,
                 IdAreaAtencion, IdUnidadAtencion, FechaDesde, FechaHasta, 
-                nFact, nCuentaCobro, soloFacturados);
+                nFact, nCuentaCobro, soloFacturados, cantSoportes);
 
         return ResponseEntity.ok(data);
     }
