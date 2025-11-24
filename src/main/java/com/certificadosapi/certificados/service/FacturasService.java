@@ -114,7 +114,10 @@ public class FacturasService {
                                 int contadorUsuarios = 0;
                                 while (usuariosRs.next()) {
                                     contadorUsuarios++;
-                                    
+                                    Integer consecutivoString = usuariosRs.getInt("consecutivo");
+                                    log.info("Procesando usuario con consecutivo={}", consecutivoString);
+
+
                                     ObjectNode usuarioNode = mapper.createObjectNode();
                                     int idRipsUsuario = usuariosRs.getInt("IdRips_Usuario");
 
@@ -481,7 +484,11 @@ public class FacturasService {
                                     if (serviciosNode.size() > 0) {
                                         usuarioNode.set("servicios", serviciosNode);
                                         usuariosNode.add(usuarioNode);
+                                        log.info("Usuario con consecutivo={} agregado al JSON", consecutivoString);
+                                    } else {
+                                        log.warn("Usuario con consecutivo={} no tiene datos válidos para ser incluido", consecutivoString);
                                     }
+
                                     log.info("Total usuarios procesados para idMovDoc={}: {}",
                                         idMovDoc, contadorUsuarios);
                                 }
