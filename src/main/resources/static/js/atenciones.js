@@ -2,6 +2,31 @@ if (!sessionStorage.getItem('tokenSQL')) {
     window.location.href = 'loginsql.html';
 }
 
+// Validación de Acceso
+window.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const response = await fetch("/api/sql/validar-parametro");
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.log("Ocurrió un error:", errorText);
+            return;
+        }
+
+        const resultado = await response.text();
+        
+        if (resultado !== "1") {
+            console.log("Acceso denegado. Redirigiendo...");
+            alert("No tienes permisos para acceder a esta página");
+            window.location.href = 'inicio.html';
+            return;
+        }
+
+    } catch (error) {
+        console.log("Error al hacer la petición:", error);
+    }
+});
+
 const host = window.location.hostname;
 const tabla = document.getElementById('resultadosTabla');
 

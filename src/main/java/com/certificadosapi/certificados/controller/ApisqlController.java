@@ -12,7 +12,6 @@ import com.certificadosapi.certificados.service.InicioService;
 import com.certificadosapi.certificados.service.LoginsqlService;
 
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Map;
 
 
