@@ -107,9 +107,250 @@ document.getElementById("idAreaAtencion").addEventListener("change", (e) => {
 });
 
 
-
 //BUSCAR
 let currentController = null;
+// Paginación
+const PAGE_SIZE = 500;
+let resultadosGlobal = [];
+let paginaActual = 1;
+let camposMostrarGlobal = [
+  "IdAtencion",
+  "NomContrato",
+  "Paciente",
+  "Cerrada",
+  "Liquidada",
+  "NoContrato",
+  "NFact",
+  "EntornoIngreso",
+  "CantSoporte"
+];
+
+function renderTablaPagina(pagina) {
+  const table = document.getElementById('resultadosTabla');
+  const thead = document.getElementById('tablaHead');
+  const tbody = document.getElementById('tablaBody');
+  const cardTitle = document.querySelector('.card-title-table');
+
+  if (!Array.isArray(resultadosGlobal) || resultadosGlobal.length === 0) {
+    table.style.display = 'none';
+    return;
+  }
+
+  const totalRegistros = resultadosGlobal.length;
+  const totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE);
+
+  if (pagina < 1) pagina = 1;
+  if (pagina > totalPaginas) pagina = totalPaginas;
+  paginaActual = pagina;
+
+  // Limpiar cuerpo
+  tbody.innerHTML = '';
+
+  const inicio = (pagina - 1) * PAGE_SIZE;
+  const fin = Math.min(inicio + PAGE_SIZE, totalRegistros);
+  const slice = resultadosGlobal.slice(inicio, fin);
+
+  // Actualizar título (muestra total, no solo los de página)
+  if (cardTitle) {
+    cardTitle.textContent = `Resultados (${totalRegistros}) - Página ${pagina}/${totalPaginas}`;
+  }
+
+  slice.forEach((row, idx) => {
+    const rowKey = row["IdAtencion"] ?? `fila-${inicio + idx}`;
+    const idAdmision = row["IdAdmision"] ?? '';
+    const idAtencion = row["IdAtencion"] ?? '';
+    const idPacienteKey = row["IdPacienteKey"] ?? '';
+
+    const tr = document.createElement('tr');
+    tr.dataset.rowkey = rowKey;
+    tr.dataset.idadmision = idAdmision;
+    tr.dataset.idpacientekey = idPacienteKey;
+    tr.dataset.idatencion = idAtencion;
+
+    // Checkbox selección
+    const tdCheckbox = document.createElement('td');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'checkbox-row';
+    checkbox.dataset.rowkey = rowKey;
+    tdCheckbox.appendChild(checkbox);
+    tr.appendChild(tdCheckbox);
+
+    // Columnas normales
+    camposMostrarGlobal.forEach(h => {
+      const td = document.createElement('td');
+      td.textContent = (row[h] !== null && row[h] !== undefined) ? row[h] : '';
+      tr.appendChild(td);
+    });
+
+    // Columna 1: acciones
+    const tdAccion1 = document.createElement('td');
+    tdAccion1.classList.add("anexar-col");
+
+    const btnAnexar = document.createElement('button');
+    btnAnexar.type = "button";
+    btnAnexar.textContent = "Anexar";
+    btnAnexar.className = "btn-success btn-anexar";
+    btnAnexar.innerHTML = '<i class="fa-solid fa-paperclip"></i> Anexar';
+    btnAnexar.dataset.rowkey = rowKey;
+    tdAccion1.appendChild(btnAnexar);
+
+    const btnGenerar = document.createElement('button');
+    btnGenerar.type = "button";
+    btnGenerar.textContent = "Generación Automática";
+    btnGenerar.className = "btn-primary btn-generar";
+    btnGenerar.dataset.rowkey = rowKey;
+    btnGenerar.dataset.idadmision = idAdmision;
+    btnGenerar.dataset.idpacientekey = idPacienteKey;
+    btnGenerar.dataset.idatencion = idAtencion;
+    tdAccion1.appendChild(btnGenerar);
+
+    // Columna 2: docs
+    const tdAccion2 = document.createElement('td');
+    tdAccion2.classList.add("doc-col");
+
+    const btnExportar = document.createElement('button');
+    btnExportar.type = "button";
+    btnExportar.textContent = "Exportar";
+    btnExportar.className = "btn-warning btn-exportar";
+    btnExportar.innerHTML = '<i class="fa-solid fa-file-export"></i> Exportar';
+    btnExportar.dataset.rowkey = rowKey;
+    btnExportar.dataset.idadmision = idAdmision;
+    btnExportar.dataset.idpacientekey = idPacienteKey;
+    btnExportar.dataset.nfact = row["NFact"] || '';
+    tdAccion2.appendChild(btnExportar);
+
+    const btnVerPdfs = document.createElement('button');
+    btnVerPdfs.type = "button";
+    btnVerPdfs.textContent = "Ver Documentos";
+    btnVerPdfs.className = "btn-secondary btn-verpdfs";
+    btnVerPdfs.dataset.rowkey = rowKey;
+    btnVerPdfs.dataset.idadmision = idAdmision;
+    btnVerPdfs.dataset.idatencion = idAtencion;
+    tdAccion2.appendChild(btnVerPdfs);
+
+    tr.appendChild(tdAccion1);
+    tr.appendChild(tdAccion2);
+
+    tbody.appendChild(tr);
+
+    // Fila panel anexar
+    const trPanel = document.createElement('tr');
+    trPanel.className = 'anexar-row';
+    trPanel.style.display = 'none';
+    trPanel.dataset.rowkey = rowKey;
+
+    const tdPanel = document.createElement('td');
+    tdPanel.colSpan = camposMostrarGlobal.length + 3;
+
+    tdPanel.innerHTML = `
+      <div class="anexar-panel">
+        <h4>Adjuntar archivos para IdAtencion: <strong>${row["IdAtencion"] ?? ''}</strong></h4>
+        <div class="anexar-actions">
+          <div class="dropzone" data-rowkey="${rowKey}">
+            <p>Arrastra aquí tus archivos (PDF o imágenes)</p>
+            <button type="button" class="btn-picker" data-input="fileInput-${rowKey}">Seleccionar archivos</button>
+            <input type="file" id="fileInput-${rowKey}" class="file-input" accept=".pdf,image/*" multiple hidden>
+          </div>
+
+          <div class="form-group soporte-group">
+            <label for="idSoporte-${rowKey}">Documento Soporte</label>
+            <select id="idSoporte-${rowKey}" name="idSoporte" data-rowkey="${rowKey}" data-loaded="0" required>
+              <option value="" disabled selected>-- Selecciona --</option>
+            </select>
+          </div>
+
+          <ul class="file-list" id="fileList-${rowKey}"></ul>
+        </div>
+
+        <div class="panel-footer" style="margin-top:10px; display:flex; width:100%;">
+          <div class="form-group ver-todos-group" style="margin-top:6px;">
+            <label style="font-size:14px; display:flex; align-items:center; gap:8px;">
+              <span>Ver todas las tipificaciones</span>
+              <label class="switch">
+                <input type="checkbox" id="verTodos-${rowKey}" data-rowkey="${rowKey}">
+                <span class="slider round"></span>
+              </label>
+            </label>
+          </div>
+
+          <button
+            type="button"
+            class="btn-success btn-guardar"
+            data-rowkey="${rowKey}"
+            data-idadmision="${idAdmision}"
+            data-idpacientekey="${idPacienteKey}"
+            style="margin-left:auto; min-width:120px; padding:12px 18px; font-size:15px; border-radius:8px; white-space:nowrap;"
+          >
+            Guardar
+          </button>
+        </div>
+
+        <div class="error" id="error-${rowKey}" style="display:none;"></div>
+      </div>
+    `;
+
+    trPanel.appendChild(tdPanel);
+    tbody.appendChild(trPanel);
+
+    if (!archivosPorFila.has(rowKey)) {
+      archivosPorFila.set(rowKey, []);
+    }
+  });
+
+  table.style.display = 'table';
+  renderPaginacion();
+}
+
+function renderPaginacion() {
+  const pagDiv = document.getElementById('pagination');
+  if (!pagDiv) return;
+
+  const totalRegistros = resultadosGlobal.length;
+  const totalPaginas = Math.ceil(totalRegistros / PAGE_SIZE);
+
+  pagDiv.innerHTML = '';
+
+  if (totalPaginas <= 1) {
+    return;
+  }
+
+  const btnPrev = document.createElement('button');
+  btnPrev.textContent = 'Anterior';
+  btnPrev.disabled = paginaActual === 1;
+  btnPrev.addEventListener('click', () => renderTablaPagina(paginaActual - 1));
+  pagDiv.appendChild(btnPrev);
+
+  for (let p = 1; p <= totalPaginas; p++) {
+    if (p === 1 || p === totalPaginas || Math.abs(p - paginaActual) <= 2) {
+      const btn = document.createElement('button');
+      btn.textContent = p;
+      if (p === paginaActual) {
+        btn.disabled = true;
+        btn.classList.add('active-page');
+      }
+      btn.addEventListener('click', () => renderTablaPagina(p));
+      pagDiv.appendChild(btn);
+    } else if (
+      (p === 2 && paginaActual > 4) ||
+      (p === totalPaginas - 1 && paginaActual < totalPaginas - 3)
+    ) {
+      const span = document.createElement('span');
+      span.textContent = '...';
+      pagDiv.appendChild(span);
+    }
+  }
+
+  const btnNext = document.createElement('button');
+  btnNext.textContent = 'Siguiente';
+  btnNext.disabled = paginaActual === totalPaginas;
+  btnNext.addEventListener('click', () => renderTablaPagina(paginaActual + 1));
+  pagDiv.appendChild(btnNext);
+}
+
+
+
+
 document.getElementById('filtrosForm').addEventListener('submit', function (e) {
     e.preventDefault();
 
@@ -186,210 +427,64 @@ document.getElementById('filtrosForm').addEventListener('submit', function (e) {
         return response.json();
     })
     .then(data => {
-        clearInterval(intervalo);
-        actualizarToastProgreso(toast, 100);
-        setTimeout(() => toast.remove(), 400);
+    clearInterval(intervalo);
+    actualizarToastProgreso(toast, 100);
+    setTimeout(() => toast.remove(), 400);
 
-        if (!Array.isArray(data) || data.length === 0) {
+    const emptyState = document.getElementById('emptyState');
+    const table = document.getElementById('resultadosTabla');
+    const thead = document.getElementById('tablaHead');
+    const tbody = document.getElementById('tablaBody');
+    const errorMsg = document.getElementById('errorMsg');
+    const cardTitle = document.querySelector('.card-title-table');
+
+    errorMsg.textContent = "";
+    emptyState.style.display = 'none';
+    table.style.display = 'none';
+    thead.innerHTML = '';
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(data) || data.length === 0) {
         emptyState.style.display = 'block';
+        if (cardTitle) cardTitle.textContent = 'Resultados (0)';
         showToast("Sin resultados", "No se encontraron registros.", "warning", 4000);
+        resultadosGlobal = [];
+        renderPaginacion(); 
         return;
-        }
+    }
 
-        const camposMostrar = [
-        "IdAtencion",
-        "NomContrato",
-        "Paciente",
-        "Cerrada",
-        "Liquidada",
-        "NoContrato",
-        "NFact",
-        "EntornoIngreso",
-        "CantSoporte"
-        ];
+    resultadosGlobal = data; 
 
-        const headRow = document.createElement('tr');
+    if (cardTitle) {
+        cardTitle.textContent = `Resultados (${data.length})`;
+    }
 
-        const thCheckbox = document.createElement('th');
-        thCheckbox.textContent = 'Seleccionar';
-        headRow.appendChild(thCheckbox);
+    const headRow = document.createElement('tr');
 
-        camposMostrar.forEach(h => {
+    const thCheckbox = document.createElement('th');
+    thCheckbox.textContent = 'Seleccionar';
+    headRow.appendChild(thCheckbox);
+
+    camposMostrarGlobal.forEach(h => {
         const th = document.createElement('th');
         th.textContent = h;
         headRow.appendChild(th);
-        });
-
-        // Nueva columna 1
-        const thAccion1 = document.createElement('th');
-        thAccion1.textContent = "Acciones";
-        headRow.appendChild(thAccion1);
-
-        // Nueva columna 2
-        const thAccion2 = document.createElement('th');
-        thAccion2.textContent = "Documentos";
-        headRow.appendChild(thAccion2);
-
-        thead.appendChild(headRow);
-
-        // Filas principales 
-        data.forEach((row, idx) => {
-        const rowKey = row["IdAtencion"] ?? `fila-${idx}`;
-        const idAdmision = row["IdAdmision"] ?? '';
-        const idAtencion = row["IdAtencion"] ?? '';
-        const idPacienteKey = row["IdPacienteKey"] ?? '';
-
-        // Fila de datos
-        const tr = document.createElement('tr');
-        tr.dataset.rowkey = rowKey;
-        tr.dataset.idadmision = idAdmision;
-        tr.dataset.idpacientekey = idPacienteKey;
-        tr.dataset.idatencion = idAtencion;
-
-        // Columna de casilla de verificación
-        const tdCheckbox = document.createElement('td');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'checkbox-row';
-        checkbox.dataset.rowkey = rowKey; 
-        tdCheckbox.appendChild(checkbox);
-        tr.appendChild(tdCheckbox);
-
-        camposMostrar.forEach(h => {
-            const td = document.createElement('td');
-            td.textContent = (row[h] !== null && row[h] !== undefined) ? row[h] : '';
-            tr.appendChild(td);
-        });
-
-        // Columna 1: Anexar y Generación Auto
-        const tdAccion1 = document.createElement('td');
-        tdAccion1.classList.add("anexar-col");
-
-        const btnAnexar = document.createElement('button');
-        btnAnexar.type = "button";
-        btnAnexar.textContent = "Anexar";
-        btnAnexar.className = "btn-success btn-anexar";
-        btnAnexar.innerHTML = '<i class="fa-solid fa-paperclip"></i> Anexar';
-        btnAnexar.dataset.rowkey = rowKey;
-        tdAccion1.appendChild(btnAnexar);
-
-        const btnGenerar = document.createElement('button');
-        btnGenerar.type = "button";
-        btnGenerar.textContent = "Generación Automática";
-        btnGenerar.className = "btn-primary btn-generar";
-        btnGenerar.dataset.rowkey = rowKey;
-        btnGenerar.dataset.idadmision = idAdmision;
-        btnGenerar.dataset.idpacientekey = idPacienteKey;
-        btnGenerar.dataset.idatencion = idAtencion;
-        tdAccion1.appendChild(btnGenerar);
-
-        // Columna 2: Exportar y Ver Documentos
-        const tdAccion2 = document.createElement('td');
-        tdAccion2.classList.add("doc-col");
-
-        const btnExportar = document.createElement('button');
-        btnExportar.type = "button";
-        btnExportar.textContent = "Exportar";
-        btnExportar.className = "btn-warning btn-exportar";
-        btnExportar.innerHTML = '<i class="fa-solid fa-file-export"></i> Exportar';
-        btnExportar.dataset.rowkey = rowKey;
-        btnExportar.dataset.idadmision = idAdmision;
-        btnExportar.dataset.idpacientekey = idPacienteKey;
-        btnExportar.dataset.nfact = row["NFact"] || '';
-        tdAccion2.appendChild(btnExportar);
-
-        const btnVerPdfs = document.createElement('button');
-        btnVerPdfs.type = "button";
-        btnVerPdfs.textContent = "Ver Documentos";
-        btnVerPdfs.className = "btn-secondary btn-verpdfs";
-        btnVerPdfs.dataset.rowkey = rowKey;
-        btnVerPdfs.dataset.idadmision = idAdmision;
-        btnVerPdfs.dataset.idatencion = idAtencion;
-        tdAccion2.appendChild(btnVerPdfs);
-
-        tr.appendChild(tdAccion1);
-        tr.appendChild(tdAccion2);
-
-        tbody.appendChild(tr);
-
-        const trPanel = document.createElement('tr');
-        trPanel.className = 'anexar-row';
-        trPanel.style.display = 'none';
-        trPanel.dataset.rowkey = rowKey;
-
-        const tdPanel = document.createElement('td');
-        tdPanel.colSpan = camposMostrar.length + 3;
-
-        tdPanel.innerHTML = `
-            <div class="anexar-panel">
-            <h4>Adjuntar archivos para IdAtencion: <strong>${row["IdAtencion"] ?? ''}</strong></h4>
-            <div class="anexar-actions">
-                <div class="dropzone" data-rowkey="${rowKey}">
-                <p>Arrastra aquí tus archivos (PDF o imágenes)</p>
-                <button type="button" class="btn-picker" data-input="fileInput-${rowKey}">Seleccionar archivos</button>
-                <input type="file" id="fileInput-${rowKey}" class="file-input" accept=".pdf,image/*" multiple hidden>
-                </div>
-
-                <div class="form-group soporte-group">
-                <label for="idSoporte-${rowKey}">Documento Soporte</label>
-                <select id="idSoporte-${rowKey}" name="idSoporte" data-rowkey="${rowKey}" data-loaded="0" required>
-                    <option value="" disabled selected>-- Selecciona --</option>
-                </select>
-                </div>
-
-                <ul class="file-list" id="fileList-${rowKey}"></ul>
-            </div>
-
-            <div class="panel-footer" style="margin-top:10px; display:flex; width:100%;">
-                <div class="form-group ver-todos-group" style="margin-top:6px;">
-                <label style="font-size:14px; display:flex; align-items:center; gap:8px;">
-                    <span>Ver todas las tipificaciones</span>
-                    <label class="switch">
-                    <input type="checkbox" id="verTodos-${rowKey}" data-rowkey="${rowKey}">
-                    <span class="slider round"></span>
-                    </label>
-                </label>
-                </div>
-
-                <button
-                type="button"
-                class="btn-success btn-guardar"
-                data-rowkey="${rowKey}"
-                data-idadmision="${idAdmision}"
-                data-idpacientekey="${idPacienteKey}"
-                style="margin-left:auto; min-width:120px; padding:12px 18px; font-size:15px; border-radius:8px; white-space:nowrap;"
-                >
-                Guardar
-                </button>
-            </div>
-
-            <div class="error" id="error-${rowKey}" style="display:none;"></div>
-            </div>
-        `;
-
-        trPanel.appendChild(tdPanel);
-        tbody.appendChild(trPanel);
-
-        archivosPorFila.set(rowKey, []);
-        });
-
-        table.style.display = 'table';
-
-        showToast("Éxito", `Se encontraron ${data.length} registros.`, "success", 4000);
-    })
-    .catch(error => {
-        clearInterval(intervalo);
-        actualizarToastProgreso(toast, 100);
-        setTimeout(() => toast.remove(), 400);
-
-        if (error.name !== "AbortError") {
-        showToast("Error", "No se pudieron obtener los datos.", "error", 5000);
-
-        emptyState.style.display = 'none';
-        table.style.display = 'none';
-        errorMsg.textContent = "Error al obtener datos: " + error.message;
-        }
     });
+
+    const thAccion1 = document.createElement('th');
+    thAccion1.textContent = "Acciones";
+    headRow.appendChild(thAccion1);
+
+    const thAccion2 = document.createElement('th');
+    thAccion2.textContent = "Documentos";
+    headRow.appendChild(thAccion2);
+
+    thead.appendChild(headRow);
+
+    renderTablaPagina(1);
+
+    showToast("Éxito", `Se encontraron ${data.length} registros.`, "success", 4000);
+    })
 });
 
 //Botón Exportar por lote
@@ -1660,13 +1755,12 @@ tabla.addEventListener('click', (e) => {
     if (input) input.click();
 });
 
-// Manejador de cambio en inputs file
 tabla.addEventListener('change', (e) => {
     const input = e.target.closest('.file-input');
     if (!input) return;
     const rowKey = input.id.replace('fileInput-','');
     agregarArchivos(rowKey, input.files);
-    input.value = ''; // reset para permitir volver a elegir los mismos
+    input.value = '';
 });
 
 // Drag & drop
@@ -1762,10 +1856,25 @@ document.getElementById('btnLimpiar').addEventListener('click', () => {
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('errorMsg').textContent = '';
 
+    document.querySelector('.card-title-table').textContent = 'Resultados';
+
     const checkboxFacturadas = document.getElementById('mostrarFacturadas');
     delete checkboxFacturadas.dataset.touched;  
 
     archivosPorFila.clear();
+
+    if (currentController) {
+        currentController.abort();
+        currentController = null;
+    }
+
+    resultadosGlobal = [];
+    paginaActual = 1;
+
+    const pagDiv = document.getElementById('pagination');
+    if (pagDiv) {
+        pagDiv.innerHTML = '';
+    }
 });
 
 // Util para evitar inyección en nombres

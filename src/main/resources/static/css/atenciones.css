@@ -96,6 +96,41 @@ h1 {
     gap: 10px;
 }
 
+.card-title-table {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ====== PAGINATION ====== */
+
+.pagination {
+  margin-top: 10px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pagination button {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background-color: white;
+  cursor: pointer;
+}
+
+.pagination button.active-page {
+  font-weight: bold;
+  background: var(--primary);
+  color: white;
+}
+
+
+
 /* ====== FORMULARIO (FILTROS) ====== */
 .form-grid {
     display: grid;
