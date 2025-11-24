@@ -4,6 +4,31 @@ if (!sessionStorage.getItem('tokenSQL')) {
 
 lucide.createIcons();
 
+window.addEventListener("DOMContentLoaded", async () => {
+
+    try{
+        const response = await fetch("/api/sql/validar-parametro");
+
+        if (!response.ok){
+            console.log("ocurrio un error", await response.text());
+            return;
+        }
+
+        const resultado = await response.text();
+        
+        if(resultado !== "1"){
+            console.log("Acceso denegado, respuesta:", resultado);
+            atencionesButton.classList.add("card-disabled");
+        }else{
+            console.log("Acceso otorgado a atenciones");
+        }
+
+    } catch (error){
+        console.log ("Error al hacer la peticion", error);
+    }
+});
+
+
 function irAlValidador(event) {
     event.preventDefault(); 
     
@@ -16,6 +41,9 @@ function irAlValidador(event) {
         window.location.href = 'login.html'; 
     }
 }
+
+const atencionesButton = document.getElementById("cardAtenciones");
+
 
 window.addEventListener('DOMContentLoaded', function() {
     const token = sessionStorage.getItem('token');

@@ -1,3 +1,0 @@
-2025-11-20 16:32:48 [restartedMain] INFO  c.c.certificados.CertificadosApplication - Starting CertificadosApplication using Java 21.0.6 with PID 10152 (C:\Users\Lenovo Neo 50Q\Documents\GitHub\Validar-Consultar-y-Descargar-Final\target\classes started by Lenovo Neo 50Q in C:\Users\Lenovo Neo 50Q\Documents\GitHub\Validar-Consultar-y-Descargar-Final)
-2025-11-20 16:32:48 [restartedMain] INFO  c.c.certificados.CertificadosApplication - No active profile set, falling back to 1 default profile: "default"
-2025-11-20 16:32:49 [restartedMain] INFO  c.c.certificados.CertificadosApplication - Started CertificadosApplication in 0.217 seconds (process running for 5667.355)

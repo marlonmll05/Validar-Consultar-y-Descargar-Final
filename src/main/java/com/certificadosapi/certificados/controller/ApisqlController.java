@@ -8,9 +8,11 @@ import org.springframework.web.bind.annotation.*;
 
 import com.certificadosapi.certificados.service.ApisqlService;
 import com.certificadosapi.certificados.service.EditarjsonService;
+import com.certificadosapi.certificados.service.InicioService;
 import com.certificadosapi.certificados.service.LoginsqlService;
 
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 
 
@@ -21,12 +23,23 @@ public class ApisqlController {
     private final ApisqlService apisqlService;
     private EditarjsonService editarJsonService;
     private LoginsqlService loginsqlService;
+    private InicioService inicioService;
 
     @Autowired
-    public ApisqlController(EditarjsonService editarjsonService, ApisqlService apisqlService, LoginsqlService loginsqlService){
+    public ApisqlController(EditarjsonService editarjsonService, ApisqlService apisqlService, LoginsqlService loginsqlService, InicioService inicioService){
         this.editarJsonService = editarjsonService;
         this.apisqlService = apisqlService;
         this.loginsqlService = loginsqlService;
+        this.inicioService = inicioService;
+    }
+
+    //Metodo para verificar acceso al modulo de atenciones
+    @GetMapping("/validar-parametro")
+    public ResponseEntity<String> validarParametro() throws SQLException{
+        
+        String respuesta = inicioService.validarApartado();
+
+        return ResponseEntity.ok(respuesta);
     }
 
     //Metodo para iniciar sesion a la aplicacion web
