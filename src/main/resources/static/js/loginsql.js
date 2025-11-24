@@ -13,7 +13,8 @@ const res = await fetch(`https://${location.hostname}:9876/api/sql/login`, {
 const errorDiv = document.getElementById('error-message');
 
 if (!res.ok) {
-    errorDiv.textContent = await res.text();
+    const errorText = await res.text();
+    errorDiv.textContent = errorText.replace("Error de base de datos:", "");
     return;
 }
 

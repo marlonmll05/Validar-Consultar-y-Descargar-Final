@@ -48,7 +48,7 @@ const atencionesButton = document.getElementById("cardAtenciones");
 window.addEventListener('DOMContentLoaded', function() {
     const token = sessionStorage.getItem('token');
     if (!token) {
-        console.log('Usuario no autenticado');
+        console.log('Usuario no autenticado para la api docker');
 
     }
 });

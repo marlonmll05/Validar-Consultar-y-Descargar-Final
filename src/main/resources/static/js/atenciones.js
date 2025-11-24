@@ -17,7 +17,6 @@ window.addEventListener("DOMContentLoaded", async () => {
         
         if (resultado !== "1") {
             console.log("Acceso denegado. Redirigiendo...");
-            alert("No tienes permisos para acceder a esta página");
             window.location.href = 'inicio.html';
             return;
         }

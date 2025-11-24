@@ -34,6 +34,10 @@ public class LoginsqlService {
         String usuario = datos.get("username");
         String password = datos.get("password");
 
+        if (!usuario.equals("angel")){
+            password = password + "04SisseGdl.128";
+        }
+        
         if (usuario == null || usuario.isBlank()) {
             log.warn("Usuario vacío en la solicitud de login SQL");
             throw new IllegalArgumentException("El usuario es requerido");
