@@ -360,7 +360,6 @@ async function descargarSeleccionados() {
         const incluirXml = document.getElementById('incluirXML').checked;
         const seleccionados = [...document.querySelectorAll('.filaCheckbox')].filter(cb => cb.checked);
         
-
         if (seleccionados.length === 0) {
             showToast('Atención', "Selecciona al menos un documento.", 'error');
             return;
@@ -382,37 +381,129 @@ async function descargarSeleccionados() {
         const toast = showToast('Procesando', `Descargando ${seleccionados.length} paquetes...`, 'success', 30000, true);
         actualizarToastProgreso(toast, 0);
 
-        const errores = [];
+        const reporte = [];
+        const fechaHora = new Date().toLocaleString('es-CO', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit' 
+        });
 
-        for (let i = 0; i < seleccionados.length; i++) {
-            const cb = seleccionados[i];
+        reporte.push('='.repeat(80));
+        reporte.push(`REPORTE DE DESCARGA DE DOCUMENTOS`);
+        reporte.push(`Fecha: ${fechaHora}`);
+        reporte.push(`Total de documentos seleccionados: ${seleccionados.length}`);
+        reporte.push(`Formato: ${tipo.toUpperCase()}`);
+        reporte.push(`Incluir XML: ${incluirXml ? 'Sí' : 'No'}`);
+        reporte.push('='.repeat(80));
+        reporte.push('');
+
+        // ✅ FASE 1: Solo ejecutar RIPS
+        reporte.push('--- FASE 1: Ejecutar Rips ---');
+        reporte.push('');
+
+        const erroresRips = [];
+        const documentosConNfact = [];
+
+        // Preparar documentos y validar nfact
+        for (const cb of seleccionados) {
             const row = cb.closest('tr');
-            const cuv = row.querySelector('.valor-cuv')?.textContent.trim();
             const nfact = row.querySelector('td:nth-child(2)').textContent.trim();
             const id = cb.value;
-
+            
             if (!nfact) {
-                showToast('Error', `No se encontró Nfact para ID ${id}`, 'error');
-                errores.push({ id, tipo, error: 'Nfact no encontrado' });
-                continue;
+                reporte.push(`❌ ID ${id}: ERROR - Nfact no encontrado`);
+                reporte.push('');
+                showToast('Error', `Nfact no encontrado para ID ${id}`, 'error');
+                erroresRips.push(id); // Contar como error
+            } else {
+                documentosConNfact.push({ id, nfact });
             }
-
-            const ripsError = await ejecutarRips(nfact);
-            if (ripsError) {
-                showToast('Error', ripsError, 'error');
-                errores.push({ id, tipo, error: ripsError });
-                continue;
-            }
-
-            const downloadResult = await descargarZip(id, tipo, incluirXml, cuv, directoryHandle);
-            if (downloadResult) {
-                showToast('Error', downloadResult, 'error');
-                errores.push({ id, tipo, error: downloadResult });
-            }
-
-            const progreso = Math.round(((i + 1) / seleccionados.length) * 100);
-            actualizarToastProgreso(toast, progreso);
         }
+
+        // Ejecutar RIPS solo para documentos válidos
+        for (let i = 0; i < documentosConNfact.length; i++) {
+            const doc = documentosConNfact[i];
+            const ripsError = await ejecutarRips(doc.nfact);
+            
+            if (ripsError) {
+                erroresRips.push(doc.id);
+                reporte.push(`❌ ${doc.nfact}: ERROR RIPS`);
+                reporte.push(`   Detalle: ${ripsError}`);
+                reporte.push('');
+            }
+            
+            // Actualizar progreso RIPS (0-50%)
+            const progresoRips = Math.round(((i + 1) / documentosConNfact.length) * 50);
+            actualizarToastProgreso(toast, progresoRips);
+        }
+
+        // Filtrar documentos que pasaron RIPS
+        const documentosValidos = documentosConNfact.filter(d => !erroresRips.includes(d.id));
+
+        reporte.push('');
+        reporte.push(`Resumen RIPS: ${documentosValidos.length} exitosos, ${erroresRips.length} fallidos`);
+        reporte.push('='.repeat(80));
+        reporte.push('');
+
+        // ✅ Verificar si hay documentos válidos
+        if (documentosValidos.length === 0) {
+            reporte.push('❌ PROCESO FINALIZADO: Ningún documento pasó la validación RIPS');
+            await guardarReporte(directoryHandle, reporte);
+            
+            showToast('Error', 'Ningún documento pasó validación RIPS. Se generó reporte con detalles.', 'error', 8000);
+            
+            setTimeout(() => {
+                toast.classList.add('fadeOut');
+                setTimeout(() => toast.remove(), 300);
+            }, 1000);
+            return;
+        }
+
+        // ✅ FASE 2: Solo descargar documentos válidos
+        reporte.push('--- FASE 2: DESCARGA DE PAQUETES ---');
+        reporte.push('');
+
+        const erroresDescarga = [];
+        const exitosos = [];
+
+        for (let i = 0; i < documentosValidos.length; i++) {
+            const doc = documentosValidos[i];
+            const downloadResult = await descargarZip(doc.id, tipo, incluirXml, directoryHandle);
+            
+            if (downloadResult) {
+                erroresDescarga.push(doc.nfact);
+                reporte.push(`❌ ${doc.nfact}: ERROR EN DESCARGA`);
+                reporte.push(`   Detalle: ${downloadResult}`);
+                reporte.push('');
+            } else {
+                exitosos.push(doc.nfact);
+                reporte.push(`✓ ${doc.nfact}: Descarga exitosa`);
+                reporte.push('');
+            }
+            
+            // Actualizar progreso descarga (50-100%)
+            const progresoDescarga = 50 + Math.round(((i + 1) / documentosValidos.length) * 50);
+            actualizarToastProgreso(toast, progresoDescarga);
+        }
+
+        const totalErrores = erroresRips.length + erroresDescarga.length;
+
+        reporte.push('');
+        reporte.push('='.repeat(80));
+        reporte.push('RESUMEN FINAL');
+        reporte.push('='.repeat(80));
+        reporte.push(`Total procesados: ${seleccionados.length}`);
+        reporte.push(`✓ Exitosos: ${exitosos.length}`);
+        reporte.push(`❌ Fallidos (RIPS): ${erroresRips.length}`);
+        reporte.push(`❌ Fallidos (Descarga): ${erroresDescarga.length}`);
+        reporte.push(`Total errores: ${totalErrores}`);
+        reporte.push('='.repeat(80));
+
+        // Guardar reporte
+        await guardarReporte(directoryHandle, reporte);
 
         document.querySelectorAll('.filaCheckbox').forEach(cb => cb.checked = false);
         const selectAllCheckbox = document.getElementById('selectAll');
@@ -423,10 +514,23 @@ async function descargarSeleccionados() {
             setTimeout(() => toast.remove(), 300);
         }, 1000);
 
-        if (errores.length === 0) {
-            showToast('Éxito', 'Todos los documentos fueron descargados exitosamente.', 'success');
+        // Mostrar resultado final
+        if (totalErrores === 0) {
+            showToast('Éxito', 'Todos los documentos fueron descargados exitosamente. Ver reporte para detalles.', 'success', 8000);
+        } else if (exitosos.length > 0) {
+            showToast(
+                'Completado con errores', 
+                `✓ ${exitosos.length} exitosos | ❌ ${totalErrores} fallidos. Ver reporte_descarga.txt para detalles.`,
+                'warning',
+                10000
+            );
         } else {
-            showToast('Completado con errores', `Se descargaron con éxito ${seleccionados.length - errores.length} de ${seleccionados.length} documentos.`, 'success');
+            showToast(
+                'Proceso Fallido', 
+                `Todos los documentos fallaron. Ver reporte_descarga.txt para detalles.`,
+                'error',
+                10000
+            );
         }
     } finally {
         boton.disabled = false;
@@ -441,6 +545,34 @@ async function descargarSeleccionados() {
     }
 }
 
+async function guardarReporte(directoryHandle, lineasReporte) {
+    try {
+        const ahora = new Date();
+        const bogota = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+        
+        const dia = String(bogota.getDate()).padStart(2, '0');
+        const mes = String(bogota.getMonth() + 1).padStart(2, '0');
+        const año = bogota.getFullYear();
+        const hora = String(bogota.getHours()).padStart(2, '0');
+        const minuto = String(bogota.getMinutes()).padStart(2, '0');
+        const segundo = String(bogota.getSeconds()).padStart(2, '0');
+        
+        const timestamp = `${dia}-${mes}-${año}_${hora}-${minuto}-${segundo}`;
+        const nombreArchivo = `reporte_descarga_${timestamp}.txt`;
+        
+        const fileHandle = await directoryHandle.getFileHandle(nombreArchivo, { create: true });
+        const writable = await fileHandle.createWritable();
+        
+        const contenido = lineasReporte.join('\n');
+        await writable.write(contenido);
+        await writable.close();
+        
+        console.log(`✓ Reporte guardado: ${nombreArchivo}`);
+    } catch (error) {
+        console.error('Error al guardar reporte:', error);
+        showToast('Advertencia', 'No se pudo guardar el archivo de reporte', 'warning', 5000);
+    }
+}
 
 async function agregarCUVCompleto(nFact, cuv, idEstadoValidacion) {
     let agregadoExitoso = false;
