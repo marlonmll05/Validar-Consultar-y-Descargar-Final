@@ -867,7 +867,7 @@ public class FacturasService {
         }
     }
 
-    // Metodo para generar Zip de Facturas y XML
+ // Metodo para generar Zip de Facturas y XML
     public ZipResult generarzip(
         int idMovDoc,
         String tipoArchivo,
@@ -879,7 +879,7 @@ public class FacturasService {
     if (!tipoArchivo.equalsIgnoreCase("json")
             && !tipoArchivo.equalsIgnoreCase("txt")
             && !tipoArchivo.equalsIgnoreCase("ambos")) {
-        log.warn("Tipo de archivo inválido recibido: {}", tipoArchivo);
+        log.error("Tipo de archivo inválido recibido: {}", tipoArchivo);
         throw new IllegalArgumentException("Tipo de archivo no válido. Debe ser 'json', 'txt' o 'ambos'");
     }
 
@@ -905,10 +905,7 @@ public class FacturasService {
                     prefijo = rs.getString("Prefijo");
                     numdoc = rs.getString("Numdoc");
                     log.debug("Datos documento obtenidos: prefijo='{}', numdoc='{}'", prefijo, numdoc);
-                } else {
-                    log.error("No se encontró documento para IdMovDoc={}", idMovDoc);
-                    throw new IllegalArgumentException("No se encontró documento con IdMovDoc: " + idMovDoc);
-                }
+                } 
             }
         }
 
@@ -927,9 +924,7 @@ public class FacturasService {
                 if (rs.next()) {
                     idEmpresaGrupo = rs.getString("IdEmpresaGrupo");
                     log.debug("IdEmpresaGrupo obtenido: {}", idEmpresaGrupo);
-                } else {
-                    log.warn("No se encontró IdEmpresaGrupo para IdMovDoc={}", idMovDoc);
-                }
+                } 
             }
         }
 
@@ -952,9 +947,7 @@ public class FacturasService {
             zos.write(xmlBytes);
             zos.closeEntry();
             log.info("XML agregado al ZIP: {} (bytes: {})", xmlName, xmlBytes.length);
-        } else {
-            log.debug("incluirXml=false, se omite XML en ZIP para IdMovDoc={}", idMovDoc);
-        }
+        } 
 
         // JSON
         boolean jsonRequired = "json".equalsIgnoreCase(tipoArchivo) || "ambos".equalsIgnoreCase(tipoArchivo);
@@ -969,7 +962,8 @@ public class FacturasService {
                 zos.closeEntry();
                 log.info("JSON agregado al ZIP: {} (bytes: {})", jsonName, jsonResponse.length);
             } else {
-                log.warn("generarjson(IdMovDoc={}) devolvió JSON vacío o nulo", idMovDoc);
+                log.error("generarjson(IdMovDoc={}) devolvió JSON vacío o nulo", idMovDoc);
+                throw new IllegalStateException("No se pudo generar el archivo JSON para IdMovDoc: " + idMovDoc);
             }
         } else {
             log.debug("tipoArchivo={} no requiere JSON", tipoArchivo);
@@ -994,7 +988,8 @@ public class FacturasService {
                     log.debug("TXT agregado al ZIP: {} (bytes: {})", txtName, txtContent.length);
                 }
             } else {
-                log.warn("generarTxt(IdMovDoc={}) no devolvió archivos TXT", idMovDoc);
+                log.error("generarTxt(IdMovDoc={}) no devolvió archivos TXT", idMovDoc);
+                throw new IllegalStateException("No se pudieron generar archivos TXT para IdMovDoc: " + idMovDoc);
             }
         } else {
             log.debug("tipoArchivo={} no requiere TXT", tipoArchivo);
@@ -1023,7 +1018,8 @@ public class FacturasService {
                 }
             }
         } catch (SQLException e) {
-            log.warn("Error al consultar RIPS_RespuestaApi para NFact={}: {}", prefijo + numdoc, e.getMessage(), e);
+            log.error("Error al consultar RIPS_RespuestaApi para NFact={}: {}", prefijo + numdoc, e.getMessage(), e);
+            throw new SQLException("Error al obtener respuesta del validador para factura " + prefijo + numdoc, e);
         }
 
         if (respuestaValidador != null && !respuestaValidador.isBlank()) {
@@ -1049,11 +1045,11 @@ public class FacturasService {
 
                 log.info("TXT CUV agregado al ZIP para factura {} (ProcesoId={})", prefijo + numdoc, procesoId);
             } catch (Exception e) {
-                log.warn("Error al procesar respuesta del validador para factura {}: {}",
+                log.error("Error al procesar respuesta del validador para factura {}: {}",
                         prefijo + numdoc, e.getMessage(), e);
+                throw new IOException("Error al procesar respuesta del validador para factura " + prefijo + numdoc, e);
             }
-        } else {
-            log.debug("No se incluye TXT CUV, respuestaValidador nula o en blanco para factura {}", prefijo + numdoc);
+
         }
 
         zos.finish();

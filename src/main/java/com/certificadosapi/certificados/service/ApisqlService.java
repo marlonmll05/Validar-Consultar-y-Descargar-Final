@@ -59,12 +59,12 @@ public class ApisqlService {
                 }
             }
         } catch (SQLException e) {
-            log.error("Error SQL en obtenerCuv: {}", e.getMessage(), e);
-            throw new RuntimeException("Error de base de datos: " + e.getMessage(), e);
+            log.error("Error SQL en obtenerCuv: {}", e.getMessage());
+            throw new RuntimeException("Error de base de datos: " + e.getMessage());
 
         } catch (Exception e) {
-            log.error("Error inesperado en obtenerCuv: {}", e.getMessage(), e);
-            throw new RuntimeException("Error inesperado: " + e.getMessage(), e);
+            log.error("Error inesperado en obtenerCuv: {}", e.getMessage());
+            throw new RuntimeException("Error inesperado: " + e.getMessage());
         }
     }
 
@@ -122,12 +122,12 @@ public class ApisqlService {
                 }
             }
         } catch (SQLException e) {
-            log.error("Error SQL en actualizarCuvFF: {}", e.getMessage(), e);
-            throw new RuntimeException("Error de base de datos: " + e.getMessage(), e);
+            log.error("Error SQL en actualizarCuvFF: {}", e.getMessage());
+            throw new RuntimeException("Error de base de datos: " + e.getMessage());
 
         } catch (Exception e) {
-            log.error("Error inesperado en actualizarCuvFF: {}", e.getMessage(), e);
-            throw new RuntimeException("Error inesperado al actualizar el CUV: " + e.getMessage(), e);
+            log.error("Error inesperado en actualizarCuvFF: {}", e.getMessage());
+            throw new RuntimeException("Error inesperado al actualizar el CUV: " + e.getMessage());
         }
     }
 
@@ -189,12 +189,12 @@ public class ApisqlService {
             }
 
         } catch (SQLException e) {
-            log.error("Error SQL en actualizarCuvTransaccion: {}", e.getMessage(), e);
-            throw new RuntimeException("Error de base de datos: " + e.getMessage(), e);
+            log.error("Error SQL en actualizarCuvTransaccion: {}", e.getMessage());
+            throw new RuntimeException("Error de base de datos: " + e.getMessage());
 
         } catch (Exception e) {
-            log.error("Error inesperado en actualizarCuvTransaccion: {}", e.getMessage(), e);
-            throw new RuntimeException("Error al actualizar los datos de RIPS: " + e.getMessage(), e);
+            log.error("Error inesperado en actualizarCuvTransaccion: {}", e.getMessage());
+            throw new RuntimeException("Error al actualizar los datos de RIPS: " + e.getMessage());
         }
     }
 
@@ -245,20 +245,19 @@ public class ApisqlService {
             }
 
         } catch (SQLException e) {
-            log.error("Error SQL en obtenerEstadoValidacion: {}", e.getMessage(), e);
-            throw new RuntimeException("Error de base de datos: " + e.getMessage(), e);
+            log.error("Error SQL en obtenerEstadoValidacion: {}", e.getMessage());
+            throw new RuntimeException("Error de base de datos: " + e.getMessage());
 
         } catch (Exception e) {
-            log.error("Error inesperado en obtenerEstadoValidacion: {}", e.getMessage(), e);
-            throw new RuntimeException("Error al consultar el estado de validación: " + e.getMessage(), e);
+            log.error("Error inesperado en obtenerEstadoValidacion: {}", e.getMessage());
+            throw new RuntimeException("Error al consultar el estado de validación: " + e.getMessage());
         }
     }
 
 
     // EJECUTAR GENERACIÓN DE RIPS
-    public String ejecutarRips(String nFact) {
+    public String ejecutarRips(String nFact) throws SQLException, Exception {
 
-        log.info("Iniciando ejecutarRips");
         log.debug("Parámetro recibido: nFact={}", nFact);
 
         try {
@@ -273,19 +272,18 @@ public class ApisqlService {
                 try (Statement stmt = conn.createStatement()) {
 
                     stmt.execute(sql);
-                    log.info("Procedimiento ejecutado correctamente para {}", nFact);
 
                     return "Procedimiento ejecutado correctamente para el cliente: " + nFact;
                 }
             }
 
         } catch (SQLException e) {
-            log.error("Error SQL en ejecutarRips: {}", e.getMessage(), e);
-            throw new RuntimeException("Error de base de datos: " + e.getMessage(), e);
+            log.error("Error SQL en ejecutarRips: {}", e.getMessage());
+            throw new SQLException(e.getMessage());
 
         } catch (Exception e) {
-            log.error("Error inesperado en ejecutarRips: {}", e.getMessage(), e);
-            throw new RuntimeException("Error al ejecutar RIPS: " + e.getMessage(), e);
+            log.error("Error inesperado en ejecutarRips: {}", e.getMessage());
+            throw new RuntimeException(e.getMessage());
         }
     }
 }

@@ -76,7 +76,7 @@ public class GlobalExceptionHandler {
                   ex.getSQLState(), ex.getErrorCode(), request.getDescription(false));
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error de base de datos: " + ex.getMessage());
+                .body(ex.getMessage());
     }
 
     /**

@@ -90,7 +90,7 @@ public class ApisqlController {
 
     // Método para ejecutar RIPS (Llena las tablas para cada factura)
     @GetMapping("/ejecutarRips")
-    public ResponseEntity<String> ejecutarRips(@RequestParam String Nfact) {
+    public ResponseEntity<String> ejecutarRips(@RequestParam String Nfact) throws SQLException, Exception {
         String resultado = apisqlService.ejecutarRips(Nfact);
         return ResponseEntity.ok(resultado);
     }
