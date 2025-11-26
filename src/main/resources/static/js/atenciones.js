@@ -414,6 +414,7 @@ document.getElementById('filtrosForm').addEventListener('submit', function (e) {
     IdUnidadAtencion: "idUnidadAtencionCur",
     nFact: "numeroFactura",
     nCuentaCobro: "cuentaCobro",
+    cantSoportes: "cantSoportes"
     };
 
     const fechaDesde = document.getElementById('fechaDesde').value;  // "yyyy-MM-dd"
@@ -509,6 +510,16 @@ document.getElementById('filtrosForm').addEventListener('submit', function (e) {
 
     showToast("Éxito", `Se encontraron ${data.length} registros.`, "success", 4000);
     })
+
+    .catch(error => {
+        const errorMsg = document.getElementById('errorMsg');
+        errorMsg.textContent = error.message;  
+        console.error("Error en la petición:", error);  
+
+        clearInterval(intervalo);
+        actualizarToastProgreso(toast, 100);
+        setTimeout(() => toast.remove(), 400);
+    });
 });
 
 //Botón Exportar por lote
@@ -1530,7 +1541,7 @@ tabla.addEventListener('click', async (e) => {
     } catch (errFactura) {
         console.error("Error al generar factura:", errFactura);
         actualizarToastProgreso(toastFactura, 100);
-        toastFactura.querySelector("p").textContent = "Error en factura";
+        toastFactura.querySelector("p").textContent = "❌ Error en factura";
         toastFactura.classList.replace("info", "error");
     } finally {
         setTimeout(() => {
