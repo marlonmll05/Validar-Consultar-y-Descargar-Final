@@ -659,15 +659,15 @@ async function ejecutarRips(nfact) {
     }
 }
 
-async function descargarZip(id, tipo, xml, cuv, directoryHandle) {
+async function descargarZip(id, tipo, xml, directoryHandle) {
     const host = window.location.hostname;
-    const url = `https://${host}:9876/facturas/generarzip/${id}/${tipo}/${xml}?cuv=${encodeURIComponent(cuv || '')}`; 
+    const url = `https://${host}:9876/facturas/generarzip/${id}/${tipo}/${xml}`; 
     try {
         const response = await fetch(url);
 
         if (!response.ok) {
             const errorText = await response.text();
-            return `Error al descargar ZIP para ID ${id}: ${errorText}`;
+            return errorText;
         }
 
         const blob = await response.blob();
