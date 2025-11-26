@@ -1896,12 +1896,8 @@ async function DescargarPaquetes() {
     const botonBuscar = document.getElementById("botonBuscar");
     const botonEnviar = document.getElementById("enviarPaquetesBtn");
     const downloadButton = document.querySelector('#DescargarPaquetesBtn');
-    
-    
 
     let originalHTML = '';
-    let originalHTML2 = '';
-
 
     if (downloadButton) {
         originalHTML = downloadButton.innerHTML;
@@ -1939,7 +1935,7 @@ async function DescargarPaquetes() {
             return;
         }
 
-        const toast = showToast('Procesando', `Descargando ${checkboxes.length} paquetes...`, 'success', 30000, true);
+        const toast = showToast('Procesando', `Descargando ${checkboxes.length} paquetes...`, 'success', 60000, true);
         actualizarToastProgreso(toast, 0);
 
         const documentosSeleccionados = Array.from(checkboxes).map(cb => {
@@ -1949,19 +1945,58 @@ async function DescargarPaquetes() {
             return { idMovDoc, nFact, fila};
         });
 
+
+        const reporte = [];
+        const fechaHora = new Date().toLocaleString('es-CO', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit' 
+        });
+
+        reporte.push('='.repeat(80));
+        reporte.push(`REPORTE DE DESCARGA DE PAQUETES`);
+        reporte.push(`Fecha: ${fechaHora}`);
+        reporte.push(`Total de facturas seleccionadas: ${documentosSeleccionados.length}`);
+        reporte.push('='.repeat(80));
+        reporte.push('');
+
+        // Fase 1: Ejecucion Procedimiento Almacenado
+        reporte.push('--- FASE 1: Ejecutar Rips ---');
+        reporte.push('');
+        
         const erroresRips = [];
-        for (const doc of documentosSeleccionados) {
+        for (let i = 0; i < documentosSeleccionados.length; i++) {
+            const doc = documentosSeleccionados[i];
             const ripsError = await ejecutarRips(doc.nFact);
+            
             if (ripsError) {
-                showToast('Error', ripsError, 'error');
                 erroresRips.push(doc.idMovDoc);
-                
+                reporte.push(`❌ ${doc.nFact}: ERROR RIPS`);
+                reporte.push(`   Detalle: ${ripsError}`);
+                reporte.push('');
             }
+
+            // Actualizar progreso 
+            const progresoRips = Math.round(((i + 1) / documentosSeleccionados.length) * 30);
+            actualizarToastProgreso(toast, progresoRips);
         }
 
         const documentosValidos = documentosSeleccionados.filter(d => !erroresRips.includes(d.idMovDoc));
+        
+        reporte.push('');
+        reporte.push(`Resumen RIPS: ${documentosValidos.length} exitosos, ${erroresRips.length} fallidos`);
+        reporte.push('='.repeat(80));
+        reporte.push('');
+
         if (documentosValidos.length === 0) {
-            showToast('Error', 'Ningún documento pasó validación RIPS', 'error');
+            reporte.push('❌ PROCESO FINALIZADO: Ningún documento pasó la validación RIPS');
+            await guardarReporte(directoryHandle, reporte);
+            
+            showToast('Error', 'Ningún documento pasó validación RIPS. Se generó reporte con detalles.', 'error', 8000);
+            
             setTimeout(() => {
                 toast.classList.add('fadeOut');
                 setTimeout(() => toast.remove(), 300);
@@ -1969,40 +2004,74 @@ async function DescargarPaquetes() {
             return;
         }
 
+        // Fase 2: Descarga de ZIPs
+        reporte.push('--- FASE 2: DESCARGA DE PAQUETES ---');
+        reporte.push('');
+
         let paquetesExitosos = [];
         let paquetesFallidos = [];
         const incluirXml = document.getElementById('incluirXML').checked;
 
         for (let i = 0; i < documentosValidos.length; i++) {
             const doc = documentosValidos[i];
-            const downloadError = await descargarZip(doc.idMovDoc, "json", incluirXml, doc.cuv, directoryHandle);
+            const downloadError = await descargarZip(doc.idMovDoc, "json", incluirXml, directoryHandle);
+            
             if (downloadError) {
-                showToast('Error', downloadError, 'error');
                 paquetesFallidos.push(doc.nFact);
-                setTimeout(() => {
-                    toast.classList.add('fadeOut');
-                    setTimeout(() => toast.remove(), 300);
-                }, 1000);
-                return;
+                reporte.push(`❌ ${doc.nFact}: ERROR EN DESCARGA`);
+                reporte.push(`   Detalle: ${downloadError}`);
+                reporte.push('');
+            } else {
+                paquetesExitosos.push(doc.nFact);
+                reporte.push(`✓ ${doc.nFact}: Descarga exitosa`);
             }
 
-            paquetesExitosos.push(doc.nFact);
-            const progreso = Math.round(((i + 1) / documentosValidos.length) * 100);
-            actualizarToastProgreso(toast, progreso);
+            // Actualizar progreso (fase descarga = 30-100%)
+            const progresoDescarga = 30 + Math.round(((i + 1) / documentosValidos.length) * 70);
+            actualizarToastProgreso(toast, progresoDescarga);
         }
+
+        // Resumen final
+        reporte.push('');
+        reporte.push('='.repeat(80));
+        reporte.push('RESUMEN FINAL');
+        reporte.push('='.repeat(80));
+        reporte.push(`Total procesados: ${documentosSeleccionados.length}`);
+        reporte.push(`✓ Exitosos: ${paquetesExitosos.length}`);
+        reporte.push(`❌ Fallidos (RIPS): ${erroresRips.length}`);
+        reporte.push(`❌ Fallidos (Descarga): ${paquetesFallidos.length}`);
+        reporte.push('='.repeat(80));
+
+        // Guardar reporte como TXT
+        await guardarReporte(directoryHandle, reporte);
 
         setTimeout(() => {
             toast.classList.add('fadeOut');
             setTimeout(() => toast.remove(), 300);
         }, 1000);
 
-        if (paquetesExitosos.length === 1) {
-            showToast('Éxito', `El paquete con factura ${paquetesExitosos[0]} se ha descargado correctamente`, 'success');
-        } else if (paquetesExitosos.length > 1) {
+        const totalFallidos = erroresRips.length + paquetesFallidos.length;
+        
+        if (paquetesExitosos.length > 0 && totalFallidos === 0) {
             showToast(
-                'Éxito',
-                `${paquetesExitosos.length} de ${documentosSeleccionados.length} paquetes se han descargado correctamente`,
-                'success'
+                'Proceso Completado', 
+                `✓ ${paquetesExitosos.length} paquetes descargados correctamente. Ver reporte para detalles.`,
+                'success',
+                8000
+            );
+        } else if (paquetesExitosos.length > 0 && totalFallidos > 0) {
+            showToast(
+                'Proceso Completado con Errores', 
+                `✓ ${paquetesExitosos.length} exitosos | ❌ ${totalFallidos} fallidos. Ver reporte_descarga.txt para detalles.`,
+                'warning',
+                10000
+            );
+        } else {
+            showToast(
+                'Proceso Fallido', 
+                `Todos los paquetes fallaron. Ver reporte_descarga.txt para detalles.`,
+                'error',
+                10000
             );
         }
 
@@ -2025,6 +2094,37 @@ async function DescargarPaquetes() {
             botonEnviar.style.opacity = '1';
             botonEnviar.style.cursor = 'pointer';
         }
+    }
+}
+
+// Función para guardar el reporte como TXT
+async function guardarReporte(directoryHandle, lineasReporte) {
+    try {
+        
+        const ahora = new Date();
+        const bogota = new Date(ahora.toLocaleString('en-US', { timeZone: 'America/Bogota' }));
+        
+        const dia = String(bogota.getDate()).padStart(2, '0');
+        const mes = String(bogota.getMonth() + 1).padStart(2, '0');
+        const año = bogota.getFullYear();
+        const hora = String(bogota.getHours()).padStart(2, '0');
+        const minuto = String(bogota.getMinutes()).padStart(2, '0');
+        const segundo = String(bogota.getSeconds()).padStart(2, '0');
+        
+        const timestamp = `${dia}-${mes}-${año}_${hora}-${minuto}-${segundo}`;
+        const nombreArchivo = `reporte_descarga_${timestamp}.txt`;
+        
+        const fileHandle = await directoryHandle.getFileHandle(nombreArchivo, { create: true });
+        const writable = await fileHandle.createWritable();
+        
+        const contenido = lineasReporte.join('\n');
+        await writable.write(contenido);
+        await writable.close();
+        
+        console.log(`✓ Reporte guardado: ${nombreArchivo}`);
+    } catch (error) {
+        console.error('Error al guardar reporte:', error);
+        showToast('Advertencia', 'No se pudo guardar el archivo de reporte', 'warning', 5000);
     }
 }
 
@@ -2089,7 +2189,7 @@ async function DescargarPaquete(button) {
 
         actualizarToastProgreso(toast, 50);
 
-        const downloadError = await descargarZip(id, tipo, incluirXml, cuv, directoryHandle);
+        const downloadError = await descargarZip(id, tipo, incluirXml, directoryHandle);
         if (downloadError) {
             setTimeout(() => {
                 toast.classList.add('fadeOut');
@@ -2146,7 +2246,7 @@ async function descargarZip(id, tipo, xml, directoryHandle) {
 
         if (!response.ok) {
             const errorText = await response.text();
-            return `Error al descargar ZIP para ID ${id}: ${errorText}`;
+            return errorText;
         }
 
         const blob = await response.blob();
