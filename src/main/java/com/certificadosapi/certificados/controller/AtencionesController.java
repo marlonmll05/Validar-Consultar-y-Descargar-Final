@@ -278,11 +278,12 @@ public class AtencionesController {
         produces = "application/zip"
     )
     public ResponseEntity<byte[]> exportarCuentaCobro(
-            @RequestParam String numeroCuentaCobro,
+            @RequestParam("numeroCuentaCobro") String numeroCuentaCobro,
+            @RequestParam("incluirArchivos") boolean incluirArchivos,
             @RequestParam MultiValueMap<String, MultipartFile> fileParts
     ) throws IOException {
 
-        byte[] zipBytes = exportarService.exportarCuentaCobro(numeroCuentaCobro, fileParts);
+        byte[] zipBytes = exportarService.exportarCuentaCobro(numeroCuentaCobro, incluirArchivos, fileParts);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/zip"))

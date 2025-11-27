@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
@@ -402,10 +403,9 @@ public class ExportarService {
         return zipBytes;
     }
 
-    
-
     public byte[] exportarCuentaCobro(
-        String numeroCuentaCobro,
+        @RequestParam("numeroCuentaCobro") String numeroCuentaCobro,
+        @RequestParam("incluirArchivos") boolean incluirArchivos,
         MultiValueMap<String, MultipartFile> fileParts) throws IOException {
         
         log.info("Iniciando exportacion ZIP para Cuenta de Cobro {}", numeroCuentaCobro);
@@ -423,8 +423,11 @@ public class ExportarService {
 
         for (Map.Entry<String, List<MultipartFile>> e : fileParts.entrySet()) {
             String key = e.getKey();
-            if (key == null || key.isBlank()) continue;
-            log.warn("Key vacia, se ignora");
+            if (key == null || key.isBlank()) {
+                log.warn("Key vacia, se ignora: {}", key);
+                continue;
+            }
+            
 
             int idx = key.indexOf('_');
             if (idx <= 0 || idx >= key.length() - 1) {
@@ -467,7 +470,6 @@ public class ExportarService {
             for (Map.Entry<String, List<PartItem>> entry : porNfact.entrySet()) {
 
                 String nFact = entry.getKey();
-                log.info("Procesando factura {}", nFact);
 
                 String sanitizeN = ILLEGAL.matcher(nFact == null ? "" : nFact).replaceAll("_").trim();
                 String folderFactura = folderCuenta + (sanitizeN.isBlank() ? "SIN_FACTURA" : sanitizeN) + "/";
@@ -492,138 +494,144 @@ public class ExportarService {
                 // === OBTENER DATOS DE BD ===
                 Integer idMovDoc = null;
                 String numdoc = null, idEmpresaGrupo = null;
-
-                log.debug("Consultando IdMovDoc para {}", nFact);
-                try (Connection c = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"));
-                    PreparedStatement ps = c.prepareStatement("SELECT IdMovDoc FROM FacturaFinal WHERE NFact = ?")) {
-
-                    ps.setString(1, nFact);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) {
-                            idMovDoc = rs.getInt(1);
-                            log.debug("IdMovDoc={} para factura {}", idMovDoc, nFact);
-                        } else {
-                            log.warn("No existe IdMovDoc para factura {}", nFact);
-                        }
-                    }
-                } catch (Exception ex) {
-                    log.warn("Error consultando IdMovDoc {}: {}", nFact, ex.getMessage());
-                }
-
-                if (idMovDoc != null) {
-                    log.debug("Consultando datos financieros para IdMovDoc {}", idMovDoc);
-                    try (Connection c = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoftFinanciero_ST"))) {
-
-                        try (PreparedStatement ps = c.prepareStatement(
-                                "SELECT Prefijo, Numdoc FROM MovimientoDocumentos WHERE IdMovDoc = ?")) {
-                            ps.setInt(1, idMovDoc);
-                            try (ResultSet rs = ps.executeQuery()) {
-                                if (rs.next()) {
-                                    numdoc  = rs.getString("Numdoc");
-                                    log.debug("Numdoc={}", numdoc);
-                                }
-                            }
-                        }
-
-                        try (PreparedStatement ps = c.prepareStatement(
-                                """
-                                SELECT E.IdEmpresaGrupo
-                                FROM MovimientoDocumentos M
-                                INNER JOIN Empresas E ON E.IdEmpresaKey = M.IdEmpresaKey
-                                WHERE M.IdMovDoc = ?
-                                """)) {
-                            ps.setInt(1, idMovDoc);
-                            try (ResultSet rs = ps.executeQuery()) {
-                                if (rs.next()) {
-                                    idEmpresaGrupo = rs.getString("IdEmpresaGrupo");
-                                    log.debug("IdEmpresaGrupo={}", idEmpresaGrupo);
-                                }
-                            }
-                        }
-
-                    } catch (Exception ex) {
-                        log.warn("Error consultando datos financieros {}: {}", nFact, ex.getMessage());
-                    }
-                }
-
-                // === CONSULTAR RESPUESTA VALIDADOR ===
-                log.debug("🔎 Consultando respuesta validador para {}", nFact);
-
                 String respuestaValidador = null;
-                try (Connection c = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
+                
+                if (incluirArchivos) {
+                    log.debug("Consultando IdMovDoc para {}", nFact);
+                    try (Connection c = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"));
+                        PreparedStatement ps = c.prepareStatement("SELECT IdMovDoc FROM FacturaFinal WHERE NFact = ?")) {
 
-                    String sql = """
-                            SELECT MensajeRespuesta
-                            FROM RIPS_RespuestaApi
-                            WHERE LTRIM(RTRIM(NFact)) = LTRIM(RTRIM(?))
-                            """;
-
-                    try (PreparedStatement ps = c.prepareStatement(sql)) {
                         ps.setString(1, nFact);
-
                         try (ResultSet rs = ps.executeQuery()) {
                             if (rs.next()) {
-                                respuestaValidador = rs.getString("MensajeRespuesta");
-                                log.debug("Validador encontrado para {}", nFact);
+                                idMovDoc = rs.getInt(1);
+                                log.debug("IdMovDoc={} para factura {}", idMovDoc, nFact);
                             } else {
-                                log.debug("No hay respuesta validador para {}", nFact);
+                                log.warn("No existe IdMovDoc para factura {}", nFact);
                             }
+                        }
+                    } catch (Exception ex) {
+                        log.warn("Error consultando IdMovDoc {}: {}", nFact, ex.getMessage());
+                    }
+
+                    if (idMovDoc != null) {
+                        log.debug("Consultando datos financieros para IdMovDoc {}", idMovDoc);
+                        try (Connection c = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoftFinanciero_ST"))) {
+
+                            try (PreparedStatement ps = c.prepareStatement(
+                                    "SELECT Prefijo, Numdoc FROM MovimientoDocumentos WHERE IdMovDoc = ?")) {
+                                ps.setInt(1, idMovDoc);
+                                try (ResultSet rs = ps.executeQuery()) {
+                                    if (rs.next()) {
+                                        numdoc  = rs.getString("Numdoc");
+                                        log.debug("Numdoc={}", numdoc);
+                                    }
+                                }
+                            }
+
+                            try (PreparedStatement ps = c.prepareStatement(
+                                    """
+                                    SELECT E.IdEmpresaGrupo
+                                    FROM MovimientoDocumentos M
+                                    INNER JOIN Empresas E ON E.IdEmpresaKey = M.IdEmpresaKey
+                                    WHERE M.IdMovDoc = ?
+                                    """)) {
+                                ps.setInt(1, idMovDoc);
+                                try (ResultSet rs = ps.executeQuery()) {
+                                    if (rs.next()) {
+                                        idEmpresaGrupo = rs.getString("IdEmpresaGrupo");
+                                        log.debug("IdEmpresaGrupo={}", idEmpresaGrupo);
+                                    }
+                                }
+                            }
+
+                        } catch (Exception ex) {
+                            log.warn("Error consultando datos financieros {}: {}", nFact, ex.getMessage());
                         }
                     }
 
-                } catch (Exception ex) {
-                    log.warn("Error consultando validador {}: {}", nFact, ex.getMessage());
-                }
+                    // === CONSULTAR RESPUESTA VALIDADOR ===
+                    log.debug("🔎 Consultando respuesta validador para {}", nFact);
 
-                // === XML ===
-                if (xmls.isEmpty()) {
-                    log.warn("No llegó XML para factura {} | SE OMITE ESTA FACTURA", nFact);
-                    continue;
-                }
 
-                MultipartFile xml = xmls.get(0);
-                String xmlFileName;
+                    try (Connection c = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
 
-                if (idEmpresaGrupo != null && numdoc != null) {
-                    String yearSuffix = String.valueOf(java.time.LocalDate.now().getYear()).substring(2);
-                    String formattedNumdoc;
-                    try {
-                        formattedNumdoc = String.format("%08d", Integer.parseInt(numdoc));
+                        String sql = """
+                                SELECT MensajeRespuesta
+                                FROM RIPS_RespuestaApi
+                                WHERE LTRIM(RTRIM(NFact)) = LTRIM(RTRIM(?))
+                                """;
+
+                        try (PreparedStatement ps = c.prepareStatement(sql)) {
+                            ps.setString(1, nFact);
+
+                            try (ResultSet rs = ps.executeQuery()) {
+                                if (rs.next()) {
+                                    respuestaValidador = rs.getString("MensajeRespuesta");
+                                    log.debug("Validador encontrado para {}", nFact);
+                                } else {
+                                    log.debug("No hay respuesta validador para {}", nFact);
+                                }
+                            }
+                        }
+
                     } catch (Exception ex) {
-                        formattedNumdoc = numdoc;
-                    }
-                    xmlFileName = "ad0" + idEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml";
-                } else {
-                    xmlFileName = xml.getOriginalFilename();
-                    if (xmlFileName == null || xmlFileName.isBlank()) {
-                        xmlFileName = "Factura_" + sanitizeN + ".xml";
+                        log.warn("Error consultando validador {}: {}", nFact, ex.getMessage());
                     }
                 }
 
-                String xmlPath = obtenerNombreUnico(folderFactura, xmlFileName, nombresUsados);
-                log.debug("Agregando XML: {}", xmlPath);
+                if (incluirArchivos) {
+                    if (xmls.isEmpty()) {
+                        log.warn("No llegó XML para factura {} | SE OMITE ESTA FACTURA", nFact);
+                        continue;
+                    }
 
-                ZipEntry xmlEntry = new ZipEntry(xmlPath);
-                zos.putNextEntry(xmlEntry);
-                zos.write(xml.getBytes());
-                zos.closeEntry();
-                archivosAgregados++;
+                    MultipartFile xml = xmls.get(0);
+                    String xmlFileName;
+
+                    if (idEmpresaGrupo != null && numdoc != null) {
+                        String yearSuffix = String.valueOf(java.time.LocalDate.now().getYear()).substring(2);
+                        String formattedNumdoc;
+                        try {
+                            formattedNumdoc = String.format("%08d", Integer.parseInt(numdoc));
+                        } catch (Exception ex) {
+                            formattedNumdoc = numdoc;
+                        }
+                        xmlFileName = "ad0" + idEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml";
+                    } else {
+                        xmlFileName = xml.getOriginalFilename();
+                        if (xmlFileName == null || xmlFileName.isBlank()) {
+                            xmlFileName = "Factura_" + sanitizeN + ".xml";
+                        }
+                    }
+
+                    String xmlPath = obtenerNombreUnico(folderFactura, xmlFileName, nombresUsados);
+                    log.debug("Agregando XML: {}", xmlPath);
+
+                    ZipEntry xmlEntry = new ZipEntry(xmlPath);
+                    zos.putNextEntry(xmlEntry);
+                    zos.write(xml.getBytes());
+                    zos.closeEntry();
+                    archivosAgregados++;   
+                }
 
                 // === JSON ===
-                for (MultipartFile jf : jsons) {
-                    String nombre = jf.getOriginalFilename();
-                    if (nombre == null || nombre.isBlank()) {
-                        nombre = "Factura_" + sanitizeN + ".json";
+                if (incluirArchivos) {
+                    for (MultipartFile jf : jsons) {
+                        String nombre = jf.getOriginalFilename();
+                        if (nombre == null || nombre.isBlank()) {
+                            nombre = "Factura_" + sanitizeN + ".json";
+                        }
+
+                        String jsonPath = obtenerNombreUnico(folderFactura, nombre, nombresUsados);
+                        log.debug("Agregando JSON: {}", jsonPath);
+
+                        ZipEntry jsonEntry = new ZipEntry(jsonPath);
+                        zos.putNextEntry(jsonEntry);
+                        zos.write(jf.getBytes());
+                        zos.closeEntry();
+                        archivosAgregados++;
                     }
-
-                    String jsonPath = obtenerNombreUnico(folderFactura, nombre, nombresUsados);
-                    log.debug("Agregando JSON: {}", jsonPath);
-
-                    ZipEntry jsonEntry = new ZipEntry(jsonPath);
-                    zos.putNextEntry(jsonEntry);
-                    zos.write(jf.getBytes());
-                    zos.closeEntry();
-                    archivosAgregados++;
                 }
 
                 // === PDFs ===
@@ -646,7 +654,7 @@ public class ExportarService {
                 }
 
                 // === TXT VALIDACIÓN ===
-                if (respuestaValidador != null && !respuestaValidador.isBlank()) {
+                if (incluirArchivos && respuestaValidador != null && !respuestaValidador.isBlank()) {
                     String procesoId = "";
 
                     try {
