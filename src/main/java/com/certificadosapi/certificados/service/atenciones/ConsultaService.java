@@ -1,11 +1,13 @@
 package com.certificadosapi.certificados.service.atenciones;
 
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,7 +16,9 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Service;
+
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
 @Service
@@ -136,4 +140,23 @@ public class ConsultaService {
             }
         }
     }
+
+    public String validarCuentacobro (Integer cuentaCobro) throws SQLException {
+        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
+            String sql = "EXEC Pa_FacturacionExportacion_DS_Validar ?, ?";
+            try (CallableStatement cStatement = conn.prepareCall(sql)) {
+                cStatement.setInt(1, cuentaCobro);  
+
+                cStatement.registerOutParameter(2, Types.LONGVARCHAR);
+
+                cStatement.execute();
+
+                String resultado = cStatement.getString(2);
+
+                log.info("Resultados validacion Cuenta Cobro {}", resultado);
+
+                return resultado;
+            }
+        }
+    } 
 }

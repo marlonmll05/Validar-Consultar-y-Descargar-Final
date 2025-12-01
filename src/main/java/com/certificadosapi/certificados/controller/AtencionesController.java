@@ -49,6 +49,15 @@ public class AtencionesController {
         this.anexarService = anexarService;
     }
 
+    //ENDPOINT PARA VALIDAR SI UNA CUENTA DE COBRO ESTA BIEN
+    @GetMapping("/validar-cuenta")
+    public ResponseEntity<String> validarCuentacobro (Integer cuentaCobro) throws SQLException {
+
+        String resultados = consultaService.validarCuentacobro(cuentaCobro);
+
+        return ResponseEntity.ok(resultados);
+    } 
+
     //ENDPOINT PARA VER TODAS LAS TIPIFICACIONES DE ANEXOS
     @GetMapping("/soportes-anexos-completo")
     public ResponseEntity<List<Map<String, Object>>> obtenerDocumentosSoporteSinFiltros() throws SQLException {

@@ -76,7 +76,7 @@ public class FiltrobusquedaController {
             @RequestParam(required = false) String nFact,
             @RequestParam(required = false) Integer nCuentaCobro,
             @RequestParam(required = false) Boolean soloFacturados,
-            @RequestParam(required = false, defaultValue = "4") Integer cantSoportes
+            @RequestParam(required = false, defaultValue = "0") Integer cantSoportes
     ) {
 
         List<Map<String, Object>> data = filtrobusquedaService.buscarAtenciones(

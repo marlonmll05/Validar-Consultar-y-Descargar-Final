@@ -17,7 +17,6 @@ sessionStorage.clear();
 window.location.href = 'loginsql.html';
 }
 
-sessionStorage.setItem('pestanaActiva', 'true');
 
 const host = window.location.hostname;
 
