@@ -1,4 +1,6 @@
-
+if (!sessionStorage.getItem('tokenSQL')) {
+    window.location.href = 'loginsql.html';
+}
 
 // Validación de Acceso
 window.addEventListener("DOMContentLoaded", async () => {
@@ -376,6 +378,16 @@ function renderPaginacion() {
 document.getElementById('filtrosForm').addEventListener('submit', function (e) {
     e.preventDefault();
 
+    const submitBtn = e.submitter;
+    const originalHTML = submitBtn ? submitBtn.innerHTML : '';
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'Buscando...';
+        submitBtn.style.opacity = '0.6';
+        submitBtn.style.cursor = 'not-allowed';
+    }
+
     const errorMsg = document.getElementById('errorMsg');
     const emptyState = document.getElementById('emptyState');
     const table = document.getElementById('resultadosTabla');
@@ -507,6 +519,7 @@ document.getElementById('filtrosForm').addEventListener('submit', function (e) {
     renderTablaPagina(1);
 
     showToast("Éxito", `Se encontraron ${data.length} registros.`, "success", 4000);
+
     })
 
     .catch(error => {
@@ -517,6 +530,15 @@ document.getElementById('filtrosForm').addEventListener('submit', function (e) {
         clearInterval(intervalo);
         actualizarToastProgreso(toast, 100);
         setTimeout(() => toast.remove(), 400);
+    })
+    .finally(() => { 
+
+        if (submitBtn){
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalHTML;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = "pointer"
+        }
     });
 });
 
@@ -536,450 +558,482 @@ function cerrarModalTipos() {
 
 
 //Botón Exportar por lote
-document.getElementById('btnExportar').addEventListener('click', async () => {
+document.getElementById('btnExportar').addEventListener('click', async (event) => {
     const exportarPorCuenta = document.getElementById('exportarCuentaCobro').checked;
 
-    if (!exportarPorCuenta) {
-    // Modo: Exportar solo filas seleccionadas
-    const checkboxes = document.querySelectorAll('.checkbox-row:checked');
+    const botonExp = event.target;
+    const expOriginal = botonExp.innerHTML;
 
-    if (checkboxes.length === 0) {
-        showToast("Sin selección", "Selecciona al menos una fila para exportar", "warning", 4000);
-        return;
+    if (botonExp){
+        botonExp.style.cursor = "not-allowed";
+        botonExp.disabled = true;
+        botonExp.innerHTML = "Exportando..."
+        botonExp.style.opacity = "0.6";
     }
 
-    // Desmarcar de una todas las casillas seleccionadas al exportar
-    const uncheck = (cb) => {
-        cb.checked = false;
-        cb.dispatchEvent(new Event('change', { bubbles: true }));
-    };
-    checkboxes.forEach(uncheck);
-
     try {
-        const dirHandle = await window.showDirectoryPicker();
-        const toast = showToast("Exportando", `Procesando ${checkboxes.length} admisión(es)...`, "info", 0, true);
+        if (!exportarPorCuenta) {
+        // Modo: Exportar solo filas seleccionadas
+        const checkboxes = document.querySelectorAll('.checkbox-row:checked');
 
-        let admisionesProcesadas = 0;
-        const totalAdmisiones = checkboxes.length;
+        if (checkboxes.length === 0) {
+            showToast("Sin selección", "Selecciona al menos una fila para exportar", "warning", 4000);
+            return;
+        }
 
-        for (const checkbox of checkboxes) {
-        const rowKey = checkbox.dataset.rowkey;
-        const tr = document.querySelector(`tr[data-rowkey="${rowKey}"]`);
-        if (!tr) continue;
-
-        const idAdmision = tr.dataset.idadmision;
-        const idAtencion = tr.dataset.idatencion;
-        const btnExportar = tr.querySelector('.btn-exportar');
-        const nFact = btnExportar ? btnExportar.dataset.nfact : null;
-
-        console.log(`Exportando admisión: ${idAdmision}, nFact: ${nFact}`);
+        // Desmarcar de una todas las casillas seleccionadas al exportar
+        const uncheck = (cb) => {
+            cb.checked = false;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        checkboxes.forEach(uncheck);
 
         try {
-            const form = new FormData();
+            const dirHandle = await window.showDirectoryPicker();
+            const toast = showToast("Exportando", `Procesando ${checkboxes.length} admisión(es)...`, "info", 0, true);
+
+            let admisionesProcesadas = 0;
+            const totalAdmisiones = checkboxes.length;
+
+            for (const checkbox of checkboxes) {
+            const rowKey = checkbox.dataset.rowkey;
+            const tr = document.querySelector(`tr[data-rowkey="${rowKey}"]`);
+            if (!tr) continue;
+
+            const idAdmision = tr.dataset.idadmision;
+            const idAtencion = tr.dataset.idatencion;
+            const btnExportar = tr.querySelector('.btn-exportar');
+            const nFact = btnExportar ? btnExportar.dataset.nfact : null;
+
+            console.log(`Exportando admisión: ${idAdmision}, nFact: ${nFact}`);
 
             try {
-            const respSoporte = await fetch(`https://${host}:9876/api/soportes-por-anexos?idAdmision=${idAdmision}`);
+                const form = new FormData();
 
-            if (respSoporte.status === 204) {
-                showToast("Sin PDFs", `IdAtencion ${idAtencion} no tiene PDFs`, "warning", 3000);
-            } else if (!respSoporte.ok) {
-                console.warn(`Error obteniendo soportes:`, await respSoporte.text());
-            } else {
-                const soportes = await respSoporte.json(); 
-                for (const idSoporteKey of soportes) {
                 try {
-                    const url = new URL(`https://${host}:9876/api/exportar-pdf`);
-                    url.searchParams.set("idAdmision", idAdmision);
-                    url.searchParams.set("idSoporteKey", idSoporteKey);
+                const respSoporte = await fetch(`https://${host}:9876/api/soportes-por-anexos?idAdmision=${idAdmision}`);
 
-                    const resp = await fetch(url);
-                    if (resp.status === 204 || !resp.ok) continue;
-
-                    const blob = await resp.blob();
-                    const header = resp.headers.get("Content-Disposition");
-                    const nombre = header?.split("filename=")[1]?.replace(/"/g, "") || `Documento_${idSoporteKey}.pdf`;
-
-                    form.append('pdfs', new File([blob], nombre, { type: blob.type || 'application/pdf' }));
-                    await new Promise(r => setTimeout(r, 120));
-                } catch (err) {
-                    console.error(`Error descargando PDF ${idSoporteKey}:`, err);
-                }
-                }
-            }
-            } catch (err) {
-            console.error(`Error listando soportes:`, err);
-            }
-
-            // 2) XML 
-            let idMovDoc = null;
-            if (nFact) {
-            try {
-                const respXml = await fetch(`https://${host}:9876/api/generarxml/${nFact}`);
-                if (respXml.ok) {
-                const blobXml = await respXml.blob();
-                const headerXml = respXml.headers.get("Content-Disposition");
-                const filenameXml = headerXml?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.xml`;
-                idMovDoc = respXml.headers.get("X-IdMovDoc") || null;
-
-                form.append('xml', new File([blobXml], filenameXml, { type: 'application/xml' }));
+                if (respSoporte.status === 204) {
+                    showToast("Sin PDFs", `IdAtencion ${idAtencion} no tiene PDFs`, "warning", 3000);
+                } else if (!respSoporte.ok) {
+                    console.warn(`Error obteniendo soportes:`, await respSoporte.text());
                 } else {
-                showToast("Sin XML", `No hay XML para factura ${nFact}`, "warning", 3000);
+                    const soportes = await respSoporte.json(); 
+                    for (const idSoporteKey of soportes) {
+                    try {
+                        const url = new URL(`https://${host}:9876/api/exportar-pdf`);
+                        url.searchParams.set("idAdmision", idAdmision);
+                        url.searchParams.set("idSoporteKey", idSoporteKey);
+
+                        const resp = await fetch(url);
+                        if (resp.status === 204 || !resp.ok) continue;
+
+                        const blob = await resp.blob();
+                        const header = resp.headers.get("Content-Disposition");
+                        const nombre = header?.split("filename=")[1]?.replace(/"/g, "") || `Documento_${idSoporteKey}.pdf`;
+
+                        form.append('pdfs', new File([blob], nombre, { type: blob.type || 'application/pdf' }));
+                        await new Promise(r => setTimeout(r, 120));
+                    } catch (err) {
+                        console.error(`Error descargando PDF ${idSoporteKey}:`, err);
+                    }
+                    }
+                }
+                } catch (err) {
+                console.error(`Error listando soportes:`, err);
+                }
+
+                // 2) XML 
+                let idMovDoc = null;
+                if (nFact) {
+                try {
+                    const respXml = await fetch(`https://${host}:9876/api/generarxml/${nFact}`);
+                    if (respXml.ok) {
+                    const blobXml = await respXml.blob();
+                    const headerXml = respXml.headers.get("Content-Disposition");
+                    const filenameXml = headerXml?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.xml`;
+                    idMovDoc = respXml.headers.get("X-IdMovDoc") || null;
+
+                    form.append('xml', new File([blobXml], filenameXml, { type: 'application/xml' }));
+                    } else {
+                    showToast("Sin XML", `No hay XML para factura ${nFact}`, "warning", 3000);
+                    admisionesProcesadas++;
+                    const porcentaje = Math.round((admisionesProcesadas / totalAdmisiones) * 100);
+                    actualizarToastProgreso(toast, porcentaje);
+                    continue;
+                    }
+                } catch (err) {
+                    console.error(`Error descargando XML:`, err);
+                    showToast("Error", `Error descargando XML: ${err.message}`, "error", 4000);
+                    admisionesProcesadas++;
+                    const porcentaje = Math.round((admisionesProcesadas / totalAdmisiones) * 100);
+                    actualizarToastProgreso(toast, porcentaje);
+                    continue;
+                }
+                } else {
+                showToast("Sin NFact", `La fila ${idAdmision} no tiene NFact`, "warning", 3000);
                 admisionesProcesadas++;
                 const porcentaje = Math.round((admisionesProcesadas / totalAdmisiones) * 100);
                 actualizarToastProgreso(toast, porcentaje);
                 continue;
                 }
+
+                // 3) JSON de la factura
+                if (idMovDoc) {
+                try {
+                    const respJson = await fetch(`https://${host}:9876/facturas/generarjson/${idMovDoc}`);
+                    if (respJson.ok) {
+                    const blobJson = await respJson.blob();
+                    const headerJson = respJson.headers.get("Content-Disposition");
+                    const filenameJson = headerJson?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.json`;
+
+                    form.append('jsonFactura', new File([blobJson], filenameJson, { type: 'application/json' }));
+                    } else {
+                    showToast("Sin JSON", `No hay JSON para factura ${nFact}`, "warning", 3000);
+                    }
+                } catch (err) {
+                    console.error(`Error descargando JSON:`, err);
+                    showToast("Error", `Error descargando JSON: ${err.message}`, "error", 4000);
+                }
+                }
+
+                // 4) Enviar todo al backend para que arme el ZIP (allí se añade el TXT MSPS)
+                const respZip = await fetch(`https://${host}:9876/api/armar-zip/${encodeURIComponent(nFact)}`, {
+                method: 'POST',
+                body: form
+                });
+                if (!respZip.ok) {
+                const txt = await respZip.text();
+                throw new Error(`Error al armar ZIP: ${txt}`);
+                }
+
+                // 5) Guardar el ZIP en la carpeta seleccionada
+                const blobZip = await respZip.blob();
+                const zipName = `${nFact}.zip`;
+                const fileHandleZip = await dirHandle.getFileHandle(zipName, { create: true });
+                const writableZip = await fileHandleZip.createWritable();
+                await writableZip.write(blobZip);
+                await writableZip.close();
+
+                console.log(`✅ ZIP guardado: ${zipName}`);
+                showToast("Éxito", `ZIP descargado: ${zipName}`, "success", 2500);
+
             } catch (err) {
-                console.error(`Error descargando XML:`, err);
-                showToast("Error", `Error descargando XML: ${err.message}`, "error", 4000);
-                admisionesProcesadas++;
-                const porcentaje = Math.round((admisionesProcesadas / totalAdmisiones) * 100);
-                actualizarToastProgreso(toast, porcentaje);
-                continue;
+                console.error(`Error procesando admisión ${idAdmision}:`, err);
+                showToast("Error", err.message, "error", 4500);
             }
-            } else {
-            showToast("Sin NFact", `La fila ${idAdmision} no tiene NFact`, "warning", 3000);
+
             admisionesProcesadas++;
             const porcentaje = Math.round((admisionesProcesadas / totalAdmisiones) * 100);
             actualizarToastProgreso(toast, porcentaje);
-            continue;
             }
 
-            // 3) JSON de la factura
-            if (idMovDoc) {
-            try {
-                const respJson = await fetch(`https://${host}:9876/facturas/generarjson/${idMovDoc}`);
-                if (respJson.ok) {
-                const blobJson = await respJson.blob();
-                const headerJson = respJson.headers.get("Content-Disposition");
-                const filenameJson = headerJson?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.json`;
-
-                form.append('jsonFactura', new File([blobJson], filenameJson, { type: 'application/json' }));
-                } else {
-                showToast("Sin JSON", `No hay JSON para factura ${nFact}`, "warning", 3000);
-                }
-            } catch (err) {
-                console.error(`Error descargando JSON:`, err);
-                showToast("Error", `Error descargando JSON: ${err.message}`, "error", 4000);
-            }
-            }
-
-            // 4) Enviar todo al backend para que arme el ZIP (allí se añade el TXT MSPS)
-            const respZip = await fetch(`https://${host}:9876/api/armar-zip/${encodeURIComponent(nFact)}`, {
-            method: 'POST',
-            body: form
-            });
-            if (!respZip.ok) {
-            const txt = await respZip.text();
-            throw new Error(`Error al armar ZIP: ${txt}`);
-            }
-
-            // 5) Guardar el ZIP en la carpeta seleccionada
-            const blobZip = await respZip.blob();
-            const zipName = `${nFact}.zip`;
-            const fileHandleZip = await dirHandle.getFileHandle(zipName, { create: true });
-            const writableZip = await fileHandleZip.createWritable();
-            await writableZip.write(blobZip);
-            await writableZip.close();
-
-            console.log(`✅ ZIP guardado: ${zipName}`);
-            showToast("Éxito", `ZIP descargado: ${zipName}`, "success", 2500);
-
-        } catch (err) {
-            console.error(`Error procesando admisión ${idAdmision}:`, err);
-            showToast("Error", err.message, "error", 4500);
-        }
-
-        admisionesProcesadas++;
-        const porcentaje = Math.round((admisionesProcesadas / totalAdmisiones) * 100);
-        actualizarToastProgreso(toast, porcentaje);
-        }
-
-        toast.querySelector("p").textContent = `Exportación completada (${admisionesProcesadas} admisiones)`;
-        toast.classList.remove("info");
-        toast.classList.add("success");
-
-        setTimeout(() => {
-        if (toast.parentElement) {
-            toast.classList.add('fadeOut');
-            setTimeout(() => toast.remove(), 300);
-        }
-        }, 3000);
-
-    } catch (err) {
-        console.error("Error general exportando:", err);
-        showToast("Error", err.message, "error", 5000);
-    }
-
-    } else {
-        // Modo: Exportar por Cuenta de Cobro 
-
-        const numeroCuentaCobro = document.getElementById('cuentaCobro').value.trim();
-
-        if (!numeroCuentaCobro) {
-            showToast("Campo requerido", "Ingresa un número de cuenta de cobro", "warning", 4000);
-            return;
-        }
-
-        const toastValidacion = showToast("Validando", "Verificando cuenta de cobro...", "info", 0, true);
-        console.log(`Validando cuenta de cobro: ${numeroCuentaCobro}`);
-
-        try {
-            const urlValidacion = new URL(`https://${host}:9876/api/validar-cuenta`);
-            urlValidacion.searchParams.set('cuentaCobro', numeroCuentaCobro);
-
-            const respValidacion = await fetch(urlValidacion);
-
-            if (!respValidacion.ok) {
-                throw new Error("Error al validar la cuenta de cobro");
-            }
-
-            const resultadosValidacion = await respValidacion.text();
-
-            if (toastValidacion.parentElement) {
-                toastValidacion.classList.add('fadeOut');
-                setTimeout(() => toastValidacion.remove(), 300);
-            }
-
-            // Si hay resultados
-            if (resultadosValidacion && resultadosValidacion.trim().length > 0) {
-                console.warn("Se encontraron facturas con documentos faltantes");
-                showToast("Advertencia", "Se encontraron facturas con documentos faltantes", "error", 4000);
-
-                const blob = new Blob([resultadosValidacion], { type: 'text/plain;charset=utf-8' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `Validacion_Cuenta_${numeroCuentaCobro}.txt`;
-                link.click();
-                URL.revokeObjectURL(link.href);
-            }
-
-        } catch (error) {
-            console.error("Error al validar la cuenta de cobro:", error);
-            showToast("Error", `Error al validar la cuenta de cobro`, "error", 5000);
-            return;
-        } finally {
-            if (toastValidacion.parentElement) {
-                toastValidacion.classList.add('fadeOut');
-                setTimeout(() => toastValidacion.remove(), 300);
-            }
-        }
-
-        const todasLasFilas = document.querySelectorAll('tbody tr[data-idadmision]');
-        if (todasLasFilas.length === 0) {
-            showToast("Sin datos", "No hay filas para exportar", "warning", 4000);
-            return;
-        }
-
-        let incluirArchivos = false;
-
-        abrirModalTipos();
-
-        const respuestaUsuario = new Promise((resolve) => {
-            btnModalTiposNo.addEventListener('click', () => {
-                cerrarModalTipos();
-                console.log('No se incluirán JSON, XML ni CUV.');
-                resolve(false);
-            }, { once: true });
-
-            btnModalTiposSi.addEventListener('click', () => {
-                cerrarModalTipos();
-                console.log('Se incluirán JSON, XML y CUV.');
-                resolve(true);
-            }, { once: true });
-
-            btnModalTiposCancelar.addEventListener('click', () => {
-                cerrarModalTipos();
-                console.log('Acción cancelada.');
-                resolve(null); 
-            }, { once: true });
-        });
-
-        incluirArchivos = await respuestaUsuario;
-
-        if (incluirArchivos === null) {
-            console.log('Exportación cancelada por el usuario');
-            showToast("Cancelado", "Exportación cancelada", "info", 3000);
-            return; 
-        }
-
-        try {
-            const toast = showToast("Exportando", `Procesando ${todasLasFilas.length} fila(s)...`, "info", 0, true);
-            
-            const TAMAÑO_LOTE = 10;
-            const filasArray = Array.from(todasLasFilas);
-            const totalFilas = filasArray.length;
-            let filasProces = 0;
-            
-            const formFinal = new FormData();
-
-            // Procesar en lotes de 10
-            for (let i = 0; i < filasArray.length; i += TAMAÑO_LOTE) {
-                const lote = filasArray.slice(i, i + TAMAÑO_LOTE);
-                console.log(`Procesando lote ${Math.floor(i / TAMAÑO_LOTE) + 1} de ${Math.ceil(filasArray.length / TAMAÑO_LOTE)} (${lote.length} filas)`);
-
-                await Promise.all(lote.map(async (tr) => {
-                    const idAdmision = tr.dataset.idadmision;
-                    const idAtencion = tr.dataset.idatencion;
-                    const btnExportar = tr.querySelector('.btn-exportar');
-                    const nFact = btnExportar ? btnExportar.dataset.nfact : null;
-
-                    console.log(`Recopilando admisión: ${idAdmision}, nFact: ${nFact}`);
-
-                    if (!nFact) {
-                        console.warn(`❌ La fila ${idAdmision} no tiene NFact; se omite.`);
-                        return;
-                    }
-
-                    try {
-
-                        let idMovDoc = null;
-
-                        // 1) XML (OBLIGATORIO si incluirArchivos = true)
-                        if (incluirArchivos) {
-                            try {
-                                const respXml = await fetch(`https://${host}:9876/api/generarxml/${nFact}`);
-                                if (respXml.ok) {
-                                    const blobXml = await respXml.blob();
-                                    const headerXml = respXml.headers.get("Content-Disposition");
-                                    const filenameXml = headerXml?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.xml`;
-                                    idMovDoc = respXml.headers.get("X-IdMovDoc") || null;
-
-                                    formFinal.append(`${nFact}_xml`, new File([blobXml], filenameXml, { type: 'application/xml' }));
-                                } else {
-                                    console.warn(`❌ Sin XML para factura ${nFact} - SE OMITE FACTURA COMPLETA`);
-                                    return; 
-                                }
-                            } catch (err) {
-                                console.error(`❌ Error descargando XML para ${nFact} - SE OMITE FACTURA:`, err);
-                                return;
-                            }
-
-                            // 2) JSON (OBLIGATORIO si incluirArchivos = true y se obtuvo idMovDoc)
-                            if (idMovDoc) {
-                                try {
-                                    const respJson = await fetch(`https://${host}:9876/facturas/generarjson/${idMovDoc}`);
-                                    if (respJson.ok) {
-                                        const blobJson = await respJson.blob();
-                                        const headerJson = respJson.headers.get("Content-Disposition");
-                                        const filenameJson = headerJson?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.json`;
-
-                                        formFinal.append(`${nFact}_jsonFactura`, new File([blobJson], filenameJson, { type: 'application/json' }));
-
-                                    } else {
-                                        console.warn(`❌ Sin JSON para factura ${nFact} - SE OMITE FACTURA COMPLETA`);
-                                        return; 
-                                    }
-                                } catch (err) {
-                                    console.error(`❌ Error descargando JSON para ${nFact} - SE OMITE FACTURA:`, err);
-                                    return;
-                                }
-                            } else {
-                                console.warn(`❌ Sin idMovDoc para factura ${nFact} - SE OMITE FACTURA COMPLETA`);
-                                return;
-                            }
-                        }
-
-                        // 3) PDFs 
-                        try {
-                            const respSoporte = await fetch(`https://${host}:9876/api/soportes-por-anexos?idAdmision=${idAdmision}`);
-
-                            if (respSoporte.status === 204) {
-                                console.warn(`⚠️ Sin PDFs para IdAtencion ${idAtencion}`);
-                            } else if (!respSoporte.ok) {
-                                console.warn(`⚠️ Error obteniendo soportes:`, await respSoporte.text());
-                            } else {
-                                const soportes = await respSoporte.json();
-                                
-                                // Descargar PDFs en paralelo
-                                const pdfPromises = soportes.map(async (idSoporteKey) => {
-                                    try {
-                                        const url = new URL(`https://${host}:9876/api/exportar-pdf`);
-                                        url.searchParams.set("idAdmision", idAdmision);
-                                        url.searchParams.set("idSoporteKey", idSoporteKey);
-
-                                        const resp = await fetch(url);
-                                        if (resp.status === 204 || !resp.ok) return null;
-
-                                        const blob = await resp.blob();
-                                        const header = resp.headers.get("Content-Disposition");
-                                        const nombre = header?.split("filename=")[1]?.replace(/"/g, "") || `Documento_${idSoporteKey}.pdf`;
-
-                                        return { blob, nombre, nFact };
-                                    } catch (err) {
-                                        console.error(`⚠️ Error descargando PDF ${idSoporteKey}:`, err);
-                                        return null;
-                                    }
-                                });
-
-                                const pdfs = await Promise.all(pdfPromises);
-                                pdfs.filter(p => p !== null).forEach(({ blob, nombre, nFact }) => {
-                                    formFinal.append(`${nFact}_pdfs`, new File([blob], nombre, { type: blob.type || 'application/pdf' }));
-                                });
-                            }
-                        } catch (err) {
-                            console.error(`⚠️ Error listando soportes:`, err);
-                        }
-
-                        console.log(`✅ Factura ${nFact} procesada correctamente`);
-
-                    } catch (err) {
-                        console.error(`❌ Error procesando admisión ${idAdmision}:`, err);
-                    }
-                }));
-
-                // Actualizar progreso después de cada lote (máximo 90%)
-                filasProces += lote.length;
-                const porcentaje = Math.round((filasProces / totalFilas) * 90);
-                actualizarToastProgreso(toast, porcentaje);
-                
-                console.log(`✅ Lote completado. Progreso: ${filasProces}/${totalFilas} (${porcentaje}%)`);
-            }
-
-            toast.querySelector("p").textContent = "Generando archivo ZIP...";
-            actualizarToastProgreso(toast, 95);
-            console.log("Enviando todos los archivos al backend...");
-
-            // 4) Exportar por cuenta cobro
-            const url = new URL(`https://${host}:9876/api/exportar-cuenta-cobro`);
-            url.searchParams.set('numeroCuentaCobro', numeroCuentaCobro);
-            url.searchParams.set('incluirArchivos', incluirArchivos);
-            
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formFinal 
-            });
-
-            if (!response.ok) {
-                throw new Error(await response.text());
-            }
-
-            toast.querySelector("p").textContent = "Descargando archivo...";
-            actualizarToastProgreso(toast, 98);
-
-            // 5) Descargar el ZIP final 
-            const blob = await response.blob();
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `${numeroCuentaCobro}.zip`;
-            link.click();
-            URL.revokeObjectURL(link.href);
-
-            toast.querySelector("p").textContent = "¡Exportación completada!";
+            toast.querySelector("p").textContent = `Exportación completada (${admisionesProcesadas} admisiones)`;
             toast.classList.remove("info");
             toast.classList.add("success");
-            actualizarToastProgreso(toast, 100);
 
             setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.classList.add('fadeOut');
-                    setTimeout(() => toast.remove(), 300);
-                }
+            if (toast.parentElement) {
+                toast.classList.add('fadeOut');
+                setTimeout(() => toast.remove(), 300);
+            }
             }, 3000);
 
         } catch (err) {
-            console.error("Error exportando por cuenta de cobro:", err);
+            console.error("Error general exportando:", err);
             showToast("Error", err.message, "error", 5000);
+        }
+
+        } else {
+            // Modo: Exportar por Cuenta de Cobro 
+
+            const numeroCuentaCobro = document.getElementById('cuentaCobro').value.trim();
+
+            if (!numeroCuentaCobro) {
+                showToast("Campo requerido", "Ingresa un número de cuenta de cobro", "warning", 4000);
+                return;
+            }
+
+            const claveValidacion = numeroCuentaCobro;
+            const yaValidado = sessionStorage.getItem(claveValidacion);
+
+            if (!yaValidado) {
+ 
+                const toastValidacion = showToast("Validando", "Verificando cuenta de cobro...", "info", 0, true);
+                console.log(`Validando cuenta de cobro: ${numeroCuentaCobro}`);
+
+                const urlValidacion = new URL(`https://${host}:9876/api/validar-cuenta`);
+                urlValidacion.searchParams.set('cuentaCobro', numeroCuentaCobro);
+
+                try {
+                    const respValidacion = await fetch(urlValidacion);
+
+                    if (!respValidacion.ok) {
+                        throw new Error(await respValidacion.text());
+                    }
+
+                    const resultadosValidacion = await respValidacion.text();
+
+                    if (toastValidacion.parentElement) {
+                        toastValidacion.classList.add('fadeOut');
+                        setTimeout(() => toastValidacion.remove(), 300);
+                    }
+
+                    // Si hay resultados
+                    if (resultadosValidacion && resultadosValidacion.trim().length > 0) {
+                        console.warn("Se encontraron facturas con documentos faltantes");
+                        showToast("Advertencia", "Se encontraron facturas con documentos faltantes", "error", 4000);
+
+                        const blob = new Blob([resultadosValidacion], { type: 'text/plain;charset=utf-8' });
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `Validacion_Cuenta_${numeroCuentaCobro}.txt`;
+                        link.click();
+                        URL.revokeObjectURL(link.href);
+                    }
+
+                    sessionStorage.setItem(claveValidacion, 'true');
+
+                } catch (error) {
+                    console.error("Error al validar la cuenta de cobro:", error);
+                    showToast("Error", `Error al validar la cuenta de cobro`, "error", 5000);
+                    return;
+                } finally {
+                    if (toastValidacion.parentElement) {
+                        toastValidacion.classList.add('fadeOut');
+                        setTimeout(() => toastValidacion.remove(), 300);
+                    }
+                }
+            } else {
+                console.log('Cuenta ya validada previamente, omitiendo validación');
+            }
+            
+            const todasLasFilas = document.querySelectorAll('tbody tr[data-idadmision]');
+            if (todasLasFilas.length === 0) {
+                showToast("Sin datos", "No hay filas para exportar", "warning", 4000);
+                return;
+            }
+
+            let incluirArchivos = false;
+
+            abrirModalTipos();
+
+            const respuestaUsuario = new Promise((resolve) => {
+                btnModalTiposNo.addEventListener('click', () => {
+                    cerrarModalTipos();
+                    console.log('No se incluirán JSON, XML ni CUV.');
+                    resolve(false);
+                }, { once: true });
+
+                btnModalTiposSi.addEventListener('click', () => {
+                    cerrarModalTipos();
+                    console.log('Se incluirán JSON, XML y CUV.');
+                    resolve(true);
+                }, { once: true });
+
+                btnModalTiposCancelar.addEventListener('click', () => {
+                    cerrarModalTipos();
+                    console.log('Acción cancelada.');
+                    resolve(null); 
+                }, { once: true });
+            });
+
+            incluirArchivos = await respuestaUsuario;
+
+            if (incluirArchivos === null) {
+                console.log('Exportación cancelada por el usuario');
+                showToast("Cancelado", "Exportación cancelada", "info", 3000);
+                return; 
+            }
+
+            try {
+                const toast = showToast("Exportando", `Procesando ${todasLasFilas.length} fila(s)...`, "info", 0, true);
+                
+                const TAMAÑO_LOTE = 10;
+                const filasArray = Array.from(todasLasFilas);
+                const totalFilas = filasArray.length;
+                let filasProces = 0;
+                
+                const formFinal = new FormData();
+
+                // Procesar en lotes de 10
+                for (let i = 0; i < filasArray.length; i += TAMAÑO_LOTE) {
+                    const lote = filasArray.slice(i, i + TAMAÑO_LOTE);
+                    console.log(`Procesando lote ${Math.floor(i / TAMAÑO_LOTE) + 1} de ${Math.ceil(filasArray.length / TAMAÑO_LOTE)} (${lote.length} filas)`);
+
+                    await Promise.all(lote.map(async (tr) => {
+                        const idAdmision = tr.dataset.idadmision;
+                        const idAtencion = tr.dataset.idatencion;
+                        const btnExportar = tr.querySelector('.btn-exportar');
+                        const nFact = btnExportar ? btnExportar.dataset.nfact : null;
+
+                        console.log(`Recopilando admisión: ${idAdmision}, nFact: ${nFact}`);
+
+                        if (!nFact) {
+                            console.warn(`❌ La fila ${idAdmision} no tiene NFact; se omite.`);
+                            return;
+                        }
+
+                        try {
+
+                            let idMovDoc = null;
+
+                            // 1) XML (OBLIGATORIO si incluirArchivos = true)
+                            if (incluirArchivos) {
+                                try {
+                                    const respXml = await fetch(`https://${host}:9876/api/generarxml/${nFact}`);
+                                    if (respXml.ok) {
+                                        const blobXml = await respXml.blob();
+                                        const headerXml = respXml.headers.get("Content-Disposition");
+                                        const filenameXml = headerXml?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.xml`;
+                                        idMovDoc = respXml.headers.get("X-IdMovDoc") || null;
+
+                                        formFinal.append(`${nFact}_xml`, new File([blobXml], filenameXml, { type: 'application/xml' }));
+                                    } else {
+                                        console.warn(`❌ Sin XML para factura ${nFact} - SE OMITE FACTURA COMPLETA`);
+                                        return; 
+                                    }
+                                } catch (err) {
+                                    console.error(`❌ Error descargando XML para ${nFact} - SE OMITE FACTURA:`, err);
+                                    return;
+                                }
+
+                                // 2) JSON (OBLIGATORIO si incluirArchivos = true y se obtuvo idMovDoc)
+                                if (idMovDoc) {
+                                    try {
+                                        const respJson = await fetch(`https://${host}:9876/facturas/generarjson/${idMovDoc}`);
+                                        if (respJson.ok) {
+                                            const blobJson = await respJson.blob();
+                                            const headerJson = respJson.headers.get("Content-Disposition");
+                                            const filenameJson = headerJson?.split("filename=")[1]?.replace(/"/g, "") || `Factura_${nFact}.json`;
+
+                                            formFinal.append(`${nFact}_jsonFactura`, new File([blobJson], filenameJson, { type: 'application/json' }));
+
+                                        } else {
+                                            console.warn(`❌ Sin JSON para factura ${nFact} - SE OMITE FACTURA COMPLETA`);
+                                            return; 
+                                        }
+                                    } catch (err) {
+                                        console.error(`❌ Error descargando JSON para ${nFact} - SE OMITE FACTURA:`, err);
+                                        return;
+                                    }
+                                } else {
+                                    console.warn(`❌ Sin idMovDoc para factura ${nFact} - SE OMITE FACTURA COMPLETA`);
+                                    return;
+                                }
+                            }
+
+                            // 3) PDFs 
+                            try {
+                                const respSoporte = await fetch(`https://${host}:9876/api/soportes-por-anexos?idAdmision=${idAdmision}`);
+
+                                if (respSoporte.status === 204) {
+                                    console.warn(`⚠️ Sin PDFs para IdAtencion ${idAtencion}`);
+                                } else if (!respSoporte.ok) {
+                                    console.warn(`⚠️ Error obteniendo soportes:`, await respSoporte.text());
+                                } else {
+                                    const soportes = await respSoporte.json();
+                                    
+                                    // Descargar PDFs en paralelo
+                                    const pdfPromises = soportes.map(async (idSoporteKey) => {
+                                        try {
+                                            const url = new URL(`https://${host}:9876/api/exportar-pdf`);
+                                            url.searchParams.set("idAdmision", idAdmision);
+                                            url.searchParams.set("idSoporteKey", idSoporteKey);
+
+                                            const resp = await fetch(url);
+                                            if (resp.status === 204 || !resp.ok) return null;
+
+                                            const blob = await resp.blob();
+                                            const header = resp.headers.get("Content-Disposition");
+                                            const nombre = header?.split("filename=")[1]?.replace(/"/g, "") || `Documento_${idSoporteKey}.pdf`;
+
+                                            return { blob, nombre, nFact };
+                                        } catch (err) {
+                                            console.error(`⚠️ Error descargando PDF ${idSoporteKey}:`, err);
+                                            return null;
+                                        }
+                                    });
+
+                                    const pdfs = await Promise.all(pdfPromises);
+                                    pdfs.filter(p => p !== null).forEach(({ blob, nombre, nFact }) => {
+                                        formFinal.append(`${nFact}_pdfs`, new File([blob], nombre, { type: blob.type || 'application/pdf' }));
+                                    });
+                                }
+                            } catch (err) {
+                                console.error(`⚠️ Error listando soportes:`, err);
+                            }
+
+                            console.log(`✅ Factura ${nFact} procesada correctamente`);
+
+                        } catch (err) {
+                            console.error(`❌ Error procesando admisión ${idAdmision}:`, err);
+                        }
+                    }));
+
+                    // Actualizar progreso después de cada lote (máximo 90%)
+                    filasProces += lote.length;
+                    const porcentaje = Math.round((filasProces / totalFilas) * 90);
+                    actualizarToastProgreso(toast, porcentaje);
+                    
+                    console.log(`✅ Lote completado. Progreso: ${filasProces}/${totalFilas} (${porcentaje}%)`);
+                }
+
+                toast.querySelector("p").textContent = "Generando archivo ZIP...";
+                actualizarToastProgreso(toast, 95);
+                console.log("Enviando todos los archivos al backend...");
+
+                // 4) Exportar por cuenta cobro
+                const url = new URL(`https://${host}:9876/api/exportar-cuenta-cobro`);
+                url.searchParams.set('numeroCuentaCobro', numeroCuentaCobro);
+                url.searchParams.set('incluirArchivos', incluirArchivos);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formFinal 
+                });
+
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                toast.querySelector("p").textContent = "Descargando archivo...";
+                actualizarToastProgreso(toast, 98);
+
+                // 5) Descargar el ZIP final 
+                const blob = await response.blob();
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${numeroCuentaCobro}.zip`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+
+                toast.querySelector("p").textContent = "¡Exportación completada!";
+                toast.classList.remove("info");
+                toast.classList.add("success");
+                actualizarToastProgreso(toast, 100);
+
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.classList.add('fadeOut');
+                        setTimeout(() => toast.remove(), 300);
+                    }
+                }, 3000);
+
+            } catch (err) {
+                console.error("Error exportando por cuenta de cobro:", err);
+                showToast("Error", err.message, "error", 5000);
+            }
+        }
+    }catch (err){
+        console.error("Error general:", err);
+        showToast("Error", err.message, "error", 5000);
+    }finally{
+        if (botonExp){
+            botonExp.style.cursor = "pointer";
+            botonExp.disabled = false;
+            botonExp.innerHTML = expOriginal;
+            botonExp.style.opacity = "1";
         }
     }
 });
