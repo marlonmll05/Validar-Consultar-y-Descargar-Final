@@ -470,7 +470,6 @@ public class ExportarService {
             for (Map.Entry<String, List<PartItem>> entry : porNfact.entrySet()) {
 
                 String nFact = entry.getKey();
-
                 String sanitizeN = ILLEGAL.matcher(nFact == null ? "" : nFact).replaceAll("_").trim();
                 String folderFactura = folderCuenta + (sanitizeN.isBlank() ? "SIN_FACTURA" : sanitizeN) + "/";
 
@@ -491,11 +490,24 @@ public class ExportarService {
 
                 log.debug("   XMLs: {}, JSONs: {}, PDFs: {}", xmls.size(), jsons.size(), pdfs.size());
 
-                // === OBTENER DATOS DE BD ===
+                // === VALIDACIÓN XML Y JSON ===
+                if (incluirArchivos) {
+                    if (xmls.isEmpty()) {
+                        log.warn("No llegó XML para factura {} | SE OMITE ESTA FACTURA", nFact);
+                        continue;
+                    }
+                    
+                    if (jsons.isEmpty()) {
+                        log.warn("No llegó JSON para factura {} | SE OMITE ESTA FACTURA", nFact);
+                        continue;
+                    }
+                }
+
+                // === OBTENER DATOS DE BD (solo si incluirArchivos está activo) ===
                 Integer idMovDoc = null;
                 String numdoc = null, idEmpresaGrupo = null;
                 String respuestaValidador = null;
-                
+
                 if (incluirArchivos) {
                     log.debug("Consultando IdMovDoc para {}", nFact);
                     try (Connection c = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"));
@@ -551,9 +563,7 @@ public class ExportarService {
                     }
 
                     // === CONSULTAR RESPUESTA VALIDADOR ===
-                    log.debug("🔎 Consultando respuesta validador para {}", nFact);
-
-
+                    log.debug("Consultando respuesta validador para {}", nFact);
                     try (Connection c = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
 
                         String sql = """
@@ -580,12 +590,8 @@ public class ExportarService {
                     }
                 }
 
+                // === XML (solo si incluirArchivos está activo) ===
                 if (incluirArchivos) {
-                    if (xmls.isEmpty()) {
-                        log.warn("No llegó XML para factura {} | SE OMITE ESTA FACTURA", nFact);
-                        continue;
-                    }
-
                     MultipartFile xml = xmls.get(0);
                     String xmlFileName;
 
@@ -612,10 +618,10 @@ public class ExportarService {
                     zos.putNextEntry(xmlEntry);
                     zos.write(xml.getBytes());
                     zos.closeEntry();
-                    archivosAgregados++;   
+                    archivosAgregados++;
                 }
 
-                // === JSON ===
+                // === JSON (solo si incluirArchivos está activo) ===
                 if (incluirArchivos) {
                     for (MultipartFile jf : jsons) {
                         String nombre = jf.getOriginalFilename();
@@ -634,7 +640,7 @@ public class ExportarService {
                     }
                 }
 
-                // === PDFs ===
+                // === PDFs (SIEMPRE se incluyen) ===
                 for (MultipartFile pdf : pdfs) {
                     if (pdf == null || pdf.isEmpty()) continue;
 
@@ -662,7 +668,7 @@ public class ExportarService {
                         JsonNode node = om.readTree(respuestaValidador);
                         procesoId = node.has("ProcesoId") ? node.get("ProcesoId").asText("") : "";
                     } catch (Exception e) {
-                        log.warn("⚠ No se pudo leer ProcesoId en {}", nFact);
+                        log.warn("No se pudo leer ProcesoId en {}", nFact);
                     }
 
                     String safeProc = ILLEGAL.matcher(procesoId).replaceAll("_").trim();
