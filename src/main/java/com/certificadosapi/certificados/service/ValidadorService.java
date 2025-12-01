@@ -181,16 +181,24 @@ public class ValidadorService {
 
     // Guardar respuesta API (CUV)
     public String guardarRespuestaApi(String nFact, String mensajeRespuesta) {
+        
+        if (nFact == null || nFact.isEmpty()) {
+            throw new IllegalArgumentException("El parámetro 'nFact' es requerido");
+        }
+        if (mensajeRespuesta == null || mensajeRespuesta.isEmpty()) {
+            throw new IllegalArgumentException("El parámetro 'mensajeRespuesta' es requerido");
+        }
+        
         log.info("Guardando respuesta API para NFact={}", nFact);
-
+        
         try {
             String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
-
             String checkSql = "SELECT COUNT(*) FROM RIPS_RespuestaAPI WHERE Nfact = ?";
             String insertSql = "INSERT INTO RIPS_RespuestaAPI (Nfact, MensajeRespuesta) VALUES (?, ?)";
-
+            
             try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-
+                
+                // Verificar duplicados
                 try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
                     checkStmt.setString(1, nFact);
                     try (ResultSet rs = checkStmt.executeQuery()) {
@@ -200,19 +208,23 @@ public class ValidadorService {
                         }
                     }
                 }
-
+                
+                // Insertar registro
                 try (PreparedStatement statement = conn.prepareStatement(insertSql)) {
                     statement.setString(1, nFact);
                     statement.setString(2, mensajeRespuesta);
                     statement.executeUpdate();
                 }
-
+                
                 log.info("Respuesta API guardada exitosamente para NFact={}", nFact);
                 return "Respuesta guardada correctamente";
             }
+            
         } catch (SQLException e) {
             log.error("Error al guardar respuesta API para NFact={} Detalle={}", nFact, e.getMessage());
             throw new RuntimeException("Error al guardar respuesta: " + e.getMessage(), e);
         }
     }
+
+    
 }

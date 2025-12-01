@@ -1,5 +1,8 @@
 package com.certificadosapi.certificados.controller;
 
+import java.sql.SQLException;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -46,8 +49,11 @@ public class ValidadorController {
 
     // Método para guardar la respuesta de la API (El CUV se guarda en una tabla y luego al descargar la factura aparece el TXT con el CUV)
     @PostMapping("/guardarrespuesta")
-    public ResponseEntity<String> guardarRespuestaApi(@RequestParam String nFact, 
-                                                      @RequestParam String mensajeRespuesta) {
+    public ResponseEntity<?> guardarRespuestaApi(@RequestBody Map<String, Object> payload) throws SQLException {
+        
+        String nFact = (String) payload.get("nFact");
+        String mensajeRespuesta = (String) payload.get("mensajeRespuesta");
+        
         String resultado = validadorService.guardarRespuestaApi(nFact, mensajeRespuesta);
         return ResponseEntity.ok(resultado);
     }
