@@ -114,7 +114,7 @@ public class GlobalExceptionHandler {
                   request.getDescription(false), ex.getMessage());
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Error en el servidor: " + ex.getMessage());
+                .body(ex.getMessage());
     }
 
     /**

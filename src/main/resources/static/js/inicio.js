@@ -1,4 +1,4 @@
-if (!sessionStorage.getItem('tokenSQL')) {
+if (!localStorage.getItem('tokenSQL')) {
     window.location.href = 'loginsql.html';
 }
 
@@ -55,7 +55,7 @@ window.addEventListener('DOMContentLoaded', function() {
 
 // Mostrar nombre de usuario al cargar la página
 window.addEventListener('DOMContentLoaded', function() {
-    const usuario = sessionStorage.getItem('usuario');
+    const usuario = localStorage.getItem('usuario');
     if (usuario) {
         document.getElementById('username').textContent = usuario;
     }

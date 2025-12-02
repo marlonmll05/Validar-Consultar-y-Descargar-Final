@@ -21,14 +21,11 @@ if (!res.ok) {
 const data = await res.json();
 if (data.token) {
 
-    console.log('Tokens guardados en loginsql.html:');
-    console.log('tokenSQL:', sessionStorage.getItem('tokenSQL'));
-    console.log('servidor:', sessionStorage.getItem('servidor'));
-    console.log('usuario:', sessionStorage.getItem('usuario'));
-    
-    sessionStorage.setItem('tokenSQL', data.token);
-    sessionStorage.setItem('servidor', data.servidor);
-    sessionStorage.setItem('usuario', data.usuario);
+    console.log('Tokens guardados en loginsql.html:');    
+    localStorage.setItem('tokenSQL', data.token);
+    localStorage.setItem('servidor', data.servidor);
+    localStorage.setItem('usuario', data.usuario);
+
     window.location.href = 'inicio.html';
 } else {
     errorDiv.textContent = 'Respuesta inválida del servidor.';

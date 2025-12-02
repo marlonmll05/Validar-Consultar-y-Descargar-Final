@@ -1,5 +1,5 @@
 
-if (!sessionStorage.getItem('tokenSQL')) {
+if (!localStorage.getItem('tokenSQL')) {
     window.location.href = 'loginsql.html';
 }
 

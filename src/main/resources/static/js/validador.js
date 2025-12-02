@@ -1,8 +1,8 @@
-const tokenSQL = sessionStorage.getItem('tokenSQL');
+const tokenSQL = localStorage.getItem('tokenSQL');
 const token = sessionStorage.getItem('token');
 
 if (!tokenSQL) {
-sessionStorage.clear();
+localStorage.clear();
 window.location.href = 'loginsql.html';
 }
 
@@ -14,9 +14,10 @@ window.location.href = 'login.html';
 
 if (!sessionStorage.getItem('pestanaActiva')) {
 sessionStorage.clear();
-window.location.href = 'loginsql.html';
+window.location.href = 'login.html';
 }
 
+sessionStorage.setItem('pestanaActiva', 'true');
 
 const host = window.location.hostname;
 
