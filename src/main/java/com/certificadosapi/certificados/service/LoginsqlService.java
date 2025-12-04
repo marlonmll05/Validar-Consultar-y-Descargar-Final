@@ -41,10 +41,7 @@ public class LoginsqlService {
             log.warn("Usuario vacío en la solicitud de login SQL");
             throw new IllegalArgumentException("El usuario es requerido");
         }
-        if (password == null || password.isBlank()) {
-            log.warn("Contraseña vacía en la solicitud de login SQL");
-            throw new IllegalArgumentException("La contraseña es requerida");
-        }
+
 
         String servidor;
 

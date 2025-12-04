@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Gestión</title>
+  <title>Asclepius Web</title>
 
   <link rel="stylesheet" href="/css/inicio.css">
 
@@ -12,41 +12,88 @@
 
   
 <body>
-  <header>
+  <!-- Header principal con logo y nombre -->
+  <div class="main-header">
     <div class="container">
       <div class="header-content">
-        <h1>Sistema de Gestión</h1>
-        <div class="user-info">
-          <span class="username" id="username">Usuario</span>
-          <button class="logout-btn" onclick="cerrarSesion()">Cerrar Sesión</button>
+        <div class="logo-container">
+          <div class="logo">
+            <img src="/img/logo.png" alt="Logo Asclepius Web">
+          </div>
+          <h1 class="company-name">Asclepius Web</h1>
         </div>
       </div>
     </div>
-  </header>
+  </div>
+
+  <!-- Preheader con menú desplegable, usuario y botón cerrar sesión -->
+  <div class="preheader">
+    <div class="container">
+      <div class="preheader-content">
+        <nav class="nav-menu">
+          <div class="dropdown">
+            <button class="dropdown-toggle">
+              <i data-lucide="menu" style="width: 20px; height: 20px;"></i>
+              Gestión de Rips
+              <i data-lucide="chevron-down" class="dropdown-icon" style="width: 16px; height: 16px;"></i>
+            </button>
+            <div class="dropdown-menu">
+              <a href="facturas.html" class="dropdown-item" id="menuRips">
+                <i data-lucide="file-text" class="dropdown-item-icon"></i>
+                <div class="dropdown-item-content">
+                  <h3>Gestión Manual de Rips</h3>
+                  <p>Consulta y generación de archivos Rips (JSON)</p>
+                </div>
+              </a>
+              <a href="#" class="dropdown-item" id="menuValidador" onclick="irAlValidador(event)">
+                <i data-lucide="search" class="dropdown-item-icon"></i>
+                <div class="dropdown-item-content">
+                  <h3>Validador de Rips (Api Docker)</h3>
+                  <p>Consulta, edición y validación directa de Rips ante el ministerio</p>
+                </div>
+              </a>
+            </div>
+          </div>
+        </nav>
+
+        <nav class="nav-menu">
+          <div class="dropdown">
+            <button class="dropdown-toggle">
+              <i data-lucide="menu" style="width: 20px; height: 20px;"></i>
+              Gestión de Documentos
+              <i data-lucide="chevron-down" class="dropdown-icon" style="width: 16px; height: 16px;"></i>
+            </button>
+            <div class="dropdown-menu">
+              <a href="atenciones.html" class="dropdown-item" id="menuAtenciones">
+                <i data-lucide="edit-3" class="dropdown-item-icon"></i>
+                <div class="dropdown-item-content">
+                  <h3>Gestión de Documentos Soporte</h3>
+                  <p>Generación, carga y descarga de Documentos Soporte</p>
+                </div>
+              </a>
+            </div>
+          </div>
+        </nav>
+
+        <div class="user-info">
+          <span class="username" id="username">
+            <i data-lucide="user" style="width: 16px; height: 16px;"></i>
+            Usuario
+          </span>
+          <button class="logout-btn" onclick="cerrarSesion()">
+            <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <main>
     <div class="container">
-      <h2>Seleccione una opción</h2>
-      
-      <div class="options">
-        <a href="facturas.html" class="option-card primary-gradient" id="cardRips">
-          <div class="icon" data-lucide="file-text"></div>
-          <h3>Gestión Manual de Rips</h3>
-          <p>Consulta y generación de archivos Rips (JSON)</p>
-        </a>
-
-        <a href="#" class="option-card secondary-gradient" id="cardValidador" onclick="irAlValidador(event)">
-          <div class="icon" data-lucide="search"></div>
-          <h3>Validador de Rips (Api Docker)</h3>
-          <p>Consulta, edición y validación directa de Rips ante el ministerio</p>
-        </a>
-
-        <a href="atenciones.html" class="option-card success-gradient" id="cardAtenciones">
-          <div class="icon" data-lucide="edit-3"></div>
-          <h3>Gestión de Documentos Soporte</h3>
-          <p>Generación, carga y descarga de Documentos Soporte</p>
-        </a>
-
+      <div class="welcome-section">
+        <h2>Bienvenido al Sistema de Gestión</h2>
+        <p>Seleccione una opción del menú para comenzar</p>
       </div>
     </div>
   </main>
@@ -56,6 +103,7 @@
       <p>&copy; <script>document.write(new Date().getFullYear())</script> Sistema de Gestión - Todos los derechos reservados</p>
     </div>
   </footer>
+
 
   <script src="/js/inicio.js"></script>
 </body> 

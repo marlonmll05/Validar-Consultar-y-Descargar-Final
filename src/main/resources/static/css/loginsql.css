@@ -24,9 +24,8 @@ body {
 }
 
 header {
-    padding: 2rem 0;
-    background-color: white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background-color: var(--primary-dark);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     text-align: center;
 }
 
@@ -37,10 +36,21 @@ header {
     position: relative;
 }
 
-.header-content .back-link {
-    position: absolute;
-    left: 0;
-    margin-left: 100px;
+.logo {
+    width: 100px;
+    height: 100px;
+
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;        /* o "cover" si quieres que rellene */
 }
 
 .container {
@@ -53,6 +63,7 @@ header {
 h1 {
     font-size: 2.5rem;
     font-weight: bold;
+    color: white;
 }
 
 main {
@@ -182,16 +193,11 @@ footer {
 
 @media (max-width: 768px) {
     .header-content {
-    flex-direction: column;
-    gap: 1rem;
-    }
-
-    .header-content .back-link {
-    position: static;
-    align-self: flex-start;
+        flex-direction: column;
+        gap: 1rem;
     }
 
     h1 {
-    font-size: 2rem;
+        font-size: 2rem;
     }
-}  
+}

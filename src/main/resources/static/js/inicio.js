@@ -4,29 +4,64 @@ if (!localStorage.getItem('tokenSQL')) {
 
 lucide.createIcons();
 
-window.addEventListener("DOMContentLoaded", async () => {
 
-    try{
-        const response = await fetch("/api/sql/validar-parametro");
+document.querySelectorAll('.dropdown-toggle').forEach((btn) => {
+  btn.addEventListener('click', () => {
 
-        if (!response.ok){
-            console.log("ocurrio un error", await response.text());
-            return;
-        }
+    const currentDropdown = btn.closest('.dropdown');
 
-        const resultado = await response.text();
-        
-        if(resultado !== "1"){
-            console.log("Acceso denegado, respuesta:", resultado);
-            atencionesButton.classList.add("card-disabled");
-        }else{
-            console.log("Acceso otorgado a atenciones");
-        }
+    document.querySelectorAll('.dropdown').forEach((drop) => {
+      if (drop !== currentDropdown) {
+        drop.classList.remove('active');
+      }
+    });
 
-    } catch (error){
-        console.log ("Error al hacer la peticion", error);
+    currentDropdown.classList.toggle('active');
+  });
+});
+
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown')) {
+    document.querySelector('.dropdown').classList.remove('active');
     }
 });
+
+document.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', function() {
+    document.querySelector('.dropdown').classList.remove('active');
+    });
+});
+
+window.addEventListener("DOMContentLoaded", async () => {
+  try {
+    const response = await fetch("/api/sql/validar-parametro");
+
+    if (!response.ok) {
+      console.log("ocurrio un error", await response.text());
+      return;
+    }
+
+    const resultado = await response.text();
+
+    if (resultado !== "1") {
+      console.log("Acceso denegado, respuesta:", resultado);
+
+      const atencionesLink = document.querySelector("#menuAtenciones");
+      if (atencionesLink) {
+        const dropdownAtenciones = atencionesLink.closest(".dropdown");
+        if (dropdownAtenciones) {
+          dropdownAtenciones.classList.add("dropdown-disabled");
+        }
+      }
+    } else {
+      console.log("Acceso otorgado a atenciones");
+    }
+  } catch (error) {
+    console.log("Error al hacer la peticion", error);
+  }
+});
+
 
 
 function irAlValidador(event) {
