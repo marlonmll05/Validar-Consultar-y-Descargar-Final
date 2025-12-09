@@ -86,4 +86,19 @@ public class FiltrobusquedaController {
 
         return ResponseEntity.ok(data);
     }
+    
+    @GetMapping("/cuenta-cobro")
+    public ResponseEntity<List<Map<String, Object>>> consultarCuentaCobro(
+        @RequestParam(required = false) Integer nCuentaCobro,
+        @RequestParam(required = false) 
+        @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fechaDesde,
+        @RequestParam(required = false) 
+        @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fechaHasta,
+        @RequestParam(required = false) String idTercero,
+        @RequestParam(required = false) String noContrato) {
+
+        List<Map<String, Object>> resultados = filtrobusquedaService.consultarCuentaCobro(nCuentaCobro, fechaDesde, fechaHasta, idTercero, noContrato);
+
+        return ResponseEntity.ok(resultados);
+    }
 }

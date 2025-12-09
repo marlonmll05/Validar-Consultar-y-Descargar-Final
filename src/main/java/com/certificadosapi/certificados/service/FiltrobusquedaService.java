@@ -280,4 +280,57 @@ public class FiltrobusquedaService {
             throw new RuntimeException("Error consultando admisiones: " + e.getMessage(), e);
         }
     }
+
+
+    public List<Map<String, Object>> consultarCuentaCobro(
+        Integer nCuentaCobro,
+        LocalDate fechaDesde,
+        LocalDate fechaHasta,
+        String idTercero,
+        String noContrato) {
+
+        log.info("Iniciando búsqueda de cuentas de cobro");
+
+        log.info("Parametros recibidos: " +
+            "nCuentaCobro={}, FechaDesde={}, FechaHasta={}, idTercero={}, NoContrato={}",
+            nCuentaCobro, fechaDesde, fechaHasta, idTercero, noContrato);
+
+        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
+
+            String sql = "EXEC dbo.Facturacion_CC_Lista ?,?,?,?,?";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                stmt.setObject(1, nCuentaCobro);
+                stmt.setObject(2, fechaDesde != null ? Date.valueOf(fechaDesde) : null);
+                stmt.setObject(3, fechaHasta != null ? Date.valueOf(fechaHasta) : null);
+                stmt.setObject(4, idTercero);
+                stmt.setObject(5, noContrato);
+
+                log.debug("Ejecutando procedimiento Facturacion_CC_Lista");
+
+                try (ResultSet rs = stmt.executeQuery()) {
+
+                    List<Map<String, Object>> resultados = new ArrayList<>();
+                    ResultSetMetaData meta = rs.getMetaData();
+                    int colCount = meta.getColumnCount();
+
+                    while (rs.next()) {
+                        Map<String, Object> fila = new LinkedHashMap<>();
+                        for (int i = 1; i <= colCount; i++) {
+                            fila.put(meta.getColumnName(i), rs.getObject(i));
+                        }
+                        resultados.add(fila);
+                    }
+
+                    log.info("Cuenta de cobro retornó {} registros", resultados.size());
+                    return resultados;
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Error consultando cuentas de cobro: {}", e.getMessage());
+            throw new RuntimeException("Error consultando cuentas de cobro: " + e.getMessage(), e);
+        }
+    }
 }

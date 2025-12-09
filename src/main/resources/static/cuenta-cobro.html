@@ -1,0 +1,93 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consultar Cuentas de Cobro</title>
+  <link rel="stylesheet" href="/css/cuenta-cobro.css">
+</head>
+
+<body>
+  <header>
+    <div class="container">
+      <div class="header-content">
+        <a href="inicio.html" class="back-link">Volver</a>
+        <div class="header-center">
+          <h1>Consulta de Cuentas de Cobro</h1>
+          <p class="subtitle">Consultar relacion de Cuenta de Cobro</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2 class="card-title">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        Criterios de búsqueda
+      </h2>
+      
+      <form id="facturasForm">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="nCuentaCobro">Número de Cuenta de Cobro</label>
+            <input type="text" id="nCuentaCobro" name="nCuentaCobro" placeholder="Ingrese cuenta de cobro">
+          </div>
+
+          <div class="form-group">
+            <label for="fechaDesde">Fecha Desde</label>
+            <input type="date" id="fechaDesde" name="fechaDesde">
+          </div>
+          
+          <div class="form-group">
+            <label for="fechaHasta">Fecha Hasta</label>
+            <input type="date" id="fechaHasta" name="fechaHasta">
+          </div>
+          
+          <div class="form-group">
+            <label for="idTercero">Tercero</label>
+            <select id="idTercero" name="idTercero">
+              <option value="">Seleccione un tercero</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="noContrato">Contrato</label>
+            <select id="noContrato" name="noContrato">
+              <option value="">Seleccione un contrato</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button type="submit" class="button" id="subirboton">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            Buscar
+          </button>
+
+        </div>
+      </form>
+    </div>
+  
+    <div id="accionesDiv" class="card" style="display:none;">    
+      <div class="table-container">
+        <table id="resultados">
+          <thead id="tablaHead"></thead>
+          <tbody id="tablaBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <script src="/js/cuenta-cobro.js"></script>
+  </body>
+</html>
