@@ -1678,9 +1678,9 @@ tabla.addEventListener('click', async (e) => {
         toastDiag.querySelector("p").textContent = "Documento diagnóstico generado ✅";
         toastDiag.classList.replace("info", "success");
     } catch (err1) {
-        console.error("Error en documento diagnóstico:", err1);
+        console.error("Error en apoyo diagnóstico:", err1);
         actualizarToastProgreso(toastDiag, 100);
-        toastDiag.querySelector("p").textContent = "❌ Error en diagnóstico";
+        toastDiag.querySelector("p").textContent = "❌ Error en apoyo diagnóstico";
         toastDiag.classList.replace("info", "error");
     } finally {
         setTimeout(() => {

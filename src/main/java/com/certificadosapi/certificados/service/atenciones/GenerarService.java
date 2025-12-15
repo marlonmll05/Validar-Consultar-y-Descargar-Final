@@ -131,7 +131,7 @@ public class GenerarService {
                  idAdmision, idPacienteKey, idSoporteKey, tipoDocumento);
 
         String urlBase = null;
-        String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
+        String connectionUrl = databaseConfig.getConnectionUrl("IPSoftFinanciero_ST");
 
         // Obtener URL del servidor de reportes
         try (Connection conn = DriverManager.getConnection(connectionUrl)) {
@@ -192,7 +192,7 @@ public class GenerarService {
             try {
                 URI uri = new URI(reportUrl.replace(" ", "%20"));
                 reportUrl = uri.toString();
-                log.debug("URL codificada para descarga de factura: {}", reportUrl);
+                log.info("URL codificada para descarga de factura: {}", reportUrl);
             } catch (Exception ex) {
                 log.warn("Error al codificar URL de descarga de factura: {}", ex.getMessage());
             }

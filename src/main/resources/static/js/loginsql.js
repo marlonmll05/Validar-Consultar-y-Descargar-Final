@@ -1,5 +1,12 @@
 const LOGIN_URL = `https://${location.hostname}:9876/api/sql/login`;
 
+/**
+ * Send user and password to login on SQL and set a token  
+ * 
+ * @param {string} username SQL User
+ * @param {string} password SQL Password
+ */
+
 document.getElementById('login-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
 
