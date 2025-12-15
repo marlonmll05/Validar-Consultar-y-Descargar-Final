@@ -130,23 +130,9 @@ public class GenerarService {
         log.info("Iniciando descargarFacturaVenta(idAdmision={}, idPacienteKey={}, idSoporteKey={}, tipoDocumento={})",
                  idAdmision, idPacienteKey, idSoporteKey, tipoDocumento);
 
-        String urlBase = null;
-        String connectionUrl = databaseConfig.getConnectionUrl("IPSoftFinanciero_ST");
 
-        // Obtener URL del servidor de reportes
-        try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-            String sql = "SELECT ValorParametro FROM ParametrosServidor WHERE NomParametro = 'URLReportServerWS'";
-            try (PreparedStatement stmt = conn.prepareStatement(sql);
-                 ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    urlBase = rs.getString("ValorParametro");
-                    log.debug("URL Base obtenida desde ParametrosServidor: {}", urlBase);
-                } else {
-                    log.error("No se encontró el parámetro URLReportServerWS en ParametrosServidor");
-                    throw new IllegalStateException("No se encontró la URL del servidor de reportes.");
-                }
-            }
-        }
+        String urlBase = databaseConfig.parametrosServidor(2);
+
 
         if (urlBase == null || urlBase.trim().isEmpty()) {
             log.error("Valor de urlBase nulo o vacío después de consultar ParametrosServidor");
@@ -156,6 +142,7 @@ public class GenerarService {
         // Ejecutar procedimiento para obtener rutaReporte e IdMovDoc
         String rutaReporte = null;
         Long idMovDoc = null;
+        String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
 
         try (Connection conn = DriverManager.getConnection(connectionUrl)) {
             String sqlProc = "EXEC pa_Net_Facturas_Tablas 12, ?";
@@ -291,21 +278,7 @@ public class GenerarService {
             throw new IllegalArgumentException("El nombre del soporte es requerido.");
         }
 
-        String urlBase = null;
-
-        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
-            String sql = "SELECT ValorParametro FROM ParametrosServidor WHERE NomParametro = 'URLReportServerWS'";
-            try (PreparedStatement stmt = conn.prepareStatement(sql);
-                 ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    urlBase = rs.getString("ValorParametro");
-                    log.debug("URL Base obtenida desde ParametrosServidor: {}", urlBase);
-                } else {
-                    log.error("No se encontró el parámetro URLReportServerWS en ParametrosServidor");
-                    throw new IllegalStateException("No se encontró la URL del servidor de reportes.");
-                }
-            }
-        }
+        String urlBase = databaseConfig.parametrosServidor(2);
 
         if (urlBase == null || urlBase.trim().isEmpty()) {
             log.error("Valor de urlBase nulo o vacío en insertarSoporte");

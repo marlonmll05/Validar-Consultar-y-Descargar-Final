@@ -2,6 +2,7 @@ package com.certificadosapi.certificados.util;
 
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
+import java.sql.SQLException;
 import java.util.Arrays;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -20,27 +21,21 @@ import org.apache.http.impl.auth.NTLMSchemeFactory;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import com.sun.jna.platform.win32.Advapi32Util;
-import com.sun.jna.platform.win32.WinReg;
+import com.certificadosapi.certificados.config.DatabaseConfig;
 
 @Component
 public class ServidorUtil {
 
-    //Metodo para leer el servidor de registro
-    public String getServerFromRegistry() throws Exception {
+    private final DatabaseConfig databaseConfig;
 
-        String registryPath = "SOFTWARE\\VB and VBA Program Settings\\Asclepius\\Administrativo";
-        String valueName = "Servidor";
-
-        try{
-            return Advapi32Util.registryGetStringValue(WinReg.HKEY_CURRENT_USER, registryPath, valueName);
-        }catch(Exception e){
-            throw new Exception("Error al leer el servidor de registro" + e.getMessage(), e);
-        }
+    public ServidorUtil(DatabaseConfig databaseConfig){
+        this.databaseConfig = databaseConfig;
     }
+
 
     //Metodo para crear un template inseguro para enviar al ministerio
     public RestTemplate crearRestTemplateInseguro() {
@@ -64,10 +59,10 @@ public class ServidorUtil {
         }
     }
 
-    public CloseableHttpClient crearHttpClientConNTLM() {
+    public CloseableHttpClient crearHttpClientConNTLM() throws SQLException {
         String dominio = "servergihos";
-        String usuario = "Consulta";
-        String contrasena = "Informes.01";
+        String usuario = databaseConfig.parametrosServidor(3);
+        String contrasena = databaseConfig.parametrosServidor(4);
         
         CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         NTCredentials ntCredentials = new NTCredentials(usuario, contrasena, null, dominio);
@@ -90,4 +85,5 @@ public class ServidorUtil {
                 .setDefaultRequestConfig(requestConfig)
                 .build();
     }
+    
 }

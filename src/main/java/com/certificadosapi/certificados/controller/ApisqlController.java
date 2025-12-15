@@ -6,9 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+import com.certificadosapi.certificados.config.DatabaseConfig;
 import com.certificadosapi.certificados.service.ApisqlService;
 import com.certificadosapi.certificados.service.EditarjsonService;
-import com.certificadosapi.certificados.service.InicioService;
+
 import com.certificadosapi.certificados.service.LoginsqlService;
 
 import java.sql.SQLException;
@@ -20,23 +21,33 @@ import java.util.Map;
 public class ApisqlController {
 
     private final ApisqlService apisqlService;
-    private EditarjsonService editarJsonService;
-    private LoginsqlService loginsqlService;
-    private InicioService inicioService;
+    private final EditarjsonService editarJsonService;
+    private final LoginsqlService loginsqlService;
+    private final DatabaseConfig databaseConfig;
 
     @Autowired
-    public ApisqlController(EditarjsonService editarjsonService, ApisqlService apisqlService, LoginsqlService loginsqlService, InicioService inicioService){
+    public ApisqlController(EditarjsonService editarjsonService, ApisqlService apisqlService, LoginsqlService loginsqlService, DatabaseConfig databaseConfig){
         this.editarJsonService = editarjsonService;
         this.apisqlService = apisqlService;
         this.loginsqlService = loginsqlService;
-        this.inicioService = inicioService;
+        this.databaseConfig = databaseConfig;
+
     }
 
-    //Metodo para verificar acceso al modulo de atenciones
-    @GetMapping("/validar-parametro")
-    public ResponseEntity<String> validarParametro() throws SQLException{
+    //Metodo para verificar acceso al modulo de CUENTA COBRO
+    @GetMapping("/validar-parametro-cuenta")
+    public ResponseEntity<String> validarParametroCuenta() throws SQLException{
         
-        String respuesta = inicioService.validarApartado();
+        String respuesta = databaseConfig.parametrosServidor(5);
+
+        return ResponseEntity.ok(respuesta);
+    }
+
+    //Metodo para verificar acceso al modulo de SOPORTE
+    @GetMapping("/validar-parametro-soporte")
+    public ResponseEntity<String> validarParametroSoporte() throws SQLException{
+        
+        String respuesta = databaseConfig.parametrosServidor(1);
 
         return ResponseEntity.ok(respuesta);
     }

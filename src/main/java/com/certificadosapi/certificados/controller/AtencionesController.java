@@ -33,11 +33,11 @@ import com.certificadosapi.certificados.util.ServidorUtil;
 @RequestMapping("/api")
 public class AtencionesController {
 
-    private ExportarService exportarService;
-    private VerService verService;
-    private GenerarService generarService;
-    private ConsultaService consultaService;
-    private AnexarService anexarService;
+    private final ExportarService exportarService;
+    private final VerService verService;
+    private final GenerarService generarService;
+    private final ConsultaService consultaService;
+    private final AnexarService anexarService;
 
     @Autowired
     public AtencionesController(ServidorUtil servidorUtil, ExportarService exportarService, VerService verService, GenerarService generarService, ConsultaService consultaService, AnexarService anexarService){

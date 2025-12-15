@@ -43,7 +43,7 @@ public class ReporteService {
 
 
     // DESCARGAR PDF DESDE REPORTING SERVICE
-    public byte[] descargarPdf(String idAdmision, String nombreArchivo, String nombreSoporte) {
+    public byte[] descargarPdf(String idAdmision, String nombreArchivo, String nombreSoporte) throws SQLException {
         log.info("Iniciando descarga de PDF para admisiones={}, soporte={}", idAdmision, nombreSoporte);
 
         if (nombreSoporte == null || nombreSoporte.trim().isEmpty()) {
@@ -51,29 +51,7 @@ public class ReporteService {
             throw new IllegalArgumentException("El nombre del soporte es requerido.");
         }
 
-        String urlBase = null;
-
-        // Obtener URL report server
-        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
-
-            String sql = "SELECT ValorParametro FROM ParametrosServidor WHERE NomParametro = 'URLReportServerWS'";
-            log.debug("Consultando URL del servidor de reportes");
-
-            try (PreparedStatement stmt = conn.prepareStatement(sql);
-                 ResultSet rs = stmt.executeQuery()) {
-
-                if (rs.next()) {
-                    urlBase = rs.getString("ValorParametro");
-                    log.debug("URLReportServerWS encontrada: {}", urlBase);
-                } else {
-                    log.error("No se encontró URLReportServerWS en ParametrosServidor");
-                    throw new IllegalStateException("No se encontró la URL del servidor de reportes.");
-                }
-            }
-        } catch (Exception e) {
-            log.error("Error obteniendo URLReportServerWS: {}", e.getMessage());
-            throw new RuntimeException("Error al obtener la URL del servidor: " + e.getMessage(), e);
-        }
+        String urlBase = databaseConfig.parametrosServidor(2);
 
         if (urlBase == null || urlBase.trim().isEmpty()) {
             log.error("URLReportServerWS viene vacía");

@@ -13,18 +13,19 @@ import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.certificadosapi.certificados.util.ServidorUtil;
+
+import com.certificadosapi.certificados.config.DatabaseConfig;
 
 @Service
 public class LoginsqlService {
 
     private static final Logger log = LoggerFactory.getLogger(LoginsqlService.class);
 
-    private final ServidorUtil servidorUtil;
+    private final DatabaseConfig databaseConfig;
 
     @Autowired
-    public LoginsqlService(ServidorUtil servidorUtil){
-        this.servidorUtil = servidorUtil;
+    public LoginsqlService(DatabaseConfig databaseConfig){
+        this.databaseConfig = databaseConfig;
     }
 
     public Map<String, Object> iniciarSesion(Map<String, String> datos) throws SQLException {
@@ -46,7 +47,7 @@ public class LoginsqlService {
         String servidor;
 
         try {
-            servidor = servidorUtil.getServerFromRegistry();
+            servidor = databaseConfig.getServerFromRegistry();
             log.debug("Servidor SQL obtenido del registro: {}", servidor);
         } catch (Exception e) {
             log.error("Error obteniendo servidor del registro: {}", e.getMessage());

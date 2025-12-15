@@ -40,7 +40,7 @@ public class ExportarService {
 
     private static final Logger log = LoggerFactory.getLogger(ExportarService.class);
     
-    private DatabaseConfig databaseConfig;
+    private final DatabaseConfig databaseConfig;
 
     @Autowired
     public ExportarService(DatabaseConfig databaseConfig){

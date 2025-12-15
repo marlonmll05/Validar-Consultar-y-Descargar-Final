@@ -1,6 +1,8 @@
 package com.certificadosapi.certificados.controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.core.io.ByteArrayResource;
+
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
@@ -11,7 +13,7 @@ import org.springframework.http.*;
 @RestController
 public class ReporteController {
 
-    private ReporteService reporteService;
+    private final ReporteService reporteService;
 
     public ReporteController(ReporteService reporteService){
         this.reporteService = reporteService;
@@ -22,7 +24,7 @@ public class ReporteController {
     public ResponseEntity<?> descargarPdf(
             @RequestParam String idAdmision,
             @RequestParam String nombreArchivo,
-            @RequestParam String nombreSoporte) {
+            @RequestParam String nombreSoporte) throws SQLException {
 
         byte[] pdfBytes = reporteService.descargarPdf(idAdmision, nombreArchivo, nombreSoporte);
         
