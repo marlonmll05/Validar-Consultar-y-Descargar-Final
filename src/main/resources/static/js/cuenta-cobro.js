@@ -3,6 +3,30 @@ if (!localStorage.getItem('tokenSQL')) {
     window.location.href = 'loginsql.html';
 }
 
+// Validación de Acceso
+window.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const response = await fetch("/api/sql/validar-parametro-cuenta");
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.log("Ocurrió un error:", errorText);
+            return;
+        }
+
+        const resultado = await response.text();
+        
+        if (resultado !== "1") {
+            console.log("Acceso denegado. Redirigiendo...");
+            window.location.href = 'inicio.html';
+            return;
+        }
+
+    } catch (error) {
+        console.log("Error al hacer la petición:", error);
+    }
+});
+
 const host = window.location.hostname;
 
 document.addEventListener('DOMContentLoaded', () => {

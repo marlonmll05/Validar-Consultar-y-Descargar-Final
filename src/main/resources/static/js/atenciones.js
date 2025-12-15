@@ -5,7 +5,7 @@ if (!localStorage.getItem('tokenSQL')) {
 // Validación de Acceso
 window.addEventListener("DOMContentLoaded", async () => {
     try {
-        const response = await fetch("/api/sql/validar-parametro");
+        const response = await fetch("/api/sql/validar-parametro-soporte");
 
         if (!response.ok) {
             const errorText = await response.text();

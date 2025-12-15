@@ -35,7 +35,7 @@ document.querySelectorAll('.dropdown-item').forEach(item => {
 
 window.addEventListener("DOMContentLoaded", async () => {
   try {
-    const response = await fetch("/api/sql/validar-parametro");
+    const response = await fetch("/api/sql/validar-parametro-soporte");
 
     if (!response.ok) {
       console.log("ocurrio un error", await response.text());
@@ -45,7 +45,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     const resultado = await response.text();
 
     if (resultado !== "1") {
-      console.log("Acceso denegado, respuesta:", resultado);
+      console.log("Acceso denegado al modulo de soporte, respuesta:", resultado);
 
       const atencionesLink = document.querySelector("#menuAtenciones");
       if (atencionesLink) {
@@ -58,8 +58,36 @@ window.addEventListener("DOMContentLoaded", async () => {
       console.log("Acceso otorgado a atenciones");
     }
   } catch (error) {
-    console.log("Error al hacer la peticion", error);
+    console.error("Error al hacer la peticion para Documentos Soporte", error);
   }
+
+  try {
+    const responseCuenta = await fetch("/api/sql/validar-parametro-cuenta");
+
+    if (!responseCuenta.ok) {
+      console.log("ocurrio un error", await responseCuenta.text());
+      return;
+    }
+
+    const resultadoCuenta = await responseCuenta.text();
+
+    if (resultadoCuenta !== "1") {
+      console.log("Acceso denegado al modulo de cuenta cobro, respuesta:", resultadoCuenta);
+
+      const cuentaCobroLink = document.querySelector("#menuCuentaCobro");
+      if (cuentaCobroLink) {
+        const dropdownCuentaCobro = cuentaCobroLink.closest(".dropdown");
+        if (dropdownCuentaCobro) {
+          dropdownCuentaCobro.classList.add("dropdown-disabled");
+        }
+      }
+    } else {
+      console.log("Acceso otorgado a cuenta cobro");
+    }
+  } catch (error) {
+    console.error("Error al hacer la peticion para Cuenta Cobro", error);
+  }
+
 });
 
 
