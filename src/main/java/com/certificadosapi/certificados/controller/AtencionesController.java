@@ -99,6 +99,12 @@ public class AtencionesController {
                 automatico
         );
 
+        if (idGenerado == null){
+            return ResponseEntity.ok().body(Map.of(
+                "mensaje", "El documento ya existe, no se inserto nuevamente"
+            ));
+        }
+
         return ResponseEntity.ok(Map.of(
                 "mensaje", "PDF insertado exitosamente",
                 "idPdfKey", idGenerado

@@ -150,6 +150,28 @@ public class AnexarService {
                 idAdmision, idPacienteKey, idSoporteKey, tipoDocumento,
                 (files != null ? files.size() : 0), eliminarSiNo, automatico);
 
+        if (automatico && idSoporteKey == 3) {
+            try (Connection connCheck = DriverManager.getConnection(databaseConfig.getConnectionUrl("Asclepius_Documentos"))) {
+                String sqlCheck = """
+                    SELECT COUNT(*) as cantidad
+                    FROM tbl_Net_Facturas_ListaPdf 
+                    WHERE IdAdmision = ? AND IdSoporteKey = 3
+                """;
+                
+                try (PreparedStatement psCheck = connCheck.prepareStatement(sqlCheck)) {
+                    psCheck.setLong(1, idAdmision);
+                    
+                    try (ResultSet rsCheck = psCheck.executeQuery()) {
+                        if (rsCheck.next() && rsCheck.getInt("cantidad") > 0) {
+                            log.warn("Ya existe apoyo diagnóstico automático para idAdmision={}. Operación cancelada.", idAdmision);
+                            return null;
+                        }
+                    }
+                }
+            }
+            log.info("No se encontró apoyo diagnóstico previo. Procediendo con la inserción automática.");
+        }
+
         if (files == null || files.isEmpty()) {
             log.warn("insertarListaPdf llamado sin archivos para anexar. idAdmision={}, idSoporteKey={}", idAdmision, idSoporteKey);
             throw new IllegalArgumentException("Debe enviar al menos un archivo PDF.");
