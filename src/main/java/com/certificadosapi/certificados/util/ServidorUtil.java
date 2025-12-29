@@ -37,7 +37,19 @@ public class ServidorUtil {
     }
 
 
-    //Metodo para crear un template inseguro para enviar al ministerio
+/**
+ * Utilidad encargada de la configuración de conexiones hacia servidores externos.
+ *
+ * Esta clase provee métodos para:
+ * 
+ *   Crear un {@link RestTemplate} con validación SSL deshabilitada (uso controlado).
+ *   Crear un {@link CloseableHttpClient} configurado con autenticación NTLM.
+
+ *
+ * Advertencia: El uso de SSL inseguro debe limitarse exclusivamente
+ * a entornos controlados (QA, integración con servicios legacy o ministerios).
+ */
+
     public RestTemplate crearRestTemplateInseguro() {
         try {
             TrustManager[] trustAllCerts = new TrustManager[]{

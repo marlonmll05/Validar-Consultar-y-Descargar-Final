@@ -19,6 +19,13 @@ import com.certificadosapi.certificados.dto.PdfDocumento;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
+/**
+ * Servicio encargado de la visualización y gestión de documentos PDF asociados a admisiones.
+ * Proporciona métodos para listar, obtener y eliminar documentos almacenados en la base de datos,
+ * con detección automática de tipo de contenido mediante magic numbers.
+ * 
+ * @author Marlon Morales Llanos
+ */
 @Service
 public class VerService {
 
@@ -26,12 +33,32 @@ public class VerService {
 
     private DatabaseConfig databaseConfig;
 
+    /**
+     * Constructor de VerService con inyección de dependencias.
+     * 
+     * @param databaseConfig Objeto de configuración para las conexiones a base de datos
+     */
     @Autowired
     public VerService(DatabaseConfig databaseConfig){
         this.databaseConfig = databaseConfig;
     }
 
-    // === Helper para detectar content-type por "magic numbers" ===
+
+    /**
+     * Detecta el tipo de contenido (MIME type) de un archivo mediante análisis de magic numbers.
+     * Examina los primeros bytes del archivo para identificar su formato real.
+     * 
+     * Formatos soportados:
+     * - PDF (application/pdf)
+     * - PNG (image/png)
+     * - JPEG (image/jpeg)
+     * - GIF (image/gif)
+     * - WEBP (image/webp)
+     * 
+     * @param data Array de bytes del archivo a analizar
+     * @return String con el MIME type detectado. Por defecto retorna "application/pdf"
+     *         si no se puede determinar el tipo o si los datos son insuficientes
+     */
     private String detectarContentType(byte[] data) {
         if (data != null && data.length >= 4) {
             // %PDF
@@ -61,7 +88,19 @@ public class VerService {
         return "application/pdf";
     }
     
-    // LISTA DE PDFS INSERTADOS EN LA TABLA
+    /**
+     * Obtiene la lista de documentos PDF asociados a una admisión específica.
+     * Utiliza la función de base de datos fn_Net_DocSoporte_NameFile para obtener
+     * los nombres descriptivos de los documentos.
+     * 
+     * @param idAdmision ID de la admisión para consultar sus documentos
+     * @return Lista de mapas conteniendo información de documentos con las llaves:
+     *         "idSoporteKey" (Long) - ID único del documento,
+     *         "nombre" (String) - Nombre descriptivo del documento.
+     *         Los resultados están ordenados por IdSoporteKey
+     * @throws IllegalArgumentException si no se encuentran documentos para la admisión
+     * @throws SQLException si ocurre un error durante la consulta a la base de datos
+     */
     public List<Map<String, Object>> listaPdfs(Long idAdmision) throws SQLException {
         
         log.info("Iniciando listaPdfs(idAdmision={})", idAdmision);

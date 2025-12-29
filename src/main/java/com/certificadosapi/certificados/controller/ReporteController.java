@@ -19,7 +19,7 @@ public class ReporteController {
         this.reporteService = reporteService;
     }
 
-
+    // ENDPOINT PARA DESCARGAR UN PDF DE SOPORTE
     @GetMapping("/descargar-pdf")
     public ResponseEntity<?> descargarPdf(
             @RequestParam String idAdmision,
@@ -34,14 +34,14 @@ public class ReporteController {
                 .body(resource);
     }
 
-
+    // ENDPOINT PARA OBTENER LOS DOCUMENTOS DE SOPORTE
     @GetMapping("/soporte")
     public ResponseEntity<List<Map<String, Object>>> obtenerDocumentosSoporte() {
         List<Map<String, Object>> documentos = reporteService.obtenerDocumentosSoporte();
         return ResponseEntity.ok(documentos);
     }
 
-
+    // ENDPOINT PARA VALIDAR SI EXISTE UNA FACTURA
     @GetMapping("/facturas/existe")
     public ResponseEntity<?> existeFactura(
             @RequestParam String idAdmision,

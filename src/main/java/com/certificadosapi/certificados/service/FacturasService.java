@@ -28,6 +28,27 @@ import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+/**
+ * Servicio para manejar las operaciones relacionadas con las facturas.
+ *
+ * Este servicio se encarga de la generación de documentos XML, JSON y TXT
+ * asociados a las transacciones de facturación, así como de la creación
+ * de archivos comprimidos (ZIP) que contienen dichos documentos.
+ *
+ * Se conecta a bases de datos específicas para obtener la información
+ * necesaria para la generación de los archivos.
+ *
+ * Funcionalidades principales del servicio:
+ * - Exportar documentos XML a partir del ID del movimiento.
+ * - Generar archivos JSON con información de facturas.
+ * - Generar archivos TXT con datos de transacciones y usuarios.
+ * - Generar archivos ZIP que pueden incluir XML, JSON, TXT y CUV. 
+ * - Generar información de admisión según el movimiento y tipo de documento.
+ *
+ *
+ * @author Marlon Morales
+ */
+
 @Service
 public class FacturasService {
 
@@ -41,7 +62,14 @@ public class FacturasService {
         this.databaseConfig = databaseConfig;
     }
     
-    // Método para exportar el XML en el servicio
+    /**
+     * Exporta un documento XML basado en el ID del movimiento del documento.
+     *
+     * @param idMovDoc ID del movimiento del documento a exportar.
+     * @return Contenido del documento XML como un array de bytes.
+     * @throws SQLException Si ocurre un error al acceder a la base de datos
+     *                     o si no se encuentra el documento.
+     */
     public byte[] exportDocXml(int idMovDoc) throws SQLException {
 
         log.info("Iniciando exportación de XML para idMovDoc={}", idMovDoc);
@@ -78,7 +106,15 @@ public class FacturasService {
         } 
     }
 
-    //Metodo parar crear JSON de Facturas
+    /**
+     * Genera un documento JSON siguiendo el reglamento de estructura de RIPS del ministerio 
+     * utilizando el ID del movimiento del documento.
+     * 
+     * @param idMovDoc ID del movimiento del documento para el cual se genera el JSON.
+     * @return Contenido del documento JSON como un array de bytes.
+     * @throws SQLException Si ocurre un error al acceder a la base de datos.
+     * @throws JsonProcessingException Si ocurre un error al procesar el JSON.
+     */
     public byte[] generarjson(int idMovDoc) throws SQLException, JsonProcessingException {
 
         log.info("Iniciando generación de JSON RIPS para idMovDoc={}", idMovDoc);
@@ -516,7 +552,14 @@ public class FacturasService {
         }
     }
 
-    //Metodo para crear TXT de Facturas
+    /**
+     * Genera un archivo TXT con información de las transacciones y usuarios
+     * asociados al ID del movimiento del documento.
+     *
+     * @param idMovDoc ID del movimiento del documento para el cual se genera el TXT.
+     * @return Un mapa que contiene el nombre del archivo TXT y su contenido como bytes.
+     * @throws SQLException Si ocurre un error al acceder a la base de datos.
+     */
     public Map<String, byte[]> generarTxt(int idMovDoc) throws SQLException {
         log.info("Iniciando generarTxt para IdMovDoc={}", idMovDoc);
         Map<String, byte[]> txtFiles = new HashMap<>();
@@ -867,7 +910,17 @@ public class FacturasService {
         }
     }
 
- // Metodo para generar Zip de Facturas y XML
+    /**
+     * Genera un archivo ZIP que puede incluir documentos JSON, TXT y XML
+     * según lo especificado.
+     *
+     * @param idMovDoc ID del movimiento del documento para el cual se genera el ZIP.
+     * @param tipoArchivo Tipo de archivo a incluir en el ZIP (json, txt, ambos).
+     * @param incluirXml Indica si se debe incluir el XML en el ZIP.
+     * @return Un objeto ZipResult que contiene el contenido del ZIP y su nombre.
+     * @throws IOException Si ocurre un error al generar el ZIP.
+     * @throws SQLException Si ocurre un error al acceder a la base de datos.
+     */
     public ZipResult generarzip(
         int idMovDoc,
         String tipoArchivo,

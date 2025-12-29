@@ -35,6 +35,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.certificadosapi.certificados.dto.PdfDocumento;
 import com.certificadosapi.certificados.dto.XmlDocumento;
 
+
+/**
+ * Servicio encargado de la exportación de documentos asociados a facturas,
+ * admisiones y cuentas de cobro.
+ *
+ * Permite:
+ * - Exportar PDFs almacenados en base de datos
+ * - Obtener respuestas RIPS (CUV)
+ * - Generar XML de facturas
+ * - Construir archivos ZIP con XML, JSON, PDFs y archivos TXT de validación
+ */
 @Service
 public class ExportarService {
 
@@ -47,7 +58,18 @@ public class ExportarService {
         this.databaseConfig = databaseConfig;
     }
 
-    //ENDPOINT PARA EXPORTAR EL CONTENIDO DE UNA ADMISION
+    /**
+     * Exporta el contenido PDF asociado a una admisión y un soporte específico.
+     *
+     * El archivo PDF se obtiene desde base de datos, se valida que exista
+     * y se retorna junto con su nombre real.
+     *
+     * @param idAdmision Identificador de la admisión
+     * @param idSoporteKey Identificador del soporte
+     * @return Objeto PdfDocumento con bytes, nombre y MIME type
+     * @throws SQLException Error de base de datos
+     * @throws IOException Error de lectura del archivo
+     */
     public PdfDocumento exportarPdf(Long idAdmision, Long idSoporteKey) throws SQLException, IOException {
         log.info("Exportando PDF - idAdmision: {}, idSoporteKey: {}", idAdmision, idSoporteKey);
 
@@ -102,7 +124,13 @@ public class ExportarService {
         }
     }
 
-    //ENDPOINT PARA OBTENER EL CUV DE UNA FACTURA VALIDADA
+    /**
+     * Obtiene la respuesta RIPS (CUV) asociada a una factura validada.
+     *
+     * @param nFact Número de factura
+     * @return Mensaje de respuesta del validador
+     * @throws SQLException Error de base de datos
+     */
     public String obtenerRespuestaRips(String nFact) throws SQLException {
         log.info("Obteniendo respuesta RIPS para factura: {}", nFact);
         
@@ -135,7 +163,13 @@ public class ExportarService {
         throw new NoSuchElementException("No se encontró respuesta RIPS para la factura");
     }
 
-    //ENDPOINT PARA OBTENER EL XML DE UNA FACTURA Y RENOMBRARLO
+    /**
+     * Genera el XML oficial de una factura y construye su nombre según normativa.
+     *
+     * @param nFact Número de factura
+     * @return XmlDocumento con bytes del XML, nombre generado e IdMovDoc
+     * @throws SQLException Error de base de datos
+     */
     public XmlDocumento generarXml(String nFact) throws SQLException {
         log.info("Generando XML para factura: {}", nFact);
         
@@ -206,6 +240,21 @@ public class ExportarService {
         }
     }
 
+    /**
+     * Construye un archivo ZIP que contiene:
+     * - XML de la factura
+     * - JSON de la factura
+     * - PDFs asociados
+     * - Archivo TXT con la respuesta del validador (CUV)
+     *
+     * @param nFact Número de factura
+     * @param xml Archivo XML
+     * @param jsonFactura Archivo JSON
+     * @param pdfs Lista de archivos PDF
+     * @return ZIP en formato byte[]
+     * @throws SQLException Error de base de datos
+     * @throws IOException Error de lectura/escritura
+     */
     public byte[] armarZip(
             String nFact,
             MultipartFile xml,
@@ -403,32 +452,67 @@ public class ExportarService {
         return zipBytes;
     }
 
+    /**
+     * Genera un archivo ZIP para una Cuenta de Cobro.
+     *
+     * El ZIP puede contener, organizados por factura:
+     * - XML de la factura (opcional)
+     * - JSON de la factura (opcional)
+     * - PDFs asociados (siempre)
+     * - Archivo TXT con la respuesta del validador RIPS / CUV (opcional)
+     *
+     * La estructura del ZIP es:
+     *  CuentaCobro/
+     *    Factura_1/
+     *      archivos...
+     *    Factura_2/
+     *      archivos...
+     *
+     * @param numeroCuentaCobro Número identificador de la cuenta de cobro
+     * @param incluirArchivos Indica si se deben incluir XML, JSON y TXT de validación
+     * @param fileParts Archivos recibidos desde el frontend (Multipart)
+     * @return ZIP generado en formato byte[]
+     * @throws IOException Error de lectura o escritura de archivos
+     */
     public byte[] exportarCuentaCobro(
         @RequestParam("numeroCuentaCobro") String numeroCuentaCobro,
         @RequestParam("incluirArchivos") boolean incluirArchivos,
         MultiValueMap<String, MultipartFile> fileParts) throws IOException {
         
         log.info("Iniciando exportacion ZIP para Cuenta de Cobro {}", numeroCuentaCobro);
-    
+
+        // === PATRÓN PARA LIMPIAR CARACTERES INVÁLIDOS EN NOMBRES DE ARCHIVO ===
         final Pattern ILLEGAL = Pattern.compile("[\\\\/:*?\"<>|]+");
+
+        // Sanitizar número de cuenta de cobro para usarlo como carpeta raíz
         String sanitizeCuenta = ILLEGAL.matcher(numeroCuentaCobro == null ? "" : numeroCuentaCobro).replaceAll("_").trim();
+
+        // Nombre final de la carpeta raíz del ZIP
         String folderCuenta = (sanitizeCuenta.isBlank() ? "SIN_NUMERO" : sanitizeCuenta) + "/";
         
         log.debug("Carpeta raiz del ZIP: {}", folderCuenta);
 
+        /**
+         * Record interno para relacionar:
+         * - tipo de archivo (xml, jsonFactura, pdfs)
+         * - archivo Multipart recibido
+         */
         record PartItem(String tipo, MultipartFile file) {}
         Map<String, List<PartItem>> porNfact = new LinkedHashMap<>();
 
         log.info("Analizando partes recibidas del frontend... Total keys: {}", fileParts.size());
 
+        // === PROCESAR ARCHIVOS RECIBIDOS DESDE EL FRONTEND ===
         for (Map.Entry<String, List<MultipartFile>> e : fileParts.entrySet()) {
             String key = e.getKey();
+
+            // Validación básica de key
             if (key == null || key.isBlank()) {
                 log.warn("Key vacia, se ignora: {}", key);
                 continue;
             }
-            
 
+            // Formato esperado: <nFact>_<tipo>
             int idx = key.indexOf('_');
             if (idx <= 0 || idx >= key.length() - 1) {
                 log.warn("Key '{}' no tiene formato valido <numero_tipo, se ignora", key);
@@ -437,24 +521,32 @@ public class ExportarService {
 
             String nFact = key.substring(0, idx).trim();
             String tipo  = key.substring(idx + 1).trim();
+
+            // Tipos permitidos
             if (!( "xml".equals(tipo) || "jsonFactura".equals(tipo) || "pdfs".equals(tipo) )) {
                 log.warn("Tipo '{}' no reconocido para key '{}', se ignora", tipo, key);
                 continue;
             }
 
             List<MultipartFile> files = e.getValue();
-            if (files == null || files.isEmpty()){
+            if (files == null || files.isEmpty()) {
                 log.warn("No hay archivos en key '{}'", key);
                 continue;
             }
 
+            // Asociar cada archivo a su factura
             for (MultipartFile mf : files) {
-                if (mf == null || mf.isEmpty()){
+                if (mf == null || mf.isEmpty()) {
                     log.warn("Archivo vacio para nFact {}", nFact);
                     continue;
                 }
-                log.debug("Archivo recibido nFact={} tipo={} nombre={}", nFact, tipo, mf.getOriginalFilename());   
-                porNfact.computeIfAbsent(nFact, k -> new ArrayList<>()).add(new PartItem(tipo, mf));
+
+                log.debug("Archivo recibido nFact={} tipo={} nombre={}",
+                        nFact, tipo, mf.getOriginalFilename());
+
+                porNfact
+                    .computeIfAbsent(nFact, k -> new ArrayList<>())
+                    .add(new PartItem(tipo, mf));
             }
         }
 
@@ -463,13 +555,18 @@ public class ExportarService {
         // === CREACIÓN ZIP ===
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         int archivosAgregados = 0;
+
+        // Set para evitar nombres duplicados dentro del ZIP
         Set<String> nombresUsados = new HashSet<>();
 
         try (ZipOutputStream zos = new ZipOutputStream(baos)) {
 
+            // === PROCESAR FACTURA POR FACTURA ===
             for (Map.Entry<String, List<PartItem>> entry : porNfact.entrySet()) {
 
                 String nFact = entry.getKey();
+
+                // Sanitizar número de factura
                 String sanitizeN = ILLEGAL.matcher(nFact == null ? "" : nFact).replaceAll("_").trim();
                 String folderFactura = folderCuenta + (sanitizeN.isBlank() ? "SIN_FACTURA" : sanitizeN) + "/";
 
@@ -701,7 +798,17 @@ public class ExportarService {
         return baos.toByteArray();
     }
 
-
+    /**
+     * Genera un nombre único dentro del ZIP para evitar colisiones.
+     *
+     * Si el nombre ya existe, se agrega un sufijo incremental:
+     *  archivo.pdf → archivo_1.pdf → archivo_2.pdf
+     *
+     * @param folder Carpeta destino
+     * @param nombreOriginal Nombre original del archivo
+     * @param nombresUsados Set de nombres ya utilizados
+     * @return Nombre único con ruta completa
+     */
     private String obtenerNombreUnico(String folder, String nombreOriginal, Set<String> nombresUsados) {
         String pathCompleto = folder + nombreOriginal;
         

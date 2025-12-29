@@ -19,15 +19,24 @@ import com.sun.jna.platform.win32.WinReg;
 @Configuration
 public class DatabaseConfig {
 
+    //LOGS
     private static final Logger log = LoggerFactory.getLogger(DatabaseConfig.class);
 
+    //Usuario interno de SQL (application.properties)
     @Value("${db.username}")
     private String dbUsername;
 
+    //Contraseña interna de SQL (application.properties)
     @Value("${db.password}")
     private String dbPassword;
 
-    //Metodo para leer el servidor de registro
+
+    /**
+     * Lee el nombre del servidor desde el registro de Windows.
+     * 
+     * @return El nombre del servidor configurado en el registro
+     * @throws Exception Si no se puede leer el registro o el valor no existe
+     */
     public String getServerFromRegistry() throws Exception {
 
         String registryPath = "SOFTWARE\\VB and VBA Program Settings\\Asclepius\\Administrativo";
@@ -41,7 +50,14 @@ public class DatabaseConfig {
     }
 
 
-
+    /**
+     * Construye la URL de conexión a la base de datos SQL Server.
+     * 
+     * @param dbName El nombre de la base de datos (IPSoft100_ST, IPSoftFinanciero_ST o Asclepius_Documentos)
+     * @return La URL de conexión JDBC completa
+     * @throws IllegalArgumentException Si el nombre de la base de datos no es válido
+     * @throws RuntimeException Si ocurre un error al obtener el servidor del registro
+     */
     public String getConnectionUrl(String dbName){
         if (!dbName.equals("IPSoft100_ST" ) && !dbName.equals("IPSoftFinanciero_ST") && !dbName.equals("Asclepius_Documentos")){
             throw new IllegalArgumentException("Nombre de la base de datos incorrecto" + dbName);
@@ -56,6 +72,14 @@ public class DatabaseConfig {
             throw new RuntimeException("Error al obtener URL de conexión: " + e.getMessage(), e);
         }
     }
+
+    /**
+     * Obtiene el valor especificado de la tabla parametros servidor
+     * 
+     * @param option numero del 1 al 5 para elegir el campo del que queramos obtener informacion
+     * @return el resultado de la consulta
+     * @throws SQLException Si hubo un error al obtener la informacion
+     */
 
     public String parametrosServidor(Integer option) throws SQLException{
 
@@ -87,5 +111,4 @@ public class DatabaseConfig {
             }
         } 
     }
-    
 }

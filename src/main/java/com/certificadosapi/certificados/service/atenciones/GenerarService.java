@@ -36,6 +36,15 @@ import org.springframework.stereotype.Service;
 import com.certificadosapi.certificados.config.DatabaseConfig;
 import com.certificadosapi.certificados.util.ServidorUtil;
 
+/**
+ * Servicio para generación, descarga e inserión de documentos PDF
+ * relacionados con atenciones médicas y facturación.
+ *
+ * Maneja:
+ * - Generación de PDFs desde imágenes
+ * - Descarga de reportes desde Reporting Services
+ * - Inserción de documentos PDF en base de datos
+ */
 @Service
 public class GenerarService {
 
@@ -50,7 +59,21 @@ public class GenerarService {
         this.servidorUtil = servidorUtil;
     }
 
-    // ENDPOINT PARA GENERAR APOYO DIAGNOSTICO (IMAGENES A PDF)
+    /**
+     * Genera un PDF de apoyo diagnóstico a partir de imágenes asociadas
+     * a una admisión y paciente.
+     *
+     * Obtiene rutas locales de imágenes desde base de datos y construye
+     * un PDF donde cada imagen ocupa una página tamaño A4.
+     *
+     * @param idAdmision     Identificador de la admisión
+     * @param idPacienteKey Identificador del paciente
+     * @return Arreglo de bytes que representa el PDF generado
+     *
+     * @throws SQLException Si ocurre un error al consultar la base de datos
+     * @throws IOException  Si ocurre un error al leer imágenes o generar el PDF
+     * @throws NoSuchElementException Si no existen imágenes para generar el PDF
+     */
     public byte[] generarPdfApoyoDiagnostico(int idAdmision, int idPacienteKey) 
             throws SQLException, IOException {
         
@@ -122,7 +145,22 @@ public class GenerarService {
         }
     }
 
-    // ENDPOINT PARA DESCARGAR LA FACTURA DE VENTA
+    /**
+     * Descarga la factura de venta desde Reporting Services
+     * y la inserta como documento PDF en la base de datos.
+     *
+     * Obtiene la ruta del reporte y el IdMovDoc mediante procedimiento
+     * almacenado y realiza la descarga usando autenticación NTLM.
+     *
+     * @param idAdmision     Identificador de la admisión
+     * @param idPacienteKey Identificador del paciente
+     * @param idSoporteKey  Identificador del soporte
+     * @param tipoDocumento Tipo de documento a registrar
+     * @return Identificador del PDF insertado en la base de datos
+     *
+     * @throws SQLException Si ocurre un error en base de datos
+     * @throws IOException  Si ocurre un error al descargar el PDF
+     */
     public Long descargarFacturaVenta(Long idAdmision, Long idPacienteKey, 
                                       Long idSoporteKey, String tipoDocumento) 
             throws SQLException, IOException {
@@ -237,7 +275,16 @@ public class GenerarService {
         }
     }
 
-    // ENDPOINT PARA DESCARGAR LOS SOPORTES DISPONIBLES PARA UNA ADMISION
+    /**
+     * Obtiene los soportes disponibles asociados a una admisión.
+     *
+     * Consulta información de soportes mediante procedimiento almacenado.
+     *
+     * @param idAdmision Identificador de la admisión
+     * @return Lista de soportes disponibles
+     *
+     * @throws SQLException Si ocurre un error al consultar la base de datos
+     */
     public List<Map<String, Object>> obtenerSoportesDisponibles(Long idAdmision) throws SQLException {
 
         log.info("Iniciando obtenerSoportesDisponibles(idAdmision={})", idAdmision);
@@ -265,7 +312,24 @@ public class GenerarService {
         }
     }
 
-    // ENDPOINT QUE DESCARGA PDFS DE REPORTING SERVICE Y LOS INSERTA
+    /**
+     * Descarga un soporte PDF desde Reporting Services
+     * y lo inserta en la base de datos.
+     *
+     * El PDF se obtiene según el nombre del soporte y se registra
+     * usando un procedimiento almacenado.
+     *
+     * @param idAdmision     Identificador de la admisión
+     * @param idPacienteKey Identificador del paciente
+     * @param idSoporteKey  Identificador del soporte
+     * @param tipoDocumento Tipo de documento
+     * @param nombreSoporte Nombre del reporte en Reporting Services
+     * @return Identificador del PDF insertado
+     *
+     * @throws SQLException Si ocurre un error en base de datos
+     * @throws IOException  Si ocurre un error al descargar el PDF
+     * @throws IllegalArgumentException Si el nombre del soporte es inválido
+     */
     public Long insertarSoporte(Long idAdmision, Long idPacienteKey, Long idSoporteKey,
                                 String tipoDocumento, String nombreSoporte) 
             throws SQLException, IOException {

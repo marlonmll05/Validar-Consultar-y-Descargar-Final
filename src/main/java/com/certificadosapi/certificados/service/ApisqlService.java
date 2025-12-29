@@ -15,18 +15,42 @@ import org.springframework.stereotype.Service;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
+/**
+ * Servicio encargado de gestionar operaciones relacionadas con RIPS (Registro Individual
+ * de Prestación de Servicios de Salud) y códigos CUV (Código Único de Validación).
+ * Proporciona métodos para consultar, actualizar y generar información de validación
+ * de facturas ante el ministerio.
+ * 
+ * @author Marlon Morales Llanos
+ */
+
 @Service
 public class ApisqlService {
 
     private static final Logger log = LoggerFactory.getLogger(ApisqlService.class);
     private final DatabaseConfig databaseConfig;
 
+
+    /**
+     * Constructor de ApisqlService con inyección de dependencias.
+     * 
+     * @param databaseConfig Objeto de configuración para las conexiones a base de datos
+     */
     @Autowired
     public ApisqlService(DatabaseConfig databaseConfig) {
         this.databaseConfig = databaseConfig;
     }
 
-    // OBTENER CUV POR NFACT
+    /**
+     * Obtiene el código CUV (Código Único de Validación) asociado a una factura específica.
+     * Busca en la tabla FacturaFinal el CUV de la factura solicitada.
+     * 
+     * @param nFact Número de factura para consultar el CUV
+     * @return Mapa con la información del resultado:
+     *         Si se encuentra: {"success": true, "Rips_CUV": "codigo_cuv"}
+     *         Si no se encuentra: {"success": false, "message": "descripción", "Rips_CUV": ""}
+     * @throws RuntimeException si ocurre un error SQL o inesperado durante la consulta
+     */
     public Map<String, Object> obtenerCuv(String nFact) {
 
         try {
@@ -69,7 +93,18 @@ public class ApisqlService {
     }
 
 
-    // ACTUALIZAR CUV EN FACTURAFINAL
+   /**
+     * Actualiza el código CUV y la fecha de validación en la tabla FacturaFinal.
+     * Solo actualiza si existe un registro correspondiente en Rips_Transaccion.
+     * 
+     * @param nFact Número de factura a actualizar
+     * @param ripsCuv Código CUV a asignar (puede ser null o vacío para establecer NULL)
+     * @return Mapa con el resultado de la operación:
+     *         "mensaje" (String) - Descripción del resultado,
+     *         "filasAfectadas" (Integer) - Cantidad de registros actualizados (0 o 1)
+     * @throws IllegalArgumentException si nFact es nulo o vacío
+     * @throws RuntimeException si ocurre un error SQL o inesperado durante la actualización
+     */
     public Map<String, Object> actualizarCuvFF(String nFact, String ripsCuv) {
 
         log.info("Iniciando actualizarCuvFF");
@@ -131,7 +166,19 @@ public class ApisqlService {
         }
     }
 
-    // ACTUALIZAR CUV + ESTADO VALIDACIÓN EN TRANSACCIÓN
+    /**
+     * Actualiza el código CUV y el estado de validación en la tabla Rips_Transaccion.
+     * Permite establecer simultáneamente el CUV y el estado del proceso de validación.
+     * 
+     * @param nFact Número de factura a actualizar
+     * @param cuv Código CUV a asignar (puede ser null o vacío para establecer NULL)
+     * @param idEstadoValidacion ID del estado de validación a establecer
+     * @return Mapa con el resultado de la operación:
+     *         "mensaje" (String) - Descripción del resultado,
+     *         "filasAfectadas" (Integer) - Cantidad de registros actualizados
+     * @throws IllegalArgumentException si nFact es nulo o vacío
+     * @throws RuntimeException si ocurre un error SQL o inesperado durante la actualización
+     */
     public Map<String, Object> actualizarCuvTransaccion(String nFact, String cuv, Integer idEstadoValidacion) {
 
         log.info("Iniciando actualizarCuvTransaccion");
@@ -198,7 +245,17 @@ public class ApisqlService {
         }
     }
 
-    // OBTENER ESTADO VALIDACIÓN
+    /**
+     * Obtiene el estado de validación actual de una transacción RIPS.
+     * Consulta el IdEstadoValidacion de la tabla Rips_Transaccion para una factura específica.
+     * 
+     * @param nFact Número de factura a consultar
+     * @return Mapa con la información del estado:
+     *         Si se encuentra: {"nFact": "numero", "idEstadoValidacion": estado_o_"null"}
+     *         Si no se encuentra: {"mensaje": "descripción del error"}
+     * @throws IllegalArgumentException si nFact es nulo o vacío
+     * @throws RuntimeException si ocurre un error SQL o inesperado durante la consulta
+     */
     public Map<String, Object> obtenerEstadoValidacion(String nFact) {
 
         log.info("Iniciando obtenerEstadoValidacion");
@@ -255,7 +312,16 @@ public class ApisqlService {
     }
 
 
-    // EJECUTAR GENERACIÓN DE RIPS
+    /**
+     * Ejecuta el procedimiento almacenado para generar archivos RIPS en formato JSON.
+     * Invoca pa_Rips_JSON_Generar con parámetros fijos para generar la documentación
+     * requerida para validación ante el ministerio.
+     * 
+     * @param nFact Número de factura para la cual generar los RIPS
+     * @return String con mensaje de confirmación de ejecución exitosa
+     * @throws SQLException si ocurre un error SQL durante la ejecución del procedimiento
+     * @throws Exception si ocurre cualquier otro error inesperado
+     */
     public String ejecutarRips(String nFact) throws SQLException, Exception {
 
         log.debug("Parámetro recibido: nFact={}", nFact);

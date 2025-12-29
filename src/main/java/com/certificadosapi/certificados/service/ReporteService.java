@@ -27,6 +27,14 @@ import org.springframework.stereotype.Service;
 import com.certificadosapi.certificados.config.DatabaseConfig;
 import com.certificadosapi.certificados.util.ServidorUtil;
 
+/**
+ * Servicio encargado de la gestión de reportes y operaciones con documentos PDF.
+ * Este servicio maneja la descarga de PDFs por cada Factura, 
+ * la combinación de documentos y la verificación de facturas.
+ * 
+ * @author Marlon Morales Llanos
+ */
+
 @Service 
 public class ReporteService {
 
@@ -42,7 +50,18 @@ public class ReporteService {
     }
 
 
-    // DESCARGAR PDF DESDE REPORTING SERVICE
+    /**
+     * Descarga archivos PDF desde Reporting Service y los combina en un solo documento.
+     * Acepta múltiples IDs de admisión separados por comas y genera un PDF combinado.
+     * 
+     * @param idAdmision Cadena de IDs de admisión separados por comas a procesar
+     * @param nombreArchivo Nombre del archivo (actualmente no utilizado en la implementación)
+     * @param nombreSoporte Nombre del documento/reporte de soporte a generar
+     * @return Array de bytes que contiene el documento PDF combinado
+     * @throws SQLException si ocurre un error en la base de datos
+     * @throws IllegalArgumentException si el nombre del soporte está vacío o no se pudo procesar ningún PDF
+     * @throws RuntimeException si hay un error al descargar o procesar los PDFs
+     */
     public byte[] descargarPdf(String idAdmision, String nombreArchivo, String nombreSoporte) throws SQLException {
         log.info("Iniciando descarga de PDF para admisiones={}, soporte={}", idAdmision, nombreSoporte);
 
@@ -120,7 +139,14 @@ public class ReporteService {
     }
 
 
-    // OBTENER LISTA DE DOCUMENTOS SOPORTE
+    /**
+     * Obtiene la lista de documentos de soporte activos desde la base de datos.
+     * Solo retorna documentos donde Inactivo está en 0 (activo).
+     * 
+     * @return Lista de mapas conteniendo información de documentos con las llaves:
+     *         "Id" (Integer), "nombreDocSoporte" (String), "nombreRptService" (String)
+     * @throws RuntimeException si ocurre un error de base de datos durante la consulta
+     */
     public List<Map<String, Object>> obtenerDocumentosSoporte() {
         log.info("Consultando documentos de soporte activos");
 
@@ -152,7 +178,15 @@ public class ReporteService {
     }
 
 
-    // VERIFICAR SI EXISTE FACTURA EN LA TABLA
+    /**
+     * Verifica si existe una factura en la base de datos para un ID de admisión y documento dados.
+     * Consulta la tabla tbl_Net_Facturas_ListaPdf para verificar la existencia del registro.
+     * 
+     * @param idAdmision El ID de admisión a buscar
+     * @param idDoc El ID del documento de soporte (IdSoporteKey) a buscar
+     * @return Mapa con una sola llave "existe" (Boolean): true si la factura existe, false en caso contrario
+     * @throws RuntimeException si ocurre un error de base de datos durante la verificación
+     */
     public Map<String, Boolean> existeFactura(String idAdmision, Integer idDoc) {
         log.info("Verificando existencia de factura IdAdmision={} IdSoporteKey={}", idAdmision, idDoc);
 

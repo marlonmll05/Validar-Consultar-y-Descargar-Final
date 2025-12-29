@@ -16,6 +16,15 @@ import org.springframework.stereotype.Service;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
+
+/**
+ * Servicio encargado de la autenticación de usuarios con SQL Server.
+ * Gestiona el inicio de sesión validando credenciales directamente con la base de datos
+ * y genera tokens de sesión para usuarios autenticados.
+ * 
+ * @author Marlon Morales Llanos
+ */
+
 @Service
 public class LoginsqlService {
 
@@ -23,10 +32,37 @@ public class LoginsqlService {
 
     private final DatabaseConfig databaseConfig;
 
+    /**
+     * Constructor de LoginsqlService con inyección de dependencias.
+     * 
+     * @param databaseConfig Objeto de configuración para las conexiones a base de datos
+     */
+
     @Autowired
     public LoginsqlService(DatabaseConfig databaseConfig){
         this.databaseConfig = databaseConfig;
     }
+
+    /**
+     * Inicia sesión en SQL Server validando las credenciales del usuario.
+     * 
+     * Aplica un sufijo especial a la contraseña para usuarios distintos a "angel".
+     * 
+     * Obtiene el servidor desde el registro del sistema y establece una conexión
+     * para validar las credenciales.
+     * 
+     * @param datos Mapa conteniendo las credenciales con las llaves "username" y "password"
+     * @return Mapa con información de la sesión incluyendo:
+     *         "token" (String) - Token UUID generado para la sesión,
+     *         "usuario" (String) - Nombre del usuario autenticado,
+     *         "servidor" (String) - Servidor SQL al que se conectó,
+     *         "baseDatos" (String) - Base de datos activa en la conexión,
+     *         "mensaje" (String) - Mensaje de confirmación
+     * @throws IllegalArgumentException si el usuario es nulo o está vacío
+     * @throws SQLException si las credenciales son incorrectas (código 18456),
+     *         si hay timeout en la conexión, o si ocurre cualquier otro error SQL
+     * @throws RuntimeException si hay error al obtener el servidor del registro
+     */
 
     public Map<String, Object> iniciarSesion(Map<String, String> datos) throws SQLException {
 

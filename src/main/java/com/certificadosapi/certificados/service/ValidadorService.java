@@ -17,6 +17,15 @@ import com.certificadosapi.certificados.util.ServidorUtil;
 
 import java.sql.*;
 
+
+/**
+ * Servicio encargado de la validación y comunicación con API externa del Ministerio.
+ * Gestiona el envío de facturas en formato JSON, obtención de documentos XML,
+ * autenticación con API Docker y almacenamiento de respuestas del ministerio.
+ * 
+ * @author Marlon Morales Llanos
+ *
+ */
 @Service
 public class ValidadorService {
 
@@ -25,13 +34,31 @@ public class ValidadorService {
     private final DatabaseConfig databaseConfig;
     private final ServidorUtil servidorUtil;
 
+
+    /**
+     * Constructor de ValidadorService con inyección de dependencias.
+     * 
+     * @param databaseConfig Objeto de configuración para las conexiones a base de datos
+     * @param servidorUtil Objeto utilitario para operaciones del servidor
+     */
     @Autowired
     public ValidadorService(DatabaseConfig databaseConfig, ServidorUtil servidorUtil){
         this.databaseConfig = databaseConfig;
         this.servidorUtil = servidorUtil;
     }
 
-    // ENVIAR FACTURA AL MINISTERIO
+    /**
+     * Envía una factura en formato JSON al Ministerio a través de la API Docker.
+     * Determina automáticamente el endpoint a utilizar basándose en el IdTipoCapita
+     * asociado al número de factura.
+     * 
+     * @param jsonContenido Contenido JSON de la factura a enviar
+     * @param bearerToken Token de autenticación Bearer para la API
+     * @param nFact Número de factura a procesar
+     * @return Respuesta del servidor en formato String
+     * @throws IllegalArgumentException si no se encuentra el NFact o el IdTipoCapita no es soportado
+     * @throws RuntimeException si ocurre un error HTTP o inesperado durante el envío
+     */
     public String subirArchivoJson(String jsonContenido, String bearerToken, String nFact) {
         log.info("Iniciando envío de JSON al ministerio para NFact={}", nFact);
 
@@ -81,7 +108,14 @@ public class ValidadorService {
     }
 
 
-    // ObtenerIdTipoCapita
+    /**
+     * Obtiene el IdTipoCapita asociado a un número de factura desde la base de datos.
+     * Este método es privado y se utiliza internamente para determinar el endpoint correcto.
+     * 
+     * @param nFact Número de factura a consultar
+     * @return IdTipoCapita como Integer, o null si no se encuentra el registro
+     * @throws RuntimeException si ocurre un error SQL durante la consulta
+     */
     private Integer obtenerIdTipoCapita(String nFact) {
         log.debug("Consultando IdTipoCapita para NFact={}", nFact);
 
@@ -109,7 +143,16 @@ public class ValidadorService {
     }
 
 
-    // Obtener XML como Base64
+    /**
+     * Exporta un documento XML desde la base de datos y lo convierte a formato Base64.
+     * Obtiene el contenido del campo DocXmlEnvelope de la tabla MovimientoDocumentos.
+     * 
+     * @param idMovDoc ID del movimiento de documento a exportar
+     * @return String con el contenido XML codificado en Base64
+     * @throws IllegalArgumentException si no se encuentra el documento con el ID proporcionado
+     * @throws IllegalStateException si el contenido XML está vacío o es nulo
+     * @throws RuntimeException si ocurre un error SQL durante el procesamiento
+     */
     public String exportDocXmlBase64(int idMovDoc) {
         log.info("Solicitando XML Base64 para IdMovDoc={}", idMovDoc);
 
@@ -150,7 +193,14 @@ public class ValidadorService {
     }
 
 
-    // Login API DOCKER
+    /**
+     * Realiza el login en la API Docker del sistema SISPRO.
+     * Envía las credenciales en formato JSON y retorna el token de autenticación.
+     * 
+     * @param jsonBody Cuerpo JSON con las credenciales de autenticación
+     * @return Respuesta del servidor conteniendo el token de autenticación
+     * @throws RuntimeException si ocurre un error HTTP o inesperado durante el login
+     */
     public String login(String jsonBody) {
         log.info("Intentando ingresar a la Api Docker");
 
@@ -179,7 +229,17 @@ public class ValidadorService {
     }
 
 
-    // Guardar respuesta API (CUV)
+    /**
+     * Guarda la respuesta de la API del ministerio (CUV) en la base de datos.
+     * Verifica que no exista un registro duplicado antes de insertar.
+     * 
+     * @param nFact Número de factura asociado a la respuesta
+     * @param mensajeRespuesta Mensaje de respuesta del ministerio (contiene el CUV)
+     * @return String confirmando que la respuesta fue guardada correctamente
+     * @throws IllegalArgumentException si alguno de los parámetros es nulo o vacío
+     * @throws IllegalStateException si ya existe un registro para el número de factura proporcionado
+     * @throws RuntimeException si ocurre un error SQL durante el guardado
+     */
     public String guardarRespuestaApi(String nFact, String mensajeRespuesta) {
         
         if (nFact == null || nFact.isEmpty()) {
@@ -225,6 +285,4 @@ public class ValidadorService {
             throw new RuntimeException("Error al guardar respuesta: " + e.getMessage(), e);
         }
     }
-
-    
 }

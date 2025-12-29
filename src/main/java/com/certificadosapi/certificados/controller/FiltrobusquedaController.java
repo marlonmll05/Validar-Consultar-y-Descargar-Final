@@ -62,7 +62,7 @@ public class FiltrobusquedaController {
     }
 
 
-    // Buscador para el filtro de atenciones (CUADRO VERDE)
+    // Buscador para el filtro de atenciones 
     @GetMapping("/atenciones")
     public ResponseEntity<List<Map<String, Object>>> buscarAtenciones(
             @RequestParam(required = false) Long IdAtencion,
@@ -86,7 +86,9 @@ public class FiltrobusquedaController {
 
         return ResponseEntity.ok(data);
     }
+
     
+    // ENDPOINT PARA BUSCAR CUENTAS DE COBRO
     @GetMapping("/cuenta-cobro")
     public ResponseEntity<List<Map<String, Object>>> consultarCuentaCobro(
         @RequestParam(required = false) Integer nCuentaCobro,

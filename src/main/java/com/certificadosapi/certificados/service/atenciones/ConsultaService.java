@@ -21,6 +21,17 @@ import org.springframework.stereotype.Service;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
+
+/**
+ * Servicio encargado de realizar consultas a base de datos
+ * relacionadas con facturación, soportes y validaciones de cuentas de cobro.
+ *
+ * Contiene métodos para:
+ * - Cargar tablas dinámicas para filtros
+ * - Validar existencia de facturas
+ * - Consultar anexos por admisión
+ * - Validar cuentas de cobro mediante procedimientos almacenados
+ */
 @Service
 public class ConsultaService { 
 
@@ -34,7 +45,18 @@ public class ConsultaService {
 
     }
 
-    //ENDPOINT PARA LLENAR LOS SELECTS DE LOS FILTROS DE BUSQUEDA
+    /**
+     * Obtiene datos genéricos desde el procedimiento almacenado
+     * pa_Net_Facturas_Tablas.
+     *
+     * Este método se utiliza principalmente para llenar
+     * los selects de los filtros de búsqueda en el frontend.
+     *
+     * @param idTabla Identificador del tipo de tabla a consultar
+     * @param id Identificador adicional (dependiente del idTabla)
+     * @return Lista de filas representadas como Map columna → valor
+     * @throws SQLException Error de base de datos
+     */
     public List<Map<String, Object>> obtenerTablas(int idTabla, int id) throws SQLException {
         
         log.info("Obteniendo datos de tabla - idTabla: {}, id: {}", idTabla, id);
@@ -74,7 +96,14 @@ public class ConsultaService {
         }
     }
 
-    //ENDPOINT PARA VERIFICAR SI HAY FACTURA DE VENTA
+    /**
+     * Verifica si existe una factura de venta (soporte 18)
+     * asociada a una admisión específica.
+     *
+     * @param idAdmision Identificador de la admisión
+     * @return Map con la clave "cantidad" indicando el número de registros encontrados
+     * @throws SQLException Error de base de datos
+     */
     public Map<String, Integer> countSoporte18(Long idAdmision) throws SQLException {
 
         log.info("Verificando factura de venta (soporte 18) para idAdmision: {}", idAdmision);
@@ -106,7 +135,14 @@ public class ConsultaService {
         }
     }
 
-    //ENDPOINT PARA VERIFICAR SI HAY SOPORTE INSERTADO PARA UN IDSOPORTE EN ESPECIFICO
+    /**
+     * Obtiene los IDs de los soportes (anexos)
+     * asociados a una admisión específica.
+     *
+     * @param idAdmision Identificador de la admisión
+     * @return Lista de IdSoporteKey encontrados
+     * @throws SQLException Error de base de datos
+     */
     public List<Long> obtenerAnexosPorAdmision(Long idAdmision) throws SQLException {
 
         log.info("Obteniendo anexos para idAdmision: {}", idAdmision);
@@ -140,7 +176,15 @@ public class ConsultaService {
             }
         }
     }
-
+    
+    /**
+     * Valida una Cuenta de Cobro mediante el procedimiento almacenado
+     * Pa_FacturacionExportacion_DS_Validar.
+     *
+     * @param cuentaCobro Número de la cuenta de cobro
+     * @return Resultado de la validación en formato String
+     * @throws SQLException Error de base de datos
+     */
     public String validarCuentacobro (Integer cuentaCobro) throws SQLException {
         try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
             String sql = "EXEC Pa_FacturacionExportacion_DS_Validar ?, ?";

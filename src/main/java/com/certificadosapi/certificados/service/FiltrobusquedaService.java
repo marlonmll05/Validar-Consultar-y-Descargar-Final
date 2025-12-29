@@ -15,6 +15,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
+
+/**
+ * Servicio encargado de realizar búsquedas y filtrados de información del sistema.
+ * Proporciona métodos para consultar facturas, terceros, contratos, atenciones
+ * y cuentas de cobro mediante diversos criterios de filtrado.
+ * 
+ * @author Marlon Morales Llanos
+ */
+
 @Service
 public class FiltrobusquedaService {
 
@@ -22,6 +31,24 @@ public class FiltrobusquedaService {
 
     private final DatabaseConfig databaseConfig;
 
+
+    /**
+     * Busca facturas en el sistema aplicando múltiples criterios de filtrado.
+     * Ejecuta el procedimiento almacenado pa_Net_Facturas_JSON y retorna los resultados
+     * con formato especial para el campo FechaFactura.
+     * 
+     * @param fechaDesde Fecha inicial del rango de búsqueda (puede ser null)
+     * @param fechaHasta Fecha final del rango de búsqueda (puede ser null)
+     * @param idTercero ID del tercero a filtrar (puede ser null o vacío)
+     * @param noContrato Número de contrato a filtrar (puede ser null o vacío)
+     * @param nFact Número de factura a filtrar (puede ser null o vacío)
+     * @param cuentaCobro Número de cuenta de cobro a filtrar (puede ser null)
+     * @param tipoFecha Indica el tipo de fecha a utilizar en el filtrado
+     * @return Lista de mapas conteniendo los datos de las facturas encontradas.
+     *         Cada mapa representa una fila con los nombres de columna como llaves
+     * @throws IllegalArgumentException si fechaDesde es posterior a fechaHasta
+     * @throws RuntimeException si ocurre un error durante la ejecución del procedimiento
+     */
     @Autowired
     public FiltrobusquedaService(DatabaseConfig databaseConfig){
         this.databaseConfig = databaseConfig;
@@ -128,7 +155,16 @@ public class FiltrobusquedaService {
 
 
 
-    // Obtener Terceros
+    /**
+     * Obtiene la lista completa de terceros registrados en el sistema.
+     * Solo incluye terceros que tienen contratos asociados.
+     * 
+     * @return Lista de mapas conteniendo la información de terceros con las llaves:
+     *         "idTerceroKey" (String) - ID único del tercero,
+     *         "nomTercero" (String) - Nombre del tercero.
+     *         Los resultados están ordenados alfabéticamente por nombre
+     * @throws RuntimeException si ocurre un error durante la consulta
+     */
     public List<Map<String, Object>> obtenerTerceros() {
         log.info("Obteniendo terceros del sistema");
 
@@ -165,7 +201,17 @@ public class FiltrobusquedaService {
 
 
 
-    // Obtener Contratos
+    /**
+     * Obtiene los contratos asociados a un tercero específico.
+     * 
+     * @param idTerceroKey ID del tercero para consultar sus contratos
+     * @return Lista de mapas conteniendo información de contratos con las llaves:
+     *         "noContrato" (String) - Número del contrato,
+     *         "nomContrato" (String) - Nombre descriptivo del contrato.
+     *         Los resultados están ordenados alfabéticamente por nombre de contrato
+     * @throws IllegalArgumentException si el idTerceroKey es nulo o está vacío
+     * @throws RuntimeException si ocurre un error durante la consulta
+     */
     public List<Map<String, Object>> obtenerContratos(String idTerceroKey) {
 
         log.info("Obteniendo contratos para idTerceroKey={}", idTerceroKey);
@@ -212,7 +258,27 @@ public class FiltrobusquedaService {
 
 
 
-    // Buscar Atenciones (cuadro verde)
+    /**
+     * Busca atenciones médicas en el sistema aplicando múltiples criterios de filtrado.
+     * Ejecuta el procedimiento almacenado pa_Net_Facturas_Historico_GenSoportes
+     * para obtener el historial de atenciones.
+     * 
+     * @param IdAtencion ID específico de atención a buscar (puede ser null)
+     * @param HistClinica Número de historia clínica (puede ser null)
+     * @param Cliente ID del cliente/paciente (puede ser null)
+     * @param NoContrato Número de contrato asociado (puede ser null)
+     * @param IdAreaAtencion ID del área donde se realizó la atención (puede ser null)
+     * @param IdUnidadAtencion ID de la unidad de atención (puede ser null)
+     * @param FechaDesde Fecha inicial del rango de búsqueda (puede ser null)
+     * @param FechaHasta Fecha final del rango de búsqueda (puede ser null)
+     * @param nFact Número de factura asociada (puede ser null)
+     * @param nCuentaCobro Número de cuenta de cobro (puede ser null)
+     * @param soloFacturados Indica si solo se deben retornar atenciones facturadas (puede ser null)
+     * @param cantSoportes Cantidad de documentos soportes igual o mayor al valor especificado (puede ser null)
+     * @return Lista de mapas donde cada mapa representa una atención encontrada.
+     *         Las llaves del mapa corresponden a los nombres de columna del resultado
+     * @throws RuntimeException si ocurre un error durante la ejecución del procedimiento
+     */
     public List<Map<String, Object>> buscarAtenciones(
             Long IdAtencion,
             String HistClinica,
@@ -281,7 +347,20 @@ public class FiltrobusquedaService {
         }
     }
 
-
+    /**
+     * Consulta cuentas de cobro del sistema aplicando criterios de filtrado.
+     * Ejecuta el procedimiento almacenado Facturacion_CC_Lista para obtener
+     * las cuentas de cobro que coincidan con los filtros proporcionados.
+     * 
+     * @param nCuentaCobro Número específico de cuenta de cobro (puede ser null)
+     * @param fechaDesde Fecha inicial del rango de búsqueda (puede ser null)
+     * @param fechaHasta Fecha final del rango de búsqueda (puede ser null)
+     * @param idTercero ID del tercero asociado a la cuenta (puede ser null)
+     * @param noContrato Número de contrato asociado (puede ser null)
+     * @return Lista de mapas donde cada mapa representa una cuenta de cobro.
+     *         Las llaves del mapa corresponden a los nombres de columna del resultado
+     * @throws RuntimeException si ocurre un error durante la ejecución del procedimiento
+     */
     public List<Map<String, Object>> consultarCuentaCobro(
         Integer nCuentaCobro,
         LocalDate fechaDesde,

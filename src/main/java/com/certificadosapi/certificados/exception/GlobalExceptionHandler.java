@@ -18,12 +18,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Logger agregado aquí
+    // Logs
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
      * Maneja errores de tipo de argumento incorrecto (conversión de parámetros)
-     * Retorna HTTP 400 - Bad Request
+     * @return HTTP 400 - Bad Request
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<String> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
     
     /**
      * Maneja errores de no contenido
-     * Retorna HTTP 204 - NO CONTENT
+     * @return HTTP 204 - NO CONTENT
      */
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<Void> handleNoSuchElement(NoSuchElementException ex) {
@@ -52,7 +52,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Maneja errores de validación (parámetros inválidos, reglas de negocio)
-     * Retorna HTTP 400 - Bad Request
+     * @return HTTP 400 - Bad Request
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleIllegalArgumentException(
@@ -65,7 +65,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Maneja errores de base de datos
-     * Retorna HTTP 500 - Internal Server Error
+     * @return HTTP 500 - Internal Server Error
      */
     @ExceptionHandler(SQLException.class)
     public ResponseEntity<String> handleSQLException(
@@ -81,7 +81,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Maneja errores de entrada/salida (archivos, streams)
-     * Retorna HTTP 500 - Internal Server Error
+     * @return HTTP 500 - Internal Server Error
      */
     @ExceptionHandler(IOException.class)
     public ResponseEntity<String> handleIOException(IOException ex) {
@@ -92,7 +92,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Maneja errores al procesar JSON
-     * Retorna HTTP 500 - Internal Server Error
+     * @return HTTP 500 - Internal Server Error
      */
     @ExceptionHandler(JsonProcessingException.class)
     public ResponseEntity<String> handleJsonProcessingException(JsonProcessingException ex) {
@@ -103,7 +103,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Maneja errores generales de runtime
-     * Retorna HTTP 500 - Internal Server Error
+     * @return HTTP 500 - Internal Server Error
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<String> handleRuntimeException(
@@ -119,7 +119,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Maneja cualquier otra excepción no capturada
-     * Retorna HTTP 500 - Internal Server Error
+     * @return HTTP 500 - Internal Server Error
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGlobalException(

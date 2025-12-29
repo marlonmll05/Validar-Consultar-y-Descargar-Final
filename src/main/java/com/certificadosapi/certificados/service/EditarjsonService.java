@@ -18,7 +18,16 @@ import org.springframework.stereotype.Service;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
-
+/**
+ * Servicio para actualizar registros RIPS (Registro Individual de Prestación de Servicios de Salud)
+ * en la base de datos.
+ * 
+ * Este servicio permite actualizar información de transacciones médicas, datos de usuarios/pacientes
+ * y diferentes tipos de servicios de salud como consultas, procedimientos, urgencias, hospitalización,
+ * recién nacidos, medicamentos y otros servicios.
+ * 
+ * @author Marlon Morales
+ */
 @Service
 public class EditarjsonService {    
 
@@ -31,6 +40,24 @@ public class EditarjsonService {
         this.databaseConfig = databaseConfig;
     }
 
+    /**
+     * Método principal que actualiza los campos de un documento RIPS según los datos proporcionados.
+     * 
+     * Este método coordina la actualización de múltiples tablas relacionadas:
+     * - Transacción principal (factura, notas)
+     * - Usuarios (datos demográficos del paciente)
+     * - Servicios (consultas, procedimientos, urgencias, etc.)
+     * 
+     * Todas las actualizaciones se ejecutan en una única transacción. Si alguna operación falla,
+     * se hace rollback de todos los cambios.
+     * 
+     * @param datos Mapa con la estructura de datos JSON que contiene los campos a actualizar.
+     *              Puede incluir claves como: numDocumentoIdObligado, numFactura, tipoNota, 
+     *              numNota, usuarios (con su estructura anidada de servicios)
+     * @param idMovDoc Identificador único del movimiento del documento. Debe ser mayor a 0
+     * @throws IllegalArgumentException Si idMovDoc es inválido o datos está vacío/null
+     * @throws RuntimeException Si ocurre un error durante la actualización en base de datos
+     */
     @SuppressWarnings("unchecked")
     public void actualizarCampos(Map<String, Object> datos, int idMovDoc) throws Exception {
 
@@ -51,12 +78,14 @@ public class EditarjsonService {
         try (Connection conn = DriverManager.getConnection(connectionUrl)) {
             conn.setAutoCommit(false);
 
+            // Actualizar transacción principal si existen los campos correspondientes
             if (datos.containsKey("numDocumentoIdObligado") || datos.containsKey("numFactura") || 
                 datos.containsKey("tipoNota") || datos.containsKey("numNota")) {
                 log.info("Actualizando transacción para IdMovDoc={}", idMovDoc);
                 actualizarTransaccion(conn, datos, idMovDoc);
             }
 
+            // Actualizar usuarios y sus servicios asociados
             if (datos.containsKey("usuarios")) {
                 List<Map<String, Object>> usuarios = (List<Map<String, Object>>) datos.get("usuarios");
                 for (Map<String, Object> usuario : usuarios) {
@@ -65,7 +94,8 @@ public class EditarjsonService {
                     
                     if (usuario.containsKey("servicios")) {
                         Map<String, Object> servicios = (Map<String, Object>) usuario.get("servicios");
-                        
+
+                        // Actualizar consultas
                         if (servicios.containsKey("consultas")) {
                             List<Map<String, Object>> consultas = (List<Map<String, Object>>) servicios.get("consultas");
                             for (Map<String, Object> consulta : consultas) {
@@ -73,7 +103,8 @@ public class EditarjsonService {
                                 actualizarConsulta(conn, consulta, idMovDoc);
                             }
                         }
-                        
+
+                        // Actualizar procedimientos
                         if (servicios.containsKey("procedimientos")) {
                             List<Map<String, Object>> procedimientos = (List<Map<String, Object>>) servicios.get("procedimientos");
                             for (Map<String, Object> procedimiento : procedimientos) {
@@ -81,7 +112,8 @@ public class EditarjsonService {
                                 actualizarProcedimientos(conn, procedimiento, idMovDoc);
                             }
                         }
-                        
+
+                        // Actualizar urgencias
                         if (servicios.containsKey("urgencias")) {
                             List<Map<String, Object>> urgencias = (List<Map<String, Object>>) servicios.get("urgencias");
                             for (Map<String, Object> urgencia : urgencias) {
@@ -89,7 +121,8 @@ public class EditarjsonService {
                                 actualizarUrgencias(conn, urgencia, idMovDoc);
                             }
                         }
-                        
+
+                        // Actualizar hospitalización
                         if (servicios.containsKey("hospitalizacion")) {
                             List<Map<String, Object>> hospitalizacion = (List<Map<String, Object>>) servicios.get("hospitalizacion");
                             for (Map<String, Object> hospi : hospitalizacion) {
@@ -97,7 +130,8 @@ public class EditarjsonService {
                                 actualizarHospitalizacion(conn, hospi, idMovDoc);
                             }
                         }
-                        
+
+                        // Actualizar recién nacidos
                         if (servicios.containsKey("recienNacidos")) {
                             List<Map<String, Object>> recienNacidos = (List<Map<String, Object>>) servicios.get("recienNacidos");
                             for (Map<String, Object> rn : recienNacidos) {
@@ -105,7 +139,8 @@ public class EditarjsonService {
                                 actualizarRecienNacidos(conn, rn, idMovDoc);
                             }
                         }
-                        
+
+                        // Actualizar medicamentos
                         if (servicios.containsKey("medicamentos")) {
                             List<Map<String, Object>> medicamentos = (List<Map<String, Object>>) servicios.get("medicamentos");
                             for (Map<String, Object> med : medicamentos) {
@@ -113,7 +148,8 @@ public class EditarjsonService {
                                 actualizarMedicamentos(conn, med, idMovDoc);
                             }
                         }
-                        
+
+                        // Actualizar otros servicios
                         if (servicios.containsKey("otrosServicios")) {
                             List<Map<String, Object>> otrosServicios = (List<Map<String, Object>>) servicios.get("otrosServicios");
                             for (Map<String, Object> otro : otrosServicios) {
@@ -136,7 +172,19 @@ public class EditarjsonService {
 
 
     // ==================== FUNCIONES PARA CAMPOS QUE PERMITEN NULL ====================
-
+    /**
+     * Parsea un valor de fecha con hora que puede ser null.
+     * 
+     * Comportamiento:
+     * - Si es null: retorna null
+     * - Si es String vacío: retorna ""
+     * - Si es "null" (texto): retorna null
+     * - Si es String válido: convierte a Timestamp con formato yyyy-MM-dd HH:mm
+     * 
+     * @param valor Objeto que representa la fecha (puede ser String, null, etc.)
+     * @return Timestamp, null o String vacío según el caso
+     * @throws IllegalArgumentException Si el formato de fecha es inválido o el tipo no es soportado
+     */
     private Object parseFechaConHoraNull(Object valor) {
         if (valor instanceof String str) {
             if (str.isBlank()) {
@@ -162,6 +210,20 @@ public class EditarjsonService {
         throw new IllegalArgumentException("Tipo de dato no válido para fecha con hora: " + valor.getClass());
     }
 
+    /**
+     * Parsea un valor BigDecimal que puede ser null.
+     * 
+     * Comportamiento:
+     * - Si es null: retorna null
+     * - Si es String vacío: retorna ""
+     * - Si es String no vacío: lanza excepción (no se aceptan strings)
+     * - Si es BigDecimal: retorna tal cual
+     * - Si es Number: convierte a BigDecimal
+     * 
+     * @param value Objeto que representa el número decimal
+     * @return BigDecimal, null o String vacío según el caso
+     * @throws IllegalArgumentException Si el tipo no es soportado
+     */
     private Object parseBigDecimalNull(Object value) {
         if (value == null) {
             return null;
@@ -185,6 +247,14 @@ public class EditarjsonService {
         throw new IllegalArgumentException("Tipo de dato no soportado para BigDecimal: " + value.getClass());
     }
 
+    /**
+     * Parsea un String que puede ser null, validando su longitud máxima.
+     * 
+     * @param valor Objeto a convertir en String
+     * @param maxLength Longitud máxima permitida
+     * @return String, null si el valor es null o "null" como texto
+     * @throws IllegalArgumentException Si la longitud excede el máximo permitido
+     */
     private String parseStringNull(Object valor, int maxLength) {
         if (valor == null) {
             return null;
@@ -203,6 +273,12 @@ public class EditarjsonService {
         return str;
     }
 
+    /**
+     * Parsea un valor Integer que puede ser null.
+     * 
+     * @param valor Objeto que representa el número entero
+     * @return Integer o null si el valor es null, vacío o "null" como texto
+     */
     private Object parseIntegerNull(Object valor) {
         if (valor == null) {
             return null;
@@ -227,6 +303,14 @@ public class EditarjsonService {
 
     // ==================== FUNCIONES PARA CAMPOS QUE NO PERMITEN NULL ====================
 
+
+    /**
+     * Parsea una fecha sin hora que NO puede ser null.
+     * 
+     * @param valor Objeto String con formato yyyy-MM-dd
+     * @return java.sql.Date o String vacío si el valor es vacío
+     * @throws IllegalArgumentException Si el valor es null, "null" como texto, o formato inválido
+     */
     private Object parseFechaSinHoraNoNull(Object valor) {
         if (valor == null) {
             throw new IllegalArgumentException("Valor recibido es null (no debe serlo)");
@@ -251,6 +335,13 @@ public class EditarjsonService {
         throw new IllegalArgumentException("Tipo de dato no válido: se esperaba String");
     }
 
+    /**
+     * Parsea una fecha con hora que NO puede ser null.
+     * 
+     * @param valor Objeto String con formato yyyy-MM-dd HH:mm
+     * @return Timestamp o String vacío si el valor es vacío
+     * @throws IllegalArgumentException Si el valor es null, "null" como texto, o formato inválido
+     */
     private Object parseFechaConHoraNoNull(Object valor) {
         if (valor == null) {
             throw new IllegalArgumentException("Valor recibido es null (no debe serlo)");
@@ -275,6 +366,14 @@ public class EditarjsonService {
         throw new IllegalArgumentException("Tipo de dato no válido: se esperaba String");
     }
 
+
+    /**
+     * Parsea un BigDecimal que NO puede ser null.
+     * 
+     * @param value Objeto numérico (Number o BigDecimal)
+     * @return BigDecimal o String vacío si el valor es vacío
+     * @throws IllegalArgumentException Si el valor es null, String no vacío, o tipo no soportado
+     */
     private Object parseBigDecimalNoNull(Object value) {
         if (value == null) {
             throw new IllegalArgumentException("Valor null no permitido para BigDecimal");
@@ -301,6 +400,14 @@ public class EditarjsonService {
         throw new IllegalArgumentException("Tipo de dato no soportado para BigDecimal: " + value.getClass());
     }
 
+    /**
+     * Parsea un String que NO puede ser null, validando su longitud máxima.
+     * 
+     * @param valor Objeto a convertir en String
+     * @param maxLength Longitud máxima permitida
+     * @return String no nulo
+     * @throws IllegalArgumentException Si el valor es null, "null" como texto, o excede longitud máxima
+     */
     private String parseStringNoNull(Object valor, int maxLength) {
         if (valor == null) {
             throw new IllegalArgumentException("No se permite valor null para String");
@@ -318,7 +425,14 @@ public class EditarjsonService {
 
         return str;
     }
-
+    
+    /**
+     * Parsea un Integer que NO puede ser null.
+     * 
+     * @param valor Objeto numérico
+     * @return Integer
+     * @throws IllegalArgumentException Si el valor es null, String, o tipo no soportado
+     */
     private Object parseIntegerNoNull(Object valor) {
         if (valor == null) {
             throw new IllegalArgumentException("No se permite valor null para Integer");

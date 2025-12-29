@@ -22,6 +22,17 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 
+
+/**
+ * Servicio encargado de la gestión de anexos PDF asociados a facturas.
+ *
+ * Responsabilidades:
+ * - Consultar tipos de documentos soporte
+ * - Consultar soportes configurados
+ * - Unificar (merge) archivos PDF
+ * - Insertar PDFs en base de datos
+ * - Controlar inserciones automáticas duplicadas
+ */
 @Service
 public class AnexarService {
 
@@ -34,7 +45,13 @@ public class AnexarService {
         this.databaseConfig = databaseConfig;
     }
 
-    // ENDPOINT PARA VER TODAS LAS TIPIFICACIONES DE ANEXOS
+    /**
+     * Obtiene todas las tipificaciones de documentos soporte
+     * sin aplicar filtros.
+     *
+     * @return Lista de documentos soporte
+     * @throws SQLException Error de base de datos
+     */
     public List<Map<String, Object>> obtenerDocumentosSoporteSinFiltros() throws SQLException {
 
         log.info("Iniciando obtenerDocumentosSoporteSinFiltros()");
@@ -64,7 +81,12 @@ public class AnexarService {
         }
     }
 
-    // ENDPOINT PARA VER LOS SOPORTES DE ANEXOS
+    /**
+     * Obtiene los documentos soporte configurados para anexos.
+     *
+     * @return Lista de documentos soporte
+     * @throws SQLException Error de base de datos
+     */
     public List<Map<String, Object>> obtenerDocumentosSoporte() throws SQLException {
 
         log.info("Iniciando obtenerDocumentosSoporte()");
@@ -94,7 +116,26 @@ public class AnexarService {
         }
     }
 
-    // ENDPOINT PARA INSERTAR PDFS
+    /**
+     * Inserta uno o varios archivos PDF como anexo para una admisión.
+     *
+     * Flujo:
+     * 1. Validación de PDFs
+     * 2. Validación de duplicados automáticos
+     * 3. Unificación (merge) de PDFs
+     * 4. Inserción en base de datos
+     *
+     * @param idAdmision ID de la admisión
+     * @param idPacienteKey ID del paciente
+     * @param idSoporteKey ID del tipo de soporte
+     * @param tipoDocumento Tipo de documento
+     * @param files Lista de archivos PDF
+     * @param eliminarSiNo Indica si se reemplaza el PDF existente
+     * @param automatico Indica si el proceso es automático
+     * @return ID del PDF insertado
+     * @throws SQLException Error de base de datos
+     * @throws IOException Error de lectura de archivos
+     */
     public Long insertarListaPdf(
             Long idAdmision,
             Long idPacienteKey,
