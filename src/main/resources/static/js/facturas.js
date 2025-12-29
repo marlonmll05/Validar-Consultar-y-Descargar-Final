@@ -1,10 +1,21 @@
-
+/* 
+ * Verifica si existe un token SQL almacenado en localStorage.
+ * Si no existe, redirige al usuario al login SQL.
+ */
 if (!localStorage.getItem('tokenSQL')) {
     window.location.href = 'loginsql.html';
 }
 
+/* 
+ * Host actual de la aplicación.
+ * Se utiliza para construir URLs dinámicas.
+ */
 const host = window.location.hostname;
 
+/* 
+ * Inicializa los campos de fecha del formulario
+ * estableciendo la fecha actual como valor por defecto.
+ */
 document.addEventListener('DOMContentLoaded', () => {
     const fechaDesdeInput = document.getElementById('fechaDesde');
     const today = new Date().toISOString().split('T')[0];
@@ -14,6 +25,17 @@ document.addEventListener('DOMContentLoaded', () => {
     fechaHastaInput.value = today;
 });
 
+
+/**
+ * Muestra un mensaje tipo toast en pantalla.
+ *
+ * @param {string} title - Título del mensaje
+ * @param {string} message - Contenido del mensaje
+ * @param {string} [type='success'] - Tipo de toast (success, error, info)
+ * @param {number} [duration=6000] - Duración en milisegundos
+ * @param {boolean} [showProgress=false] - Indica si muestra barra de progreso
+ * @returns {HTMLElement} Toast generado
+ */
 function showToast(title, message, type = 'success', duration = 6000, showProgress = false) {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
@@ -48,6 +70,12 @@ function showToast(title, message, type = 'success', duration = 6000, showProgre
     return toast;
 }
 
+/**
+ * Actualiza la barra de progreso de un toast activo.
+ *
+ * @param {HTMLElement} toast - Toast a actualizar
+ * @param {number} porcentaje - Porcentaje de avance (0–100)
+ */
 function actualizarToastProgreso(toast, porcentaje) {
     const progressBar = toast.querySelector('.toast-progress-bar');
     if (progressBar) {
@@ -55,7 +83,14 @@ function actualizarToastProgreso(toast, porcentaje) {
     }
 }
 
-
+/**
+ * Copia un texto al portapapeles.
+ * Usa la API moderna Clipboard si está disponible,
+ * de lo contrario utiliza un método alternativo.
+ *
+ * @param {string} texto - Texto a copiar
+ * @returns {Promise<void>}
+ */
 function copiarAlPortapapeles(texto) {
 
     if (navigator.clipboard && window.isSecureContext) {
@@ -91,6 +126,13 @@ function copiarAlPortapapeles(texto) {
     }
 }
 
+/**
+ * Procesa la obtención y visualización de CUVs por lotes
+ * para evitar sobrecargar el backend.
+ *
+ * @param {HTMLElement[]} filas - Celdas donde se mostrará el CUV
+ * @param {number} [loteSize=30] - Tamaño del lote de procesamiento
+ */
 async function procesarCUVPorLotes(filas, loteSize = 30) {
     const toast = showToast('Procesando', 'Cargando CUVs', 'success', 999999, true);
 
@@ -202,6 +244,12 @@ async function procesarCUVPorLotes(filas, loteSize = 30) {
     }, 1000);
 }
 
+/**
+ * Maneja el envío del formulario de facturas.
+ * Valida fechas, consulta el backend y renderiza los resultados.
+ *
+ * @param {SubmitEvent} e - Evento submit del formulario
+ */
 document.getElementById('facturasForm').addEventListener('submit', async function (e) {
     e.preventDefault();
 
@@ -327,11 +375,21 @@ document.getElementById('facturasForm').addEventListener('submit', async functio
     }
 });
 
+/**
+ * Marca o desmarca todos los checkboxes de filas
+ * según el estado del checkbox principal.
+ * @param {HTMLInputElement} checkbox - Checkbox maestro
+ */
 function toggleSelectAll(checkbox) {
     const checkboxes = document.querySelectorAll('.filaCheckbox');
     checkboxes.forEach(cb => cb.checked = checkbox.checked);
 }
 
+/**
+ * Selecciona o deselecciona todas las filas
+ * y sincroniza el checkbox principal.
+ * @param {boolean} seleccionar - true para seleccionar todo
+ */
 function seleccionarTodo(seleccionar) {
     const checkboxes = document.querySelectorAll('.filaCheckbox');
     checkboxes.forEach(cb => cb.checked = seleccionar);
@@ -339,6 +397,13 @@ function seleccionarTodo(seleccionar) {
     if (selectAllCheckbox) selectAllCheckbox.checked = seleccionar;
 }
 
+
+/**
+ * Descarga los documentos seleccionados ejecutando:
+ * 1. Validación RIPS
+ * 2. Descarga de paquetes ZIP
+ * 3. Generación de reporte TXT
+ */
 async function descargarSeleccionados() {
     const boton = document.getElementById('descargarSeleccionadosBtn');
     const textoOriginal = boton.innerHTML;
@@ -400,7 +465,7 @@ async function descargarSeleccionados() {
         reporte.push('='.repeat(80));
         reporte.push('');
 
-        // ✅ FASE 1: Solo ejecutar RIPS
+        // FASE 1: Solo ejecutar RIPS
         reporte.push('--- FASE 1: Ejecutar Rips ---');
         reporte.push('');
 
@@ -448,7 +513,7 @@ async function descargarSeleccionados() {
         reporte.push('='.repeat(80));
         reporte.push('');
 
-        // ✅ Verificar si hay documentos válidos
+        // Verificar si hay documentos válidos
         if (documentosValidos.length === 0) {
             reporte.push('❌ PROCESO FINALIZADO: Ningún documento pasó la validación RIPS');
             await guardarReporte(directoryHandle, reporte);
@@ -462,7 +527,7 @@ async function descargarSeleccionados() {
             return;
         }
 
-        // ✅ FASE 2: Solo descargar documentos válidos
+        // FASE 2: Solo descargar documentos válidos
         reporte.push('--- FASE 2: DESCARGA DE PAQUETES ---');
         reporte.push('');
 
@@ -545,6 +610,11 @@ async function descargarSeleccionados() {
     }
 }
 
+/**
+ * Guarda el reporte de descarga en un archivo TXT.
+ * @param {FileSystemDirectoryHandle} directoryHandle
+ * @param {string[]} lineasReporte
+ */
 async function guardarReporte(directoryHandle, lineasReporte) {
     try {
         const ahora = new Date();
@@ -574,6 +644,16 @@ async function guardarReporte(directoryHandle, lineasReporte) {
     }
 }
 
+/**
+ * Agrega el CUV completo de una factura en:
+ * 1. Factura Final
+ * 2. Rips_Transaccion
+ *
+ * @param {string} nFact - Número de factura
+ * @param {string|null} cuv - Código Único de Validación
+ * @param {number|null} idEstadoValidacion - Estado de validación RIPS
+ * @returns {boolean} true si el proceso se ejecutó, false si falló
+ */
 async function agregarCUVCompleto(nFact, cuv, idEstadoValidacion) {
     let agregadoExitoso = false;
     
@@ -627,6 +707,12 @@ async function agregarCUVCompleto(nFact, cuv, idEstadoValidacion) {
     return true;
 }
 
+/**
+ * Obtiene el CUV asociado a una factura.
+ *
+ * @param {string} nfact - Número de factura
+ * @returns {Promise<string>} CUV encontrado o cadena vacía si no existe
+ */
 async function obtenerCUV(nfact) {
     const host = window.location.hostname;
     const url = `https://${host}:9876/api/sql/cuv?nFact=${nfact}`;
@@ -643,7 +729,11 @@ async function obtenerCUV(nfact) {
     }
 }
 
-
+/**
+ * Ejecuta el proceso RIPS para una factura.
+ * @param {string} nfact
+ * @returns {string|null} Error o null si fue exitoso
+ */
 async function ejecutarRips(nfact) {
     try {
         const response = await fetch(`/api/sql/ejecutarRips?Nfact=${encodeURIComponent(nfact)}`);
@@ -659,6 +749,14 @@ async function ejecutarRips(nfact) {
     }
 }
 
+/**
+ * Descarga el ZIP de un documento.
+ * @param {number} id
+ * @param {string} tipo
+ * @param {boolean} xml
+ * @param {FileSystemDirectoryHandle} directoryHandle
+ * @returns {string|false} Error o false si fue exitoso
+ */
 async function descargarZip(id, tipo, xml, directoryHandle) {
     const host = window.location.hostname;
     const url = `https://${host}:9876/facturas/generarzip/${id}/${tipo}/${xml}`; 

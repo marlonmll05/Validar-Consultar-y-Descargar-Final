@@ -199,7 +199,7 @@ async function verJSON(idMovDoc) {
         let collapsedState = new Map();
 
         function limpiarMemoria() {
-            console.log('🧹 Iniciando limpieza de memoria...');
+            console.log('Iniciando limpieza de memoria...');
             
             if (document.body.contains(overlay)) {
                 document.body.removeChild(overlay);
@@ -618,9 +618,9 @@ async function verJSON(idMovDoc) {
                 return;
             }
 
-            console.log('🚀 ===== ENVIANDO SOLO CAMBIOS AL BACKEND =====');
+            console.log('===== ENVIANDO SOLO CAMBIOS AL BACKEND =====');
             console.log(JSON.stringify(cambios, null, 2));
-            console.log('📊 Tamaño:', JSON.stringify(cambios).length, 'caracteres');
+            console.log('Tamaño:', JSON.stringify(cambios).length, 'caracteres');
             console.log('===============================================');
 
             try {
