@@ -1,8 +1,15 @@
+
+// ============================================
+// SEGURIDAD Y VALIDACIÓN DE ACCESO
+// ============================================
+
+
+// Validar token en localStorage
 if (!localStorage.getItem('tokenSQL')) {
     window.location.href = 'loginsql.html';
 }
 
-// Validación de Acceso
+// Validación de Acceso al módulo de soporte
 window.addEventListener("DOMContentLoaded", async () => {
     try {
         const response = await fetch("/api/sql/validar-parametro-soporte");
@@ -26,51 +33,89 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
+// ============================================
+// CONFIGURACIÓN GLOBAL Y CONSTANTES
+// ============================================
+
 const host = window.location.hostname;
 const tabla = document.getElementById('resultadosTabla');
 
-function formatDate(date) {
-    const [year, month, day] = date.split('-');
-    return `${year}${month}${day}`;
-}
+// Constantes de validación de archivos
+const archivosPorFila = new Map();
+const MAX_TAM_MB = 20; 
+const TIPOS_PERMITIDOS = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 
+// Endpoints del API
+const ENDPOINT_ANEXOS = `https://${host}:9876/api/insertar-pdf`;
+const ENDPOINT_LISTA_PDFS = `https://${host}:9876/api/admisiones/lista-pdfs`;
+const ENDPOINT_VER_PDF    = `https://${host}:9876/api/admisiones/ver-pdf`;
+const ENDPOINT_ELIMINAR_PDF = `https://${host}:9876/api/eliminar-pdf`;
+const ENDPOINT_SOPORTE = `https://${host}:9876/api/soportes-anexos`;
+
+//Variables de Paginacion 
+const PAGE_SIZE = 250;
+let resultadosGlobal = [];
+let paginaActual = 1;
+let camposMostrarGlobal = [
+  "IdAtencion",
+  "NomContrato",
+  "Paciente",
+  "Cerrada",
+  "Liquidada",
+  "NoContrato",
+  "NFact",
+  "EntornoIngreso",
+  "CantSoporte"
+];
+
+
+// Variables de busqueda 
+let currentController = null;
+let listaSoporte = [];
+
+// Configuracion de debugging
+const DEBUG_ENVIO = false; 
+
+// Referencias a elementos del DOM
 const exportarCuentaCobroSwitch = document.getElementById("exportarCuentaCobro");
 const mostrarFacturadasSwitch = document.getElementById("mostrarFacturadas");
 const numeroFacturaInput = document.getElementById("numeroFactura");  
 const cuentaCobroInput = document.getElementById("cuentaCobro");
 
-const archivosPorFila = new Map();
-const MAX_TAM_MB = 20; 
-const TIPOS_PERMITIDOS = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+// Referencias a modales
+const modalTipos = document.getElementById('modalTiposArchivo');
+const btnModalTiposSi = document.getElementById('btnModalTiposSi');
+const btnModalTiposNo = document.getElementById('btnModalTiposNo');
+const btnModalTiposCancelar = document.getElementById("btnModalTiposCancel")
 
 
-exportarCuentaCobroSwitch.addEventListener('change', function() {
-    if (exportarCuentaCobroSwitch.checked) {
-    mostrarFacturadasSwitch.disabled = true; 
-    mostrarFacturadasSwitch.checked = false;  
+// ============================================
+// FUNCIONES UTILITARIAS
+// ============================================
 
-    numeroFacturaInput.disabled = true;  
-    numeroFacturaInput.value = '';  
+/**
+ * Formatea una fecha de yyyy-MM-dd a yyyyMMdd
+ */
+function escapeHtml(text) {
+    const map = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
 
-    cuentaCobroInput.required = true;
-    } else {
-    mostrarFacturadasSwitch.disabled = false;  
-    numeroFacturaInput.disabled = false;
+/**
+ * Escapa caracteres HTML para prevenir inyección XSS
+ */
+function formatDate(date) {
+    const [year, month, day] = date.split('-');
+    return `${year}${month}${day}`;
+}
 
-    cuentaCobroInput.required = false;
-    }
-});
+// ============================================
+// SISTEMA DE NOTIFICACIONES (TOAST)
+// ============================================
 
-document.addEventListener("DOMContentLoaded", () => {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById("fechaDesde").value = today
-    document.getElementById("fechaHasta").value = today
-});
-
-document.getElementById('mostrarFacturadas').addEventListener('change', function() {
-    this.dataset.touched = 'true';
-});
-
+/**
+ * Muestra un mensaje toast en la interfaz
+ */
 function showToast(title, message, type = 'success', duration = 6000, showProgress = false) {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
@@ -105,6 +150,9 @@ function showToast(title, message, type = 'success', duration = 6000, showProgre
     return toast;
 }
 
+/**
+ * Actualiza la barra de progreso de un toast
+ */
 function actualizarToastProgreso(toast, porcentaje) {
     const progressBar = toast.querySelector('.toast-progress-bar');
     if (progressBar) {
@@ -112,46 +160,193 @@ function actualizarToastProgreso(toast, porcentaje) {
     }
 }
 
-// Cargar selects iniciales al abrir la página
-document.addEventListener('DOMContentLoaded', () => {
+// ============================================
+// MODALES DE CONFIRMACIÓN
+// ============================================
 
-    poblarSelect("eps", 2, -1, "IdTerceroKey", "NomTercero");
+/**
+ * Abre el modal de tipos de archivo
+ */
+function abrirModalTipos() {
+  modalTipos.style.display = 'flex'; 
+}
 
-    poblarSelect("idAreaAtencion", 4, -1, "IdAreaAtencion", "NomAreaAtencion");
-});
+/**
+ * Cierra el modal de tipos de archivo
+ */
+function cerrarModalTipos() {
+  modalTipos.style.display = 'none';
+}
 
-document.getElementById("eps").addEventListener("change", (e) => {
-    const idCliente = e.target.value;
-    poblarSelect("contrato", 3, idCliente, "NoContrato", "NomContrato");
-});
+/**
+ * Muestra un modal de confirmación simple (Sí/No)
+ */
+function showModalConfirm(message) {
+    return new Promise((resolve) => {
+    const modal = document.getElementById("modalConfirm");
+    const msg = document.getElementById("modalMessage");
+    const btnOk = document.getElementById("btnModalOk");
+    const btnCancel = document.getElementById("btnModalCancel");
 
-document.getElementById("idAreaAtencion").addEventListener("change", (e) => {
-    const idArea = e.target.value;
-    poblarSelect("idUnidadAtencionCur", 6, idArea, "IdEntorno", "NomEntorno");
-});
+    msg.textContent = message;
+    modal.style.display = "flex";
+
+    function close(result) {
+        modal.style.display = "none";
+        btnOk.removeEventListener("click", okHandler);
+        btnCancel.removeEventListener("click", cancelHandler);
+        resolve(result);
+    }
+
+    function okHandler() { close(true); }
+    function cancelHandler() { close(false); }
+
+    btnOk.addEventListener("click", okHandler);
+    btnCancel.addEventListener("click", cancelHandler);
+    });
+}
+
+/**
+ * Muestra modal para guardar archivos (Anexar/Reemplazar/Cancelar)
+ */
+function showModalGuardar(message) {
+    return new Promise((resolve) => {
+    const modal = document.getElementById("modalGuardar");
+    const msg = document.getElementById("modalGuardarMessage");
+    const btnCancel = document.getElementById("btnModalGuardarCancel");
+    const btnAnexar = document.getElementById("btnModalGuardarAnexar");
+    const btnReemplazar = document.getElementById("btnModalGuardarReemplazar");
+
+    msg.textContent = message;
+    modal.style.display = "flex";
+
+    function close(result) {
+        modal.style.display = "none";
+        btnCancel.removeEventListener("click", cancelHandler);
+        btnAnexar.removeEventListener("click", anexarHandler);
+        btnReemplazar.removeEventListener("click", reemplazarHandler);
+        resolve(result);
+    }
+
+    function cancelHandler()   { close(false); }
+    function anexarHandler()   { close("anexar"); }
+    function reemplazarHandler(){ close("reemplazar"); }
+
+    btnCancel.addEventListener("click", cancelHandler);
+    btnAnexar.addEventListener("click", anexarHandler);
+    btnReemplazar.addEventListener("click", reemplazarHandler);
+    });
+}
 
 
-//BUSCAR
-let currentController = null;
-// Paginación
-const PAGE_SIZE = 250;
-let resultadosGlobal = [];
-let paginaActual = 1;
-let camposMostrarGlobal = [
-  "IdAtencion",
-  "NomContrato",
-  "Paciente",
-  "Cerrada",
-  "Liquidada",
-  "NoContrato",
-  "NFact",
-  "EntornoIngreso",
-  "CantSoporte"
-];
+// ============================================
+// GESTIÓN DE SELECTS Y FORMULARIOS
+// ============================================
 
+/**
+ * Llena los campos de fecha con la actual y hace una peticion para obtener la lista de soportes
+ */
+async function inicializarPagina() {
+    const today = new Date().toISOString().split('T')[0]; // Obtener la fecha actual
+    document.getElementById('fechaDesde').value = today; 
+    document.getElementById('fechaHasta').value = today; 
+
+    try {
+        const r = await fetch(ENDPOINT_SOPORTE); // Solicitud para obtener datos de soporte
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json(); 
+        listaSoporte = Array.isArray(data) ? data : []; 
+    } catch (err) {
+        console.error('Error cargando soporte:', err);
+        listaSoporte = []; 
+    }
+}
+
+/**
+ * Puebla un select con datos del servidor
+ */
+async function poblarSelect(selectId, idTabla, id, valueField, textField) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    try {
+    const url = `https://${host}:9876/api/selects-filtro?idTabla=${idTabla}&id=${id}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+
+    select.querySelectorAll("option:not([value=''])").forEach(opt => opt.remove());
+
+    data.forEach(item => {
+        const opt = document.createElement("option");
+        opt.value = item[valueField];      
+        opt.textContent = item[textField];
+        select.appendChild(opt);
+    });
+    } catch (err) {
+    console.error(`Error cargando ${selectId}:`, err);
+
+    select.querySelectorAll("option:not([value=''])").forEach(opt => opt.remove());
+    const errorOpt = document.createElement("option");
+    errorOpt.value = "";
+    errorOpt.textContent = "❌ Error al cargar";
+    select.appendChild(errorOpt);
+    }
+}
+
+/**
+ * Puebla el select de soportes (con opción de ver todos)
+ */
+async function poblarSelectSoporte(selectEl) {
+    const rowKey = selectEl.dataset.rowkey;
+    const switchEl = document.getElementById(`verTodos-${rowKey}`);
+    const usarTodos = switchEl && switchEl.checked;
+
+
+    selectEl.innerHTML = `<option value="">-- Selecciona --</option>`;
+
+    try {
+    let data = [];
+
+    if (usarTodos) {
+        const resp = await fetch(`https://${host}:9876/api/soportes-anexos-completo`);
+        if (!resp.ok) throw new Error(await resp.text());
+        data = await resp.json();
+    } else {
+        data = listaSoporte;
+    }
+
+    if (Array.isArray(data)) {
+        const opts = data.map(s =>
+        `<option value="${s.Id}" data-tipodoc="${s.TipoDocumento}">
+            ${escapeHtml(s.nombreDocSoporte ?? '')}
+        </option>`
+        ).join('');
+        selectEl.insertAdjacentHTML('beforeend', opts);
+    }
+
+    selectEl.addEventListener('change', (e) => {
+        const selectedId = e.target.value;
+        console.log(`Usuario seleccionó soporte Id: ${selectedId}`);
+    });
+
+    selectEl.dataset.loaded = "1";
+    } catch (err) {
+    console.error("Error poblando soportes:", err);
+    selectEl.innerHTML = `<option value="">Error al cargar</option>`;
+    }
+}
+
+
+// ============================================
+// SISTEMA DE PAGINACIÓN
+// ============================================
+
+/**
+ * Renderiza una página específica de resultados
+ */
 function renderTablaPagina(pagina) {
   const table = document.getElementById('resultadosTabla');
-  const thead = document.getElementById('tablaHead');
   const tbody = document.getElementById('tablaBody');
   const cardTitle = document.querySelector('.card-title-table');
 
@@ -167,14 +362,12 @@ function renderTablaPagina(pagina) {
   if (pagina > totalPaginas) pagina = totalPaginas;
   paginaActual = pagina;
 
-  // Limpiar cuerpo
   tbody.innerHTML = '';
 
   const inicio = (pagina - 1) * PAGE_SIZE;
   const fin = Math.min(inicio + PAGE_SIZE, totalRegistros);
   const slice = resultadosGlobal.slice(inicio, fin);
 
-  // Actualizar título (muestra total, no solo los de página)
   if (cardTitle) {
     cardTitle.textContent = `Resultados (${totalRegistros}) - Página ${pagina}/${totalPaginas}`;
   }
@@ -326,6 +519,9 @@ function renderTablaPagina(pagina) {
   renderPaginacion();
 }
 
+/**
+ * Renderiza los controles de paginación
+ */
 function renderPaginacion() {
   const pagDiv = document.getElementById('pagination');
   if (!pagDiv) return;
@@ -373,7 +569,17 @@ function renderPaginacion() {
 }
 
 
+// ============================================
+// BÚSQUEDA Y FILTROS 
+// ============================================
 
+/**
+ * Maneja el formulario de búsqueda de atenciones
+ */
+
+document.getElementById('mostrarFacturadas').addEventListener('change', function() {
+    this.dataset.touched = 'true';
+});
 
 document.getElementById('filtrosForm').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -542,22 +748,318 @@ document.getElementById('filtrosForm').addEventListener('submit', function (e) {
     });
 });
 
-const modalTipos = document.getElementById('modalTiposArchivo');
-const btnModalTiposSi = document.getElementById('btnModalTiposSi');
-const btnModalTiposNo = document.getElementById('btnModalTiposNo');
-const btnModalTiposCancelar = document.getElementById("btnModalTiposCancel")
 
-// Función para mostrar/ocultar el modal
-function abrirModalTipos() {
-  modalTipos.style.display = 'flex'; // o 'block', según tu CSS
+// ============================================
+// VISOR DE PDFS INSERTADOS
+//  (BOTON VER DOCUMENTOS)
+// ============================================
+
+/**
+ * Renderiza pdfs insertados
+ */
+function abrirVisorPDFs(idAdmision, idAtencion) {
+    const w = window.open('', '_blank');
+
+    const html = `<!DOCTYPE html>
+    <html lang="es">
+    <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Documentos de Atencion ${idAtencion || ''}</title>
+    <style>
+        :root{
+        --primary:#9b87f5; --primary-dark:#7a68c3; --secondary:#33C3F0;
+        --dark:#1A1F2C; --gray:#8E9196; --light:#f8f9fa; --border:#e2e8f0;
+        --success:#10b981; --danger:#ef4444;
+        }
+        *{box-sizing:border-box}
+        body{
+        font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background:#f5f5f9; color:var(--dark); margin:0;
+        }
+        header{background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.08); padding:16px 20px}
+        h1{margin:0; font-size:18px}
+        .container{display:grid; grid-template-columns: 320px 1fr; gap:12px; padding:16px}
+        .card{background:#fff; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,.06); overflow:hidden}
+        .list{padding:10px}
+        .list h3{font-size:14px; margin:10px}
+        .item{
+        width:100%; display:flex; align-items:center; justify-content:space-between;
+        gap:8px; background:#fff; border:1px solid var(--border);
+        border-radius:8px; padding:10px 12px; margin:8px 0; cursor:pointer;
+        transition:background .2s, border-color .2s, box-shadow .2s;
+        }
+        .item:hover{ background:var(--light); border-color:var(--primary) }
+        .item.active{ border-color:var(--primary); box-shadow:0 0 0 3px rgba(155,135,245,.12) }
+        .name{ flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+        .btn-del {
+        border: 1px solid var(--border);
+        background: #fff;
+        color: #555; /* gris neutro del cesto */
+        border-radius: 6px;
+        padding: 2px 8px;
+        line-height: 1.4;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s, border-color 0.2s, transform 0.1s;
+        }
+
+        .btn-del:hover {
+        background: #f0f0f0;      /* gris claro al pasar el mouse */
+        border-color: #d0d0d0;    /* bordes un poco más oscuros */
+        transform: scale(1.05);   /* leve aumento */
+        }
+
+        .viewer {
+        height: calc(100vh - 120px);
+        }
+
+        .viewer iframe,
+        .viewer img {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        display: block;
+        background: #fff;
+        }
+
+        .meta{ padding:10px 14px; border-bottom:1px solid var(--border); font-size:14px; color:var(--gray) }
+        .empty{ padding:24px; color:var(--gray); }
+    </style>
+    </head>
+    <body>
+    <header>
+        <h1>Documentos de IdAtencion: ${idAtencion || 'N/D'}</h1>
+    </header>
+
+    <main class="container">
+        <section class="card">
+        <div class="list">
+            <h3>Archivos</h3>
+            <div id="lista"></div>
+        </div>
+        </section>
+
+        <section class="card">
+        <div class="meta">Selecciona un documento para visualizarlo</div>
+        <div id="viewer" class="viewer"><div class="empty">Sin documento seleccionado</div></div>
+        </section>
+    </main>
+
+        <script>
+            const LISTA_URL = '${ENDPOINT_LISTA_PDFS}?idAdmision=${encodeURIComponent(idAdmision)}';
+            const VER_URL   = '${ENDPOINT_VER_PDF}';
+            const DEL_URL   = '${ENDPOINT_ELIMINAR_PDF}';
+            
+
+            let listaActual = [];
+
+            async function cargarLista() {
+                try {
+                    const r = await fetch(LISTA_URL);
+                    if (!r.ok) throw new Error(await r.text());
+                    
+                    const arr = await r.json(); // [{idSoporteKey, nombre}]
+                    listaActual = Array.isArray(arr) ? arr : [];
+                    renderLista(listaActual);
+                    
+                    if (listaActual.length) {
+                        seleccionar(listaActual[0].idSoporteKey, listaActual[0].nombre);
+                    }
+                } catch (err) {
+                    document.getElementById('lista').innerHTML = 
+                        '<div class="empty">No se pudo cargar la lista: ' + (err.message || '') + '</div>';
+                }
+            }
+
+            function renderLista(arr) {
+                const cont = document.getElementById('lista');
+                if (!arr || !arr.length) {
+                    cont.innerHTML = '<div class="empty">No hay PDFs para esta admisión.</div>';
+                    return;
+                }
+                cont.innerHTML = arr.map(it => {
+                    const nombre = escapeHtml(it.nombre || ('Documento ' + it.idSoporteKey));
+                    return (
+                    '<div class="item" data-soporte="' + it.idSoporteKey + '" data-nombre="' + nombre + '">' +
+                        '<span class="name">' + nombre + '</span>' +
+                        '<button class="btn-del" title="Eliminar" data-del="' + it.idSoporteKey + '">' +
+                        // Ícono SVG de cesto de basura
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" ' +
+                        'viewBox="0 0 16 16">' +
+                            '<path d="M5.5 5.5A.5.5 0 0 1 6 5h4a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5v-8z"/>' +
+                            '<path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1 0-2h3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1h3a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118z"/>' +
+                        '</svg>' +
+                        '</button>' +
+                    '</div>'
+                    );
+                }).join('');
+            }
+
+            document.addEventListener('click', async (e) => {
+                const del = e.target.closest('.btn-del');
+                if (del) {
+                    e.stopPropagation();
+                    const idSoporteKey = del.getAttribute('data-del');
+                    const item = del.closest('.item');
+                    const nombre = item?.dataset?.nombre || 'Documento';
+                    await eliminarSoporte(idSoporteKey, nombre, item);
+                    return;
+                }
+
+                const b = e.target.closest('.item');
+                if (!b) return;
+                
+                document.querySelectorAll('.item').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                seleccionar(b.dataset.soporte, b.dataset.nombre);
+            });
+
+            async function seleccionar(idSoporteKey, nombre) {
+                const url = VER_URL + '?idAdmision=${encodeURIComponent(idAdmision)}&idSoporteKey=' + encodeURIComponent(idSoporteKey);
+                const viewer = document.getElementById('viewer');
+                viewer.innerHTML = '<div class="empty">Cargando...</div>';
+                
+                try {
+                    const resp = await fetch(url);
+                    if (!resp.ok) throw new Error(await resp.text());
+                    
+                    const ct = (resp.headers.get('Content-Type') || 'application/pdf').toLowerCase();
+                    const blob = await resp.blob();
+                    const objUrl = URL.createObjectURL(blob);
+                    
+                    if (ct.startsWith('image/')) {
+                        viewer.innerHTML = '<img alt="' + escapeHtml(nombre || 'Documento') + '">';
+                        viewer.querySelector('img').src = objUrl;
+                    } else {
+                        viewer.innerHTML = '<iframe title="' + escapeHtml(nombre || 'Documento') + '"></iframe>';
+                        viewer.querySelector('iframe').src = objUrl;
+                    }
+                    
+                    document.querySelector('.meta').textContent = nombre || ('Documento ' + idSoporteKey);
+                } catch (err) {
+                    viewer.innerHTML = '<div class="empty">No se pudo cargar el documento: ' + 
+                                    (err.message || '') + '</div>';
+                }
+            }
+
+            // Eliminar documento en backend y refrescar lista
+            async function eliminarSoporte(idSoporteKey, nombre, itemEl) {
+
+                try {
+                    const url = DEL_URL + '?idAdmision=${encodeURIComponent(idAdmision)}&idSoporteKey=' + encodeURIComponent(idSoporteKey);
+                    const r = await fetch(url, { method: 'GET' }); // tu endpoint usa GET
+                    
+                    if (!r.ok) throw new Error(await r.text());
+
+                    // Mensaje de éxito
+                    alert('Documento eliminado correctamente.');
+
+                    // Si era el activo, limpia el visor
+                    const eraActivo = itemEl?.classList.contains('active');
+                    if (eraActivo) {
+                        document.querySelector('.meta').textContent = 'Selecciona un documento para visualizarlo';
+                        document.getElementById('viewer').innerHTML = '<div class="empty">Sin documento seleccionado</div>';
+                    }
+
+                    // Actualizar lista local
+                    listaActual = listaActual.filter(x => String(x.idSoporteKey) !== String(idSoporteKey));
+                    renderLista(listaActual);
+                    if (listaActual.length) seleccionar(listaActual[0].idSoporteKey, listaActual[0].nombre);
+
+                } catch (err) {
+                    alert('Error al eliminar: ' + (err.message || 'Desconocido'));
+                }
+            }
+
+            function escapeHtml(text) {
+                const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+                return String(text || '').replace(/[&<>"']/g, m => map[m]);
+            }
+
+            cargarLista();
+        <\/script>
+    </body>
+    </html>`;
+
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
 }
 
-function cerrarModalTipos() {
-  modalTipos.style.display = 'none';
-}
+// =====================================================================
+// EVENTO PARA LIMPIAR LOS RESULTADOS Y LOS DATOS QUE INGRESO EL USUARIO
+// =====================================================================
+
+document.getElementById('btnLimpiar').addEventListener('click', () => {
+    const form = document.getElementById('filtrosForm');
+    form.reset();
+
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('fechaDesde').value = today;
+    document.getElementById('fechaHasta').value = today;
+
+    document.getElementById('tablaHead').innerHTML = '';
+    document.getElementById('tablaBody').innerHTML = '';
+    document.getElementById('resultadosTabla').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('errorMsg').textContent = '';
+
+    document.querySelector('.card-title-table').textContent = 'Resultados';
+
+    const checkboxFacturadas = document.getElementById('mostrarFacturadas');
+    delete checkboxFacturadas.dataset.touched;  
+
+    archivosPorFila.clear();
+
+    if (currentController) {
+        currentController.abort();
+        currentController = null;
+    }
+
+    resultadosGlobal = [];
+    paginaActual = 1;
+
+    const pagDiv = document.getElementById('pagination');
+    if (pagDiv) {
+        pagDiv.innerHTML = '';
+    }
+});
 
 
-//Botón Exportar por lote
+// ============================================
+// EVENTOS PARA EXPORTAR POR LOTE
+// ============================================
+
+/**
+ * Evento para desactivar o activar campos y switches  
+ * al activar la exportacion por lote 
+ */
+
+
+exportarCuentaCobroSwitch.addEventListener('change', function() {
+    if (exportarCuentaCobroSwitch.checked) {
+    mostrarFacturadasSwitch.disabled = true; 
+    mostrarFacturadasSwitch.checked = false;  
+
+    numeroFacturaInput.disabled = true;  
+    numeroFacturaInput.value = '';  
+
+    cuentaCobroInput.required = true;
+    } else {
+    mostrarFacturadasSwitch.disabled = false;  
+    numeroFacturaInput.disabled = false;
+
+    cuentaCobroInput.required = false;
+    }
+});
+
+/**
+ * Evento para exportar
+ */
 document.getElementById('btnExportar').addEventListener('click', async (event) => {
     const exportarPorCuenta = document.getElementById('exportarCuentaCobro').checked;
 
@@ -715,7 +1217,7 @@ document.getElementById('btnExportar').addEventListener('click', async (event) =
                 await writableZip.write(blobZip);
                 await writableZip.close();
 
-                console.log(`✅ ZIP guardado: ${zipName}`);
+                console.log(`ZIP guardado: ${zipName}`);
                 showToast("Éxito", `ZIP descargado: ${zipName}`, "success", 2500);
 
             } catch (err) {
@@ -745,6 +1247,7 @@ document.getElementById('btnExportar').addEventListener('click', async (event) =
         }
 
         } else {
+
             // Modo: Exportar por Cuenta de Cobro 
 
             const numeroCuentaCobro = document.getElementById('cuentaCobro').value.trim();
@@ -1038,406 +1541,10 @@ document.getElementById('btnExportar').addEventListener('click', async (event) =
     }
 });
 
-tabla.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-anexar');
-    if (!btn) return;
 
-    const rowKey = btn.dataset.rowkey;
-    const panelRow = tabla.querySelector(`tr.anexar-row[data-rowkey="${rowKey}"]`);
-    if (!panelRow) return;
-
-    panelRow.style.display = panelRow.style.display === 'none' ? '' : 'none';
-
-    if (panelRow.style.display !== 'none') {
-        const selectSoporte = panelRow.querySelector(`select[name="idSoporte"]`);
-        if (selectSoporte && selectSoporte.dataset.loaded !== '1') {
-            poblarSelectSoporte(selectSoporte);
-        }
-    }
-});
-
-const ENDPOINT_ANEXOS = `https://${host}:9876/api/insertar-pdf`;
-const DEBUG_ENVIO = false; 
-
-tabla.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.btn-guardar');
-    if (!btn) return;
-
-    const rowKey = btn.dataset.rowkey;
-
-    const mainRow = tabla.querySelector(`tr[data-rowkey="${rowKey}"]:not(.anexar-row)`);
-    let idAdmision    = btn.dataset.idadmision    || mainRow?.dataset.idadmision    || '';
-    let idPacienteKey = btn.dataset.idpacientekey || mainRow?.dataset.idpacientekey || '';
-
-    const archivos = archivosPorFila.get(rowKey) || [];
-    const errorEl = document.getElementById(`error-${rowKey}`);
-    const selectSoporte = document.getElementById(`idSoporte-${rowKey}`);
-    const idSoporte = selectSoporte ? (selectSoporte.value || '') : '';
-    const tipoDocumento = selectSoporte 
-    ? selectSoporte.options[selectSoporte.selectedIndex].dataset.tipodoc || '' 
-    : '';
-
-    if (!idAdmision) {
-    showToast('Falta IdAdmision', 'No se pudo obtener IdAdmision de la fila.', 'error', 6000);
-    return;
-    }
-    if (!idPacienteKey) {
-    showToast('Falta IdPacienteKey', 'No se pudo obtener IdPacienteKey de la fila.', 'error', 6000);
-    return;
-    }
-    if (!idSoporte || isNaN(Number(idSoporte))) {
-    errorEl.textContent = 'Debes seleccionar un Documento Soporte válido.';
-    errorEl.style.display = 'block';
-    showToast('Documento soporte requerido', 'Selecciona un Documento Soporte.', 'error', 6000);
-    return;
-    }
-    if (archivos.length === 0) {
-    errorEl.textContent = 'Selecciona al menos un archivo antes de guardar.';
-    errorEl.style.display = 'block';
-    showToast('Sin archivos', 'Agrega archivos para continuar.', 'error', 5000);
-    return;
-    }
-
-    let eliminarSiNo = true; 
-
-    try {
-    const respCheck = await fetch(`https://${host}:9876/api/soportes-por-anexos?idAdmision=${idAdmision}`);
-    if (respCheck.ok) {
-        const anexos = await respCheck.json();
-        if (Array.isArray(anexos) && anexos.includes(Number(idSoporte))) {
-
-        const confirmar = await showModalGuardar("Ya existe un registro para este soporte, ¿Qué deseas hacer?");
-        if (!confirmar) {
-            return; 
-        }
-        if (confirmar === "anexar") {
-            eliminarSiNo = false; 
-        } else if (confirmar === "reemplazar") {
-            eliminarSiNo = true;  
-        }
-        }
-    }
-    } catch (err) {
-    console.error("Error verificando anexos:", err);
-
-    }
-        
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Guardando...';
-
-    const toast = showToast('Insertando', 'Procesando archivos...', 'info', 120000, true);
-
-    try {
-    // Enviar TODOS los archivos en un solo request
-    const fd = new FormData();
-    fd.append('idAdmision', idAdmision);
-    fd.append('idPacienteKey', idPacienteKey);
-    fd.append('idSoporteKey', idSoporte); 
-    fd.append('tipoDocumento', tipoDocumento);
-
-    for (const f of archivos) {
-        fd.append('nameFilePdf', f, f.name);  
-    }
-
-    fd.append("automatico", "false");
-    fd.append("eliminarSiNo", eliminarSiNo);
-
-    if (DEBUG_ENVIO) {
-        console.group('➡️ Enviando a backend:', ENDPOINT_ANEXOS);
-        for (const [k, v] of fd.entries()) console.log(k, v instanceof File ? v.name : v);
-        console.groupEnd();
-    }
-
-    const resp = await fetch(ENDPOINT_ANEXOS, { method: 'POST', body: fd });
-    const text = await resp.text().catch(() => '');
-    if (DEBUG_ENVIO) console.log('⬅️ Respuesta:', resp.status, resp.statusText, text);
-    if (!resp.ok) throw new Error(text || 'Fallo insertando archivos');
-
-    actualizarToastProgreso(toast, 100);
-
-    archivosPorFila.set(rowKey, []);
-    renderLista(rowKey);
-    errorEl.style.color = 'var(--success)';
-    errorEl.textContent = `Insert OK (${archivos.length}/${archivos.length}).`;
-    errorEl.style.display = 'block';
-    setTimeout(() => { errorEl.style.display = 'none'; errorEl.style.color = 'var(--danger)'; }, 3000);
-    showToast('Guardado', `Se insertaron ${archivos.length} archivo(s).`, 'success', 4500);
-
-    toast.classList.add('fadeOut'); setTimeout(() => toast.remove(), 300);
-
-    } catch (err) {
-    toast.classList.add('fadeOut'); setTimeout(() => toast.remove(), 300);
-    errorEl.style.color = 'var(--danger)';
-    errorEl.textContent = 'Error al guardar: ' + err.message;
-    errorEl.style.display = 'block';
-    showToast('Error al guardar', err.message || 'No se pudo completar la operación.', 'error', 7000);
-    } finally {
-    btn.disabled = false;
-    btn.textContent = originalText; // restaurar texto del botón
-    }
-});
-
-
-const ENDPOINT_LISTA_PDFS = `https://${host}:9876/api/admisiones/lista-pdfs`;
-const ENDPOINT_VER_PDF    = `https://${host}:9876/api/admisiones/ver-pdf`;
-const ENDPOINT_ELIMINAR_PDF = `https://${host}:9876/api/eliminar-pdf`;
-
-tabla.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-verpdfs');
-    if (!btn) return;
-
-    const idAdmision = btn.dataset.idadmision ||
-    tabla.querySelector(`tr[data-rowkey="${btn.dataset.rowkey}"]:not(.anexar-row)`)?.dataset.idadmision;
-
-    const idAtencion = btn.dataset.idatencion ||
-    tabla.querySelector(`tr[data-rowkey="${btn.dataset.rowkey}"]:not(.anexar-row)`)?.dataset.idatencion;
-
-    if (!idAdmision) {
-    showToast('Falta IdAdmision', 'No se pudo obtener IdAdmision.', 'error', 6000);
-    return;
-    } 
-
-    console.log("ID ADMISION:", idAdmision);
-    
-    abrirVisorPDFs(idAdmision, idAtencion);
-});
-
-function abrirVisorPDFs(idAdmision, idAtencion) {
-    const w = window.open('', '_blank');
-
-    
-    
-    const html = `<!DOCTYPE html>
-    <html lang="es">
-    <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Documentos de Atencion ${idAtencion || ''}</title>
-    <style>
-        :root{
-        --primary:#9b87f5; --primary-dark:#7a68c3; --secondary:#33C3F0;
-        --dark:#1A1F2C; --gray:#8E9196; --light:#f8f9fa; --border:#e2e8f0;
-        --success:#10b981; --danger:#ef4444;
-        }
-        *{box-sizing:border-box}
-        body{
-        font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background:#f5f5f9; color:var(--dark); margin:0;
-        }
-        header{background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.08); padding:16px 20px}
-        h1{margin:0; font-size:18px}
-        .container{display:grid; grid-template-columns: 320px 1fr; gap:12px; padding:16px}
-        .card{background:#fff; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,.06); overflow:hidden}
-        .list{padding:10px}
-        .list h3{font-size:14px; margin:10px}
-        .item{
-        width:100%; display:flex; align-items:center; justify-content:space-between;
-        gap:8px; background:#fff; border:1px solid var(--border);
-        border-radius:8px; padding:10px 12px; margin:8px 0; cursor:pointer;
-        transition:background .2s, border-color .2s, box-shadow .2s;
-        }
-        .item:hover{ background:var(--light); border-color:var(--primary) }
-        .item.active{ border-color:var(--primary); box-shadow:0 0 0 3px rgba(155,135,245,.12) }
-        .name{ flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-        .btn-del {
-        border: 1px solid var(--border);
-        background: #fff;
-        color: #555; /* gris neutro del cesto */
-        border-radius: 6px;
-        padding: 2px 8px;
-        line-height: 1.4;
-        font-weight: 700;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.2s, border-color 0.2s, transform 0.1s;
-        }
-
-        .btn-del:hover {
-        background: #f0f0f0;      /* gris claro al pasar el mouse */
-        border-color: #d0d0d0;    /* bordes un poco más oscuros */
-        transform: scale(1.05);   /* leve aumento */
-        }
-
-        .viewer {
-        height: calc(100vh - 120px);
-        }
-
-        .viewer iframe,
-        .viewer img {
-        width: 100%;
-        height: 100%;
-        border: 0;
-        display: block;
-        background: #fff;
-        }
-
-        .meta{ padding:10px 14px; border-bottom:1px solid var(--border); font-size:14px; color:var(--gray) }
-        .empty{ padding:24px; color:var(--gray); }
-    </style>
-    </head>
-    <body>
-    <header>
-        <h1>Documentos de IdAtencion: ${idAtencion || 'N/D'}</h1>
-    </header>
-
-    <main class="container">
-        <section class="card">
-        <div class="list">
-            <h3>Archivos</h3>
-            <div id="lista"></div>
-        </div>
-        </section>
-
-        <section class="card">
-        <div class="meta">Selecciona un documento para visualizarlo</div>
-        <div id="viewer" class="viewer"><div class="empty">Sin documento seleccionado</div></div>
-        </section>
-    </main>
-
-        <script>
-            const LISTA_URL = '${ENDPOINT_LISTA_PDFS}?idAdmision=${encodeURIComponent(idAdmision)}';
-            const VER_URL   = '${ENDPOINT_VER_PDF}';
-            const DEL_URL   = '${ENDPOINT_ELIMINAR_PDF}';
-            
-
-            let listaActual = [];
-
-            async function cargarLista() {
-                try {
-                    const r = await fetch(LISTA_URL);
-                    if (!r.ok) throw new Error(await r.text());
-                    
-                    const arr = await r.json(); // [{idSoporteKey, nombre}]
-                    listaActual = Array.isArray(arr) ? arr : [];
-                    renderLista(listaActual);
-                    
-                    if (listaActual.length) {
-                        seleccionar(listaActual[0].idSoporteKey, listaActual[0].nombre);
-                    }
-                } catch (err) {
-                    document.getElementById('lista').innerHTML = 
-                        '<div class="empty">No se pudo cargar la lista: ' + (err.message || '') + '</div>';
-                }
-            }
-
-            function renderLista(arr) {
-                const cont = document.getElementById('lista');
-                if (!arr || !arr.length) {
-                    cont.innerHTML = '<div class="empty">No hay PDFs para esta admisión.</div>';
-                    return;
-                }
-                cont.innerHTML = arr.map(it => {
-                    const nombre = escapeHtml(it.nombre || ('Documento ' + it.idSoporteKey));
-                    return (
-                    '<div class="item" data-soporte="' + it.idSoporteKey + '" data-nombre="' + nombre + '">' +
-                        '<span class="name">' + nombre + '</span>' +
-                        '<button class="btn-del" title="Eliminar" data-del="' + it.idSoporteKey + '">' +
-                        // 🗑️ Ícono SVG de cesto de basura
-                        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" ' +
-                        'viewBox="0 0 16 16">' +
-                            '<path d="M5.5 5.5A.5.5 0 0 1 6 5h4a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-.5.5H6a.5.5 0 0 1-.5-.5v-8z"/>' +
-                            '<path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1 0-2h3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1h3a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118z"/>' +
-                        '</svg>' +
-                        '</button>' +
-                    '</div>'
-                    );
-                }).join('');
-            }
-
-
-            document.addEventListener('click', async (e) => {
-                const del = e.target.closest('.btn-del');
-                if (del) {
-                    e.stopPropagation();
-                    const idSoporteKey = del.getAttribute('data-del');
-                    const item = del.closest('.item');
-                    const nombre = item?.dataset?.nombre || 'Documento';
-                    await eliminarSoporte(idSoporteKey, nombre, item);
-                    return;
-                }
-
-                const b = e.target.closest('.item');
-                if (!b) return;
-                
-                document.querySelectorAll('.item').forEach(x => x.classList.remove('active'));
-                b.classList.add('active');
-                seleccionar(b.dataset.soporte, b.dataset.nombre);
-            });
-
-            async function seleccionar(idSoporteKey, nombre) {
-                const url = VER_URL + '?idAdmision=${encodeURIComponent(idAdmision)}&idSoporteKey=' + encodeURIComponent(idSoporteKey);
-                const viewer = document.getElementById('viewer');
-                viewer.innerHTML = '<div class="empty">Cargando...</div>';
-                
-                try {
-                    const resp = await fetch(url);
-                    if (!resp.ok) throw new Error(await resp.text());
-                    
-                    const ct = (resp.headers.get('Content-Type') || 'application/pdf').toLowerCase();
-                    const blob = await resp.blob();
-                    const objUrl = URL.createObjectURL(blob);
-                    
-                    if (ct.startsWith('image/')) {
-                        viewer.innerHTML = '<img alt="' + escapeHtml(nombre || 'Documento') + '">';
-                        viewer.querySelector('img').src = objUrl;
-                    } else {
-                        viewer.innerHTML = '<iframe title="' + escapeHtml(nombre || 'Documento') + '"></iframe>';
-                        viewer.querySelector('iframe').src = objUrl;
-                    }
-                    
-                    document.querySelector('.meta').textContent = nombre || ('Documento ' + idSoporteKey);
-                } catch (err) {
-                    viewer.innerHTML = '<div class="empty">No se pudo cargar el documento: ' + 
-                                    (err.message || '') + '</div>';
-                }
-            }
-
-            // Eliminar documento en backend y refrescar lista
-            async function eliminarSoporte(idSoporteKey, nombre, itemEl) {
-
-                try {
-                    const url = DEL_URL + '?idAdmision=${encodeURIComponent(idAdmision)}&idSoporteKey=' + encodeURIComponent(idSoporteKey);
-                    const r = await fetch(url, { method: 'GET' }); // tu endpoint usa GET
-                    
-                    if (!r.ok) throw new Error(await r.text());
-
-                    // ✅ Mensaje de éxito
-                    alert('Documento eliminado correctamente.');
-
-                    // Si era el activo, limpia el visor
-                    const eraActivo = itemEl?.classList.contains('active');
-                    if (eraActivo) {
-                        document.querySelector('.meta').textContent = 'Selecciona un documento para visualizarlo';
-                        document.getElementById('viewer').innerHTML = '<div class="empty">Sin documento seleccionado</div>';
-                    }
-
-                    // Actualizar lista local
-                    listaActual = listaActual.filter(x => String(x.idSoporteKey) !== String(idSoporteKey));
-                    renderLista(listaActual);
-                    if (listaActual.length) seleccionar(listaActual[0].idSoporteKey, listaActual[0].nombre);
-
-                } catch (err) {
-                    alert('Error al eliminar: ' + (err.message || 'Desconocido'));
-                }
-            }
-
-            function escapeHtml(text) {
-                const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-                return String(text || '').replace(/[&<>"']/g, m => map[m]);
-            }
-
-            cargarLista();
-        <\/script>
-    </body>
-    </html>`;
-
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-}
+// ===============================
+// EVENTO PARA EXPORTAR INDIVIDUAL
+// ===============================
 
 tabla.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-exportar');
@@ -1452,7 +1559,7 @@ tabla.addEventListener('click', async (e) => {
     const dirHandle = await window.showDirectoryPicker();
 
     // -------------------------------
-    // 1️⃣ Descargar PDFs
+    // Descargar PDFs
     // -------------------------------
     const respSoporte = await fetch(`https://${host}:9876/api/soportes-por-anexos?idAdmision=${idAdmision}`);
     
@@ -1513,7 +1620,7 @@ tabla.addEventListener('click', async (e) => {
     }
 
     // -----------------
-    // 2️⃣ Descargar XML 
+    // Descargar XML 
     // -----------------
     if (nFact) {
         const respXml = await fetch(`https://${host}:9876/api/generarxml/${nFact}`);
@@ -1537,7 +1644,7 @@ tabla.addEventListener('click', async (e) => {
         showToast("Éxito", "Archivo XML descargado correctamente", "success", 3000);
 
         // -------------------------------
-        // 3️⃣ Descargar JSON usando el IdMovDoc
+        // Descargar JSON usando el IdMovDoc
         // -------------------------------
         if (idMovDoc) {
             const respJson = await fetch(`https://${host}:9876/facturas/generarjson/${idMovDoc}`);
@@ -1562,7 +1669,7 @@ tabla.addEventListener('click', async (e) => {
         }
 
         // -------------------------------
-        // 4️⃣ Descargar TXT RIPS
+        // Descargar TXT RIPS
         // -------------------------------
         try {
         const urlTxt = new URL(`https://${host}:9876/api/rips/respuesta`);
@@ -1608,6 +1715,10 @@ tabla.addEventListener('click', async (e) => {
     showToast("Error", err.message, "error", 5000);
     }
 });
+
+// ==========================================================
+// EVENTO PARA GENERAR DOCUMENTOS DISPONIBLES DE UNA ATENCION
+// ==========================================================
 
 tabla.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-generar');
@@ -1837,131 +1948,178 @@ tabla.addEventListener('click', async (e) => {
     }
 });
 
-function showModalConfirm(message) {
-    return new Promise((resolve) => {
-    const modal = document.getElementById("modalConfirm");
-    const msg = document.getElementById("modalMessage");
-    const btnOk = document.getElementById("btnModalOk");
-    const btnCancel = document.getElementById("btnModalCancel");
+// ==========================================
+// EVENTO PARA ABRIR VENTANA Y VER DOCUMENTOS
+// ==========================================
 
-    msg.textContent = message;
-    modal.style.display = "flex";
+tabla.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-verpdfs');
+    if (!btn) return;
 
-    function close(result) {
-        modal.style.display = "none";
-        btnOk.removeEventListener("click", okHandler);
-        btnCancel.removeEventListener("click", cancelHandler);
-        resolve(result);
-    }
+    const idAdmision = btn.dataset.idadmision ||
+    tabla.querySelector(`tr[data-rowkey="${btn.dataset.rowkey}"]:not(.anexar-row)`)?.dataset.idadmision;
 
-    function okHandler() { close(true); }
-    function cancelHandler() { close(false); }
+    const idAtencion = btn.dataset.idatencion ||
+    tabla.querySelector(`tr[data-rowkey="${btn.dataset.rowkey}"]:not(.anexar-row)`)?.dataset.idatencion;
 
-    btnOk.addEventListener("click", okHandler);
-    btnCancel.addEventListener("click", cancelHandler);
-    });
-}
+    if (!idAdmision) {
+    showToast('Falta IdAdmision', 'No se pudo obtener IdAdmision.', 'error', 6000);
+    return;
+    } 
 
-function showModalGuardar(message) {
-    return new Promise((resolve) => {
-    const modal = document.getElementById("modalGuardar");
-    const msg = document.getElementById("modalGuardarMessage");
-    const btnCancel = document.getElementById("btnModalGuardarCancel");
-    const btnAnexar = document.getElementById("btnModalGuardarAnexar");
-    const btnReemplazar = document.getElementById("btnModalGuardarReemplazar");
+    console.log("ID ADMISION:", idAdmision);
+    
+    abrirVisorPDFs(idAdmision, idAtencion);
+});
 
-    msg.textContent = message;
-    modal.style.display = "flex";
+// ============================================
+// EVENTO PARA TOGGLE DE ANEXAR FILAS EN LA TABLA
+// ============================================
 
-    function close(result) {
-        modal.style.display = "none";
-        btnCancel.removeEventListener("click", cancelHandler);
-        btnAnexar.removeEventListener("click", anexarHandler);
-        btnReemplazar.removeEventListener("click", reemplazarHandler);
-        resolve(result);
-    }
+tabla.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-anexar');
+    if (!btn) return;
 
-    function cancelHandler()   { close(false); }
-    function anexarHandler()   { close("anexar"); }
-    function reemplazarHandler(){ close("reemplazar"); }
+    const rowKey = btn.dataset.rowkey;
+    const panelRow = tabla.querySelector(`tr.anexar-row[data-rowkey="${rowKey}"]`);
+    if (!panelRow) return;
 
-    btnCancel.addEventListener("click", cancelHandler);
-    btnAnexar.addEventListener("click", anexarHandler);
-    btnReemplazar.addEventListener("click", reemplazarHandler);
-    });
-}
+    panelRow.style.display = panelRow.style.display === 'none' ? '' : 'none';
 
-async function poblarSelectSoporte(selectEl) {
-    const rowKey = selectEl.dataset.rowkey;
-    const switchEl = document.getElementById(`verTodos-${rowKey}`);
-    const usarTodos = switchEl && switchEl.checked;
-
-
-    selectEl.innerHTML = `<option value="">-- Selecciona --</option>`;
-
-    try {
-    let data = [];
-
-    if (usarTodos) {
-        const resp = await fetch(`https://${host}:9876/api/soportes-anexos-completo`);
-        if (!resp.ok) throw new Error(await resp.text());
-        data = await resp.json();
-    } else {
-        data = listaSoporte;
-    }
-
-    if (Array.isArray(data)) {
-        const opts = data.map(s =>
-        `<option value="${s.Id}" data-tipodoc="${s.TipoDocumento}">
-            ${escapeHtml(s.nombreDocSoporte ?? '')}
-        </option>`
-        ).join('');
-        selectEl.insertAdjacentHTML('beforeend', opts);
-    }
-
-    selectEl.addEventListener('change', (e) => {
-        const selectedId = e.target.value;
-        console.log(`Usuario seleccionó soporte Id: ${selectedId}`);
-    });
-
-    selectEl.dataset.loaded = "1";
-    } catch (err) {
-    console.error("Error poblando soportes:", err);
-    selectEl.innerHTML = `<option value="">Error al cargar</option>`;
-    }
-}
-
-tabla.addEventListener('change', (e) => {
-    const switchEl = e.target.closest('input[type="checkbox"][id^="verTodos-"]');
-    if (!switchEl) return;
-
-    const rowKey = switchEl.dataset.rowkey;
-    const selectEl = document.getElementById(`idSoporte-${rowKey}`);
-    if (selectEl) {
-    poblarSelectSoporte(selectEl);
+    if (panelRow.style.display !== 'none') {
+        const selectSoporte = panelRow.querySelector(`select[name="idSoporte"]`);
+        if (selectSoporte && selectSoporte.dataset.loaded !== '1') {
+            poblarSelectSoporte(selectSoporte);
+        }
     }
 });
 
-const ENDPOINT_SOPORTE = `https://${host}:9876/api/soportes-anexos`;
+// =====================================================
+// EVENTO PARA GUARDAR ARCHIVOS ASOCIADOS A UNA FILA (ANEXAR)
+// =====================================================
 
-let listaSoporte = [];
+tabla.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-guardar');
+    if (!btn) return;
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('fechaDesde').value = today;
-    document.getElementById('fechaHasta').value = today;
+    const rowKey = btn.dataset.rowkey;
+
+    const mainRow = tabla.querySelector(`tr[data-rowkey="${rowKey}"]:not(.anexar-row)`);
+    let idAdmision    = btn.dataset.idadmision    || mainRow?.dataset.idadmision    || '';
+    let idPacienteKey = btn.dataset.idpacientekey || mainRow?.dataset.idpacientekey || '';
+
+    const archivos = archivosPorFila.get(rowKey) || [];
+    const errorEl = document.getElementById(`error-${rowKey}`);
+    const selectSoporte = document.getElementById(`idSoporte-${rowKey}`);
+    const idSoporte = selectSoporte ? (selectSoporte.value || '') : '';
+    const tipoDocumento = selectSoporte 
+    ? selectSoporte.options[selectSoporte.selectedIndex].dataset.tipodoc || '' 
+    : '';
+
+    if (!idAdmision) {
+    showToast('Falta IdAdmision', 'No se pudo obtener IdAdmision de la fila.', 'error', 6000);
+    return;
+    }
+    if (!idPacienteKey) {
+    showToast('Falta IdPacienteKey', 'No se pudo obtener IdPacienteKey de la fila.', 'error', 6000);
+    return;
+    }
+    if (!idSoporte || isNaN(Number(idSoporte))) {
+    errorEl.textContent = 'Debes seleccionar un Documento Soporte válido.';
+    errorEl.style.display = 'block';
+    showToast('Documento soporte requerido', 'Selecciona un Documento Soporte.', 'error', 6000);
+    return;
+    }
+    if (archivos.length === 0) {
+    errorEl.textContent = 'Selecciona al menos un archivo antes de guardar.';
+    errorEl.style.display = 'block';
+    showToast('Sin archivos', 'Agrega archivos para continuar.', 'error', 5000);
+    return;
+    }
+
+    let eliminarSiNo = true; 
 
     try {
-    const r = await fetch(ENDPOINT_SOPORTE);
-    if (!r.ok) throw new Error(await r.text());
-    const data = await r.json();
-    listaSoporte = Array.isArray(data) ? data : [];
+    const respCheck = await fetch(`https://${host}:9876/api/soportes-por-anexos?idAdmision=${idAdmision}`);
+    if (respCheck.ok) {
+        const anexos = await respCheck.json();
+        if (Array.isArray(anexos) && anexos.includes(Number(idSoporte))) {
+
+        const confirmar = await showModalGuardar("Ya existe un registro para este soporte, ¿Qué deseas hacer?");
+        if (!confirmar) {
+            return; 
+        }
+        if (confirmar === "anexar") {
+            eliminarSiNo = false; 
+        } else if (confirmar === "reemplazar") {
+            eliminarSiNo = true;  
+        }
+        }
+    }
     } catch (err) {
-    console.error('Error cargando soporte:', err);
-    listaSoporte = [];
-    }      
+    console.error("Error verificando anexos:", err);
+
+    }
+        
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    const toast = showToast('Insertando', 'Procesando archivos...', 'info', 120000, true);
+
+    try {
+    // Enviar TODOS los archivos en un solo request
+    const fd = new FormData();
+    fd.append('idAdmision', idAdmision);
+    fd.append('idPacienteKey', idPacienteKey);
+    fd.append('idSoporteKey', idSoporte); 
+    fd.append('tipoDocumento', tipoDocumento);
+
+    for (const f of archivos) {
+        fd.append('nameFilePdf', f, f.name);  
+    }
+
+    fd.append("automatico", "false");
+    fd.append("eliminarSiNo", eliminarSiNo);
+
+    if (DEBUG_ENVIO) {
+        console.group('Enviando a backend:', ENDPOINT_ANEXOS);
+        for (const [k, v] of fd.entries()) console.log(k, v instanceof File ? v.name : v);
+        console.groupEnd();
+    }
+
+    const resp = await fetch(ENDPOINT_ANEXOS, { method: 'POST', body: fd });
+    const text = await resp.text().catch(() => '');
+    if (DEBUG_ENVIO) console.log('⬅️ Respuesta:', resp.status, resp.statusText, text);
+    if (!resp.ok) throw new Error(text || 'Fallo insertando archivos');
+
+    actualizarToastProgreso(toast, 100);
+
+    archivosPorFila.set(rowKey, []);
+    renderLista(rowKey);
+    errorEl.style.color = 'var(--success)';
+    errorEl.textContent = `Insert OK (${archivos.length}/${archivos.length}).`;
+    errorEl.style.display = 'block';
+    setTimeout(() => { errorEl.style.display = 'none'; errorEl.style.color = 'var(--danger)'; }, 3000);
+    showToast('Guardado', `Se insertaron ${archivos.length} archivo(s).`, 'success', 4500);
+
+    toast.classList.add('fadeOut'); setTimeout(() => toast.remove(), 300);
+
+    } catch (err) {
+    toast.classList.add('fadeOut'); setTimeout(() => toast.remove(), 300);
+    errorEl.style.color = 'var(--danger)';
+    errorEl.textContent = 'Error al guardar: ' + err.message;
+    errorEl.style.display = 'block';
+    showToast('Error al guardar', err.message || 'No se pudo completar la operación.', 'error', 7000);
+    } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+    }
 });
 
+// ============================================
+// EVENTO PARA ABRIR EL PICKER DE ARCHIVOS
+// ============================================
 tabla.addEventListener('click', (e) => {
     const picker = e.target.closest('.btn-picker');
     if (!picker) return;
@@ -1969,6 +2127,10 @@ tabla.addEventListener('click', (e) => {
     const input = document.getElementById(inputId);
     if (input) input.click();
 });
+
+// ============================================
+// EVENTO PARA MANEJAR CAMBIO EN INPUT DE ARCHIVOS
+// ============================================
 
 tabla.addEventListener('change', (e) => {
     const input = e.target.closest('.file-input');
@@ -1978,7 +2140,9 @@ tabla.addEventListener('change', (e) => {
     input.value = '';
 });
 
-// Drag & drop
+// ============================================
+// DRAG & DROP PARA CARGAR ARCHIVOS (ANEXAR)
+// ============================================
 tabla.addEventListener('dragover', (e) => {
     const dz = e.target.closest('.dropzone');
     if (!dz) return;
@@ -2000,7 +2164,9 @@ tabla.addEventListener('drop', (e) => {
     agregarArchivos(rowKey, files);
 });
 
-// Quitar archivo
+// ============================================
+// QUITAR ARCHIVO DE LA FILA
+// ============================================
 tabla.addEventListener('click', (e) => {
     if (!e.target.classList.contains('file-remove')) return;
     const li = e.target.closest('.file-item');
@@ -2012,7 +2178,9 @@ tabla.addEventListener('click', (e) => {
     renderLista(rowKey);
 });
 
-// Helpers
+// ============================================
+// AGREGAR ARCHIVOS PARA UNA FILA (ANEXAR)
+// ============================================
 function agregarArchivos(rowKey, fileList) {
     const arr = archivosPorFila.get(rowKey) || [];
     const nuevos = Array.from(fileList);
@@ -2039,6 +2207,10 @@ function agregarArchivos(rowKey, fileList) {
     renderLista(rowKey);
 }
 
+// ============================================
+// RENDERIZAR LA LISTA DE ARCHIVOS EN LA FILA (ANEXAR)
+// ============================================
+
 function renderLista(rowKey) {
     const ul = document.getElementById(`fileList-${rowKey}`);
     const arr = archivosPorFila.get(rowKey) || [];
@@ -2056,73 +2228,56 @@ function renderLista(rowKey) {
     });
 }
 
-// Limpiar
-document.getElementById('btnLimpiar').addEventListener('click', () => {
-    const form = document.getElementById('filtrosForm');
-    form.reset();
 
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('fechaDesde').value = today;
-    document.getElementById('fechaHasta').value = today;
+// ==========================
+// CARGA INICIAL DE SELECTS
+// =========================
 
-    document.getElementById('tablaHead').innerHTML = '';
-    document.getElementById('tablaBody').innerHTML = '';
-    document.getElementById('resultadosTabla').style.display = 'none';
-    document.getElementById('emptyState').style.display = 'none';
-    document.getElementById('errorMsg').textContent = '';
+document.addEventListener('DOMContentLoaded', () => {
 
-    document.querySelector('.card-title-table').textContent = 'Resultados';
+    poblarSelect("eps", 2, -1, "IdTerceroKey", "NomTercero");
 
-    const checkboxFacturadas = document.getElementById('mostrarFacturadas');
-    delete checkboxFacturadas.dataset.touched;  
+    poblarSelect("idAreaAtencion", 4, -1, "IdAreaAtencion", "NomAreaAtencion");
 
-    archivosPorFila.clear();
+    inicializarPagina();
+});
 
-    if (currentController) {
-        currentController.abort();
-        currentController = null;
-    }
+/**
+ * Manejo de cambios en el select EPS o Cliente
+ */
+document.getElementById("eps").addEventListener("change", (e) => {
+    const idCliente = e.target.value;
+    poblarSelect("contrato", 3, idCliente, "NoContrato", "NomContrato");
+});
 
-    resultadosGlobal = [];
-    paginaActual = 1;
+/**
+ * Manejo de cambios en el select de Area Atencion
+ */
+document.getElementById("idAreaAtencion").addEventListener("change", (e) => {
+    const idArea = e.target.value;
+    poblarSelect("idUnidadAtencionCur", 6, idArea, "IdEntorno", "NomEntorno");
+});
 
-    const pagDiv = document.getElementById('pagination');
-    if (pagDiv) {
-        pagDiv.innerHTML = '';
+
+/**
+ * Manejo de cambios en el select de soportes de la ventana anexar
+ */
+
+tabla.addEventListener('change', (e) => {
+    const switchEl = e.target.closest('input[type="checkbox"][id^="verTodos-"]');
+    if (!switchEl) return;
+
+    const rowKey = switchEl.dataset.rowkey;
+    const selectEl = document.getElementById(`idSoporte-${rowKey}`);
+    if (selectEl) {
+    poblarSelectSoporte(selectEl);
     }
 });
 
-// Util para evitar inyección en nombres
-function escapeHtml(text) {
-    const map = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' };
-    return String(text).replace(/[&<>"']/g, m => map[m]);
-}
 
-async function poblarSelect(selectId, idTabla, id, valueField, textField) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
 
-    try {
-    const url = `https://${host}:9876/api/selects-filtro?idTabla=${idTabla}&id=${id}`;
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(await r.text());
-    const data = await r.json();
 
-    select.querySelectorAll("option:not([value=''])").forEach(opt => opt.remove());
 
-    data.forEach(item => {
-        const opt = document.createElement("option");
-        opt.value = item[valueField];      
-        opt.textContent = item[textField];
-        select.appendChild(opt);
-    });
-    } catch (err) {
-    console.error(`Error cargando ${selectId}:`, err);
 
-    select.querySelectorAll("option:not([value=''])").forEach(opt => opt.remove());
-    const errorOpt = document.createElement("option");
-    errorOpt.value = "";
-    errorOpt.textContent = "❌ Error al cargar";
-    select.appendChild(errorOpt);
-    }
-}
+
+
