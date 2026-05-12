@@ -2051,6 +2051,178 @@ tabla.addEventListener('click', async (e) => {
     }
 });
 
+
+async function generarPorLote() {
+  const checkboxes = document.querySelectorAll(".checkbox-row:checked");
+
+  if (checkboxes.length === 0) {
+    showToast(
+      "Sin selección",
+      "Selecciona al menos una fila para generar",
+      "warning",
+      4000,
+    );
+    return;
+  }
+
+  const btn = document.getElementById("btnGenerarLote");
+  btn.disabled = true;
+  btn.style.opacity = "0.6";
+  btn.style.cursor = "not-allowed";
+  btn.innerHTML = "Generando...";
+
+  let procesados = 0;
+  let errores = 0;
+  const total = checkboxes.length;
+  const fallos = [];
+
+  for (const checkbox of checkboxes) {
+    const row = checkbox.closest("tr");
+    const idAdmision = row.dataset.idadmision;
+    const idPacienteKey = row.dataset.idpacientekey;
+    const idAtencion = row.dataset.idatencion;
+    const erroresPaso = [];
+
+    // ===== Paso 1: Apoyo diagnóstico =====
+
+    try {
+      const respPrint = await fetch(
+        `https://${host}:9876/api/generar-apoyo-diagnostico?idPacienteKey=${idPacienteKey}&idAdmision=${idAdmision}`,
+      );
+      if (respPrint.ok) {
+        const contentType = respPrint.headers.get("content-type");
+        if (contentType && contentType.includes("application/pdf")) {
+          const pdfBlob = await respPrint.blob();
+          const fd = new FormData();
+          fd.append("idAdmision", idAdmision);
+          fd.append("idPacienteKey", idPacienteKey);
+          fd.append("idSoporteKey", 3);
+          fd.append("tipoDocumento", 1);
+          fd.append("nameFilePdf", pdfBlob, "anexos.pdf");
+          fd.append("automatico", "true");
+          await fetch(`https://${host}:9876/api/insertar-pdf`, {
+            method: "POST",
+            body: fd,
+          });
+        }
+      }
+    } catch (err) {
+      console.warn(`[${idAdmision}] Apoyo diagnóstico omitido:`, err.message);
+
+    }
+
+    // ===== Paso 2: Factura =====
+    try {
+      const urlFactura = new URL(
+        `https://${host}:9876/api/descargar-factura-venta`,
+      );
+      urlFactura.searchParams.set("idAdmision", idAdmision);
+      urlFactura.searchParams.set("idPacienteKey", idPacienteKey);
+      urlFactura.searchParams.set("idSoporteKey", "18");
+      urlFactura.searchParams.set("tipoDocumento", "1");
+
+      const respFactura = await fetch(urlFactura);
+      if (!respFactura.ok)
+        throw new Error("Factura: " + (await respFactura.text()));
+    } catch (err) {
+      console.error(`[${idAdmision}] Error paso 2:`, err.message);
+
+    }
+
+    // ===== Paso 3: Soportes adicionales =====
+    try {
+      const respSoporte = await fetch(
+        `https://${host}:9876/api/soportes-disponibles?idAdmision=${idAdmision}`,
+      );
+      if (!respSoporte.ok)
+        throw new Error("Obtener soportes: " + (await respSoporte.text()));
+
+      const soportes = await respSoporte.json();
+      for (const soporte of soportes) {
+        const {
+          Id: idSoporteKey,
+          nombreRptService: nombreSoporte,
+          TipoDocumento: tipoDocumento,
+        } = soporte;
+        if (!nombreSoporte || nombreSoporte.trim() === "") continue;
+
+        try {
+          const urlSoporte = new URL(
+            `https://${host}:9876/api/insertar-soportes`,
+          );
+          urlSoporte.searchParams.set("idAdmision", idAdmision);
+          urlSoporte.searchParams.set("idPacienteKey", idPacienteKey);
+          urlSoporte.searchParams.set("idSoporteKey", idSoporteKey);
+          urlSoporte.searchParams.set("tipoDocumento", tipoDocumento);
+          urlSoporte.searchParams.set("nombreSoporte", nombreSoporte);
+
+          const respS = await fetch(urlSoporte);
+          if (!respS.ok)
+            throw new Error(`Soporte ${idSoporteKey}: ` + (await respS.text()));
+        } catch (errS) {
+          erroresPaso.push(errS.message);
+        }
+      }
+    } catch (err) {
+      console.error(`[${idAdmision}] Error paso 3:`, err.message);
+      erroresPaso.push(err.message);
+    }
+
+    if (erroresPaso.length === 0) {
+    showToast(
+        "✔ Completado",
+        `Admisión ${idAdmision} generada correctamente`,
+        "success",
+        3000,
+    );
+    procesados++;
+    } else {
+    showToast(
+        "⚠ Con errores",
+        `Admisión ${idAdmision} tuvo errores`,
+        "warning",
+        3000,
+    );
+    errores++;
+    fallos.push({ idAdmision, errores: erroresPaso });
+    }
+    const porcentaje = Math.round(((procesados + errores) / total) * 100);
+    btn.innerHTML = `Generando... ${porcentaje}%`;
+  }
+
+  // Final
+  btn.disabled = false;
+  btn.style.opacity = "1";
+  btn.style.cursor = "pointer";
+  btn.innerHTML = "Generar por Lote";
+
+  if (errores === 0) {
+    showToast(
+      "Listo",
+      `${procesados} admisiones generadas correctamente ✔`,
+      "success",
+      5000,
+    );
+  } else if (procesados === 0) {
+    showToast(
+      "Error",
+      `Ninguna admisión se generó correctamente`,
+      "error",
+      5000,
+    );
+  } else {
+    showToast(
+      "Completado con errores",
+      `${procesados} exitosas — fallaron: ${fallos.map((f) => f.idAdmision).join(", ")}`,
+      "warning",
+      8000,
+    );
+  }
+
+  console.table(fallos);
+}
+
+
 // ==========================================
 // EVENTO PARA ABRIR VENTANA Y VER DOCUMENTOS
 // ==========================================
