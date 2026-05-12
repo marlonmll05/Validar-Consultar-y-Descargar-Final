@@ -279,10 +279,11 @@ public class AtencionesController {
             @PathVariable String nFact,
             @RequestPart("xml") MultipartFile xml,
             @RequestPart(value = "jsonFactura", required = false) MultipartFile jsonFactura,
-            @RequestPart(value = "pdfs", required = false) List<MultipartFile> pdfs
-    ) throws SQLException, IOException {
+            @RequestPart(value = "pdfs", required = false) List<MultipartFile> pdfs,
+            @RequestParam(defaultValue = "false") Boolean encriptar
+    ) throws Exception {
 
-        byte[] zipBytes = exportarService.armarZip(nFact, xml, jsonFactura, pdfs);
+        byte[] zipBytes = exportarService.armarZip(nFact, xml, jsonFactura, pdfs, encriptar);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/zip"))
