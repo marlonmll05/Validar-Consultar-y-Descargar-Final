@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Reportes — Sistema de Salud</title>
+  <link rel="stylesheet" type="text/css" href="css/r202.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header>
+  <div class="header-text">
+    <h1>Generador de Reportes</h1>
+    <p>Sistema de Salud — Módulo de Exportación</p>
+  </div>
+</header>
+
+<div class="progress-wrapper">
+  <div class="progress-track" id="progressTrack">
+  </div>
+</div>
+
+<main>
+  <div class="filter-card" id="filterCard">
+    <div class="step-number">FILTROS</div>
+    <div class="step-title">Parámetros de Generación</div>
+    <div class="fields-grid" style="margin-top:16px">
+      <div class="field-group">
+        <label>EPS</label>
+        <select id="eps-select" onchange="checkFiltros()">
+          <option value="" disabled selected>Seleccionar EPS</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Fecha Desde</label>
+        <input type="date" id="fecha-desde" onchange="checkFiltros()">
+      </div>
+      <div class="field-group">
+        <label>Fecha Hasta</label>
+        <input type="date" id="fecha-hasta" onchange="checkFiltros()">
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn btn-primary" id="consultar-btn" onclick="consultarIdRep()" disabled>
+         Consultar
+      </button>
+      <span id="idRep-display" style="margin-left:16px; font-weight:600; color: var(--accent);"></span>
+    </div>
+  </div>
+
+  <div id="stepsContainer"></div>
+
+  <!-- EXPORT CARD -->
+  <div class="export-card" id="exportCard">
+    <div class="step-number">PASO FINAL</div>
+    <div class="export-title">Exportar Reportes</div>
+    <p class="export-subtitle">Todos los reportes fueron generados correctamente. Selecciona la carpeta de destino y exporta el archivo TXT consolidado.</p>
+
+    <div class="section-divider">
+      <div class="divider-line"></div>
+      <span>RESUMEN DE GENERACIÓN</span>
+      <div class="divider-line"></div>
+    </div>
+
+    <div class="summary-row" id="summaryRow"></div>
+
+    <div class="folder-picker" id="folderPicker" onclick="pickFolder()">
+      <div class="folder-icon">📁</div>
+      <p>Haz clic para seleccionar la carpeta de destino</p>
+      <p style="font-size:11px;">Compatible con Windows File Picker</p>
+      <div class="folder-path" id="folderPath"></div>
+    </div>
+
+    <div class="export-actions">
+      <button class="btn btn-success" id="exportBtn" onclick="exportTXT()">
+        Exportar TXT
+      </button>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast">
+  <span id="toastIcon">✅</span>
+  <span id="toastMsg">Mensaje</span>
+</div>
+
+<input type="file" id="folderInput" webkitdirectory style="display:none" onchange="handleFolderSelect(this)">
+
+<script src="js/r202.js"></script>
+
+</body>
+</html>
