@@ -35,6 +35,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.certificadosapi.certificados.dto.PdfDocumento;
 import com.certificadosapi.certificados.dto.XmlDocumento;
+import com.certificadosapi.certificados.service.CifradoService;
 
 
 /**
@@ -53,10 +54,12 @@ public class ExportarService {
     private static final Logger log = LoggerFactory.getLogger(ExportarService.class);
     
     private final DatabaseConfig databaseConfig;
+    private final CifradoService cifradoService;
 
     @Autowired
-    public ExportarService(DatabaseConfig databaseConfig){
+    public ExportarService(DatabaseConfig databaseConfig, CifradoService cifradoService){
         this.databaseConfig = databaseConfig;
+        this.cifradoService = cifradoService;
     }
 
 
@@ -284,16 +287,17 @@ public class ExportarService {
      * @param xml Archivo XML
      * @param jsonFactura Archivo JSON
      * @param pdfs Lista de archivos PDF
+     * @param encriptar Decide si se encripta o no
      * @return ZIP en formato byte[]
-     * @throws SQLException Error de base de datos
-     * @throws IOException Error de lectura/escritura
+     * @throws Exception 
      */
     public byte[] armarZip(
             String nFact,
             MultipartFile xml,
             MultipartFile jsonFactura,
-            List<MultipartFile> pdfs
-    ) throws SQLException, IOException {
+            List<MultipartFile> pdfs,
+            Boolean encriptar
+    ) throws Exception {
 
         log.info("Armando ZIP para factura: {}", nFact);
 
@@ -416,66 +420,81 @@ public class ExportarService {
         log.debug("Nombre de archivo XML en ZIP: {}", xmlFileName);
 
         // Crear ZIP
-        log.debug("Iniciando creación del archivo ZIP");
+        log.info("Iniciando creación del archivo ZIP");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ZipOutputStream zos = new ZipOutputStream(baos)) {
 
-            // XML
-            ZipEntry xmlEntry = new ZipEntry(folderName + xmlFileName);
-            zos.putNextEntry(xmlEntry);
-            zos.write(xml.getBytes());
-            zos.closeEntry();
-            log.debug("XML agregado al ZIP: {}", xmlFileName);
+            boolean cifrar = Boolean.TRUE.equals(encriptar);
 
-            // JSON
+            // ================= XML =================
+            cifradoService.agregarArchivoZip(
+                zos,
+                folderName + xmlFileName,
+                xml.getBytes(),
+                ".xml",
+                cifrar
+            );
+
+            // ================= JSON =================
             if (jsonFactura != null && !jsonFactura.isEmpty()) {
+
                 String jsonName = jsonFactura.getOriginalFilename();
                 jsonName = (jsonName != null && !jsonName.isBlank())
                         ? ILLEGAL.matcher(jsonName).replaceAll("_").trim()
                         : ("Factura_" + sanitizeN + ".json");
-                ZipEntry jsonEntry = new ZipEntry(folderName + jsonName);
-                zos.putNextEntry(jsonEntry);
-                zos.write(jsonFactura.getBytes());
-                zos.closeEntry();
-                log.debug("JSON agregado al ZIP: {}", jsonName);
-            } else {
-                log.debug("No se incluyó archivo JSON en el ZIP");
+
+                cifradoService.agregarArchivoZip(
+                    zos,
+                    folderName + jsonName,
+                    jsonFactura.getBytes(),
+                    ".json",
+                    cifrar
+                );
+
             }
 
-            // PDFs 
+            // ================= PDFs =================
             if (pdfs != null && !pdfs.isEmpty()) {
-                log.debug("Agregando {} PDFs al ZIP", pdfs.size());
+
                 int idx = 1;
+
                 for (MultipartFile pdf : pdfs) {
+
                     if (pdf == null || pdf.isEmpty()) continue;
+
                     String nombre = pdf.getOriginalFilename();
                     nombre = (nombre != null && !nombre.isBlank())
                             ? ILLEGAL.matcher(nombre).replaceAll("_").trim()
                             : ("Documento_" + idx + ".pdf");
-                    ZipEntry pdfEntry = new ZipEntry(folderName + nombre);
-                    zos.putNextEntry(pdfEntry);
-                    zos.write(pdf.getBytes());
-                    zos.closeEntry();
-                    log.debug("PDF {} agregado al ZIP: {}", idx, nombre);
+
+                    cifradoService.agregarArchivoZip(
+                        zos,
+                        folderName + nombre,
+                        pdf.getBytes(),
+                        ".pdf",
+                        cifrar
+                    );
+
                     idx++;
                 }
-            } else {
-                log.debug("No se incluyeron PDFs en el ZIP");
             }
 
-            // TXT CUV
+            // ================= TXT =================
             if (respuestaValidador != null && !respuestaValidador.isBlank()) {
+
                 String safeProc = ILLEGAL.matcher(procesoId == null ? "" : procesoId).replaceAll("_").trim();
+
                 String nombreTxt = "ResultadosMSPS_" + sanitizeN
                         + (safeProc.isBlank() ? "" : ("_ID" + safeProc))
                         + "_A_CUV.txt";
-                ZipEntry txtEntry = new ZipEntry(folderName + nombreTxt);
-                zos.putNextEntry(txtEntry);
-                zos.write(respuestaValidador.getBytes(StandardCharsets.UTF_8));
-                zos.closeEntry();
-                log.debug("TXT CUV agregado al ZIP: {}", nombreTxt);
-            } else {
-                log.debug("No se incluyó archivo TXT CUV en el ZIP");
+
+                cifradoService.agregarArchivoZip(
+                    zos,
+                    folderName + nombreTxt,
+                    respuestaValidador.getBytes(StandardCharsets.UTF_8),
+                    ".txt",
+                    cifrar
+                );
             }
         }
 
