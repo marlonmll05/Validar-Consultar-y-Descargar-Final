@@ -238,6 +238,43 @@ function showModalGuardar(message) {
     });
 }
 
+function showModalEncriptar(message) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("modalEncriptar");
+    const msg = document.getElementById("modalEncriptarMessage");
+    const btnCancel = document.getElementById("btnModalEncriptarCancel");
+    const btnEncriptar = document.getElementById("btnModalEncriptar");
+    const btnExportar = document.getElementById(
+      "btnModalEncriptarExportar",
+    );
+
+    msg.textContent = message;
+    modal.style.display = "flex";
+
+    function close(result) {
+      modal.style.display = "none";
+      btnCancel.removeEventListener("click", cancelHandler);
+      btnEncriptar.removeEventListener("click", encriptarHandler);
+      btnExportar.removeEventListener("click", exportarHandler);
+      resolve(result);
+    }
+
+    function cancelHandler() {
+      close(false);
+    }
+    function encriptarHandler() {
+      close("encriptar");
+    }
+    function exportarHandler() {
+      close("exportar");
+    }
+
+    btnCancel.addEventListener("click", cancelHandler);
+    btnEncriptar.addEventListener("click", encriptarHandler);
+    btnExportar.addEventListener("click", exportarHandler);
+  });
+}
+
 
 async function descargarExcel() {
     const cuentaCobroInput = document.getElementById('cuentaCobro');
@@ -1180,6 +1217,7 @@ document.getElementById('btnExportar').addEventListener('click', async (event) =
         if (!exportarPorCuenta) {
         // Modo: Exportar solo filas seleccionadas
         const checkboxes = document.querySelectorAll('.checkbox-row:checked');
+        const selectAll = document.getElementById('selectAll');
 
         if (checkboxes.length === 0) {
             showToast("Sin selección", "Selecciona al menos una fila para exportar", "warning", 4000);
@@ -1193,7 +1231,18 @@ document.getElementById('btnExportar').addEventListener('click', async (event) =
         };
         checkboxes.forEach(uncheck);
 
+        if (selectAll){
+            selectAll.checked = false;
+        }
+
         try {
+
+            const confirmar = await showModalEncriptar("Confirmar exportación", `¿Deseas exportar ${checkboxes.length} admisión(es)?`);
+
+            if (confirmar == false) {
+                return;
+            }
+
             const dirHandle = await window.showDirectoryPicker();
             const toast = showToast("Exportando", `Procesando ${checkboxes.length} admisión(es)...`, "info", 0, true);
 
@@ -1301,12 +1350,17 @@ document.getElementById('btnExportar').addEventListener('click', async (event) =
                     showToast("Error", `Error descargando JSON: ${err.message}`, "error", 4000);
                 }
                 }
+          
+                const encriptar = confirmar === "encriptar";
 
                 // 4) Enviar todo al backend para que arme el ZIP (allí se añade el TXT MSPS)
-                const respZip = await fetch(`https://${host}:9876/api/armar-zip/${encodeURIComponent(nFact)}`, {
-                method: 'POST',
-                body: form
-                });
+                const respZip = await fetch(
+                  `https://${host}:9876/api/armar-zip/${encodeURIComponent(nFact)}?encriptar=${encriptar}`,
+                  {
+                    method: "POST",
+                    body: form,
+                  },
+                );
                 if (!respZip.ok) {
                 const txt = await respZip.text();
                 throw new Error(`Error al armar ZIP: ${txt}`);
@@ -1644,7 +1698,6 @@ document.getElementById('btnExportar').addEventListener('click', async (event) =
     }
 });
 
-
 // ===============================
 // EVENTO PARA EXPORTAR INDIVIDUAL
 // ===============================
@@ -1659,6 +1712,13 @@ tabla.addEventListener('click', async (e) => {
     console.log("nFact obtenido:", nFact);
 
     try {
+
+    const confirmar = await showModalEncriptar("Deseas solo exportar o exportar y encriptar este soporte");
+
+    if (confirmar == false){
+        return
+    }
+
     const dirHandle = await window.showDirectoryPicker();
 
     // -------------------------------
@@ -1674,52 +1734,87 @@ tabla.addEventListener('click', async (e) => {
         const soportes = await respSoporte.json();
         console.log("Total soportes encontrados:", soportes.length);
 
-        const toast = showToast("Exportando", "Exportando PDFs, por favor espera...", "info", 0, true);
+        if (soportes.length === 0) {
+            showToast("Sin PDFs", "No hay PDFs asociados a esta admisión", "warning", 3000);
+        }
 
-        let procesados = 0;
-        for (const idSoporteKey of soportes) {
-        try {
-            const url = new URL(`https://${host}:9876/api/exportar-pdf`);
-            url.searchParams.set("idAdmision", idAdmision);
-            url.searchParams.set("idSoporteKey", idSoporteKey);
+        else{        const toast = showToast(
+            "Exportando",
+            "Exportando PDFs, por favor espera...",
+            "info",
+            0,
+            true,
+            );
 
-            const resp = await fetch(url);
-            if (resp.status === 204) continue;
-            if (!resp.ok) {
-            console.warn(`Soporte ${idSoporteKey} error:`, await resp.text());
-            continue;
+            let procesados = 0;
+            for (const idSoporteKey of soportes) {
+            try {
+                const url = new URL(`https://${host}:9876/api/exportar-pdf`);
+                url.searchParams.set("idAdmision", idAdmision);
+                url.searchParams.set("idSoporteKey", idSoporteKey);
+
+                const resp = await fetch(url);
+                if (resp.status === 204) continue;
+                if (!resp.ok) {
+                console.warn(`Soporte ${idSoporteKey} error:`, await resp.text());
+                continue;
+                }
+
+                const blob = await resp.blob();
+                const header = resp.headers.get("Content-Disposition");
+                const nombre =
+                header?.split("filename=")[1]?.replace(/"/g, "") ||
+                `Documento_${idSoporteKey}.pdf`;
+
+                if (confirmar === "encriptar") {
+                const formData = new FormData();
+                formData.append("archivo", new File([blob], nombre));
+
+                const respCifrado = await fetch(`https://${host}:9876/cifrado/test/cifrar`, {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (respCifrado.ok) {
+                    const zipBlob = await respCifrado.blob();
+                    const zipHandle = await dirHandle.getFileHandle(nombre + ".zip", {
+                    create: true,
+                    });
+                    const writable = await zipHandle.createWritable();
+                    await writable.write(zipBlob);
+                    await writable.close();
+                }
+
+                } else {
+                    const fileHandle = await dirHandle.getFileHandle(nombre, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                }
+
+                console.log(`Guardado: ${nombre}`);
+                await new Promise((r) => setTimeout(r, 300));
+
+            } catch (err) {
+                console.error(`Error descargando soporte ${idSoporteKey}:`, err);
             }
 
-            const blob = await resp.blob();
-            const header = resp.headers.get("Content-Disposition");
-            const nombre = header?.split("filename=")[1]?.replace(/"/g, "") || `Documento_${idSoporteKey}.pdf`;
+            procesados++;
+            const porcentaje = Math.round((procesados / soportes.length) * 100);
+            actualizarToastProgreso(toast, porcentaje);
+            }
 
-            const fileHandle = await dirHandle.getFileHandle(nombre, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-
-            console.log(`Guardado: ${nombre}`);
-            await new Promise(r => setTimeout(r, 300));
-
-        } catch (err) {
-            console.error(`Error descargando soporte ${idSoporteKey}:`, err);
+            toast.querySelector("p").textContent = "Exportación PDFs completada";
+            toast.classList.remove("info");
+            toast.classList.add("success");
+            setTimeout(() => {
+            if (toast.parentElement) {
+                toast.classList.add("fadeOut");
+                setTimeout(() => toast.remove(), 300);
+            }
+            }, 3000);
         }
 
-        procesados++;
-        const porcentaje = Math.round((procesados / soportes.length) * 100);
-        actualizarToastProgreso(toast, porcentaje);
-        }
-
-        toast.querySelector("p").textContent = "Exportación PDFs completada";
-        toast.classList.remove("info");
-        toast.classList.add("success");
-        setTimeout(() => {
-        if (toast.parentElement) {
-            toast.classList.add('fadeOut');
-            setTimeout(() => toast.remove(), 300);
-        }
-        }, 3000);
     }
 
     // -----------------
@@ -1738,10 +1833,31 @@ tabla.addEventListener('click', async (e) => {
 
         const idMovDoc = respXml.headers.get("X-IdMovDoc");
 
-        const fileHandleXml = await dirHandle.getFileHandle(filenameXml, { create: true });
-        const writableXml = await fileHandleXml.createWritable();
-        await writableXml.write(blobXml);
-        await writableXml.close();
+        if (confirmar === "encriptar") {
+            const formData = new FormData();
+            formData.append("archivo", new File([blobXml], filenameXml));
+
+            const respCifrado = await fetch(`https://${host}:9876/cifrado/test/cifrar`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (respCifrado.ok) {
+                const zipBlob = await respCifrado.blob();
+                const zipHandle = await dirHandle.getFileHandle(filenameXml + ".zip", {
+                create: true,
+                });
+                const writable = await zipHandle.createWritable();
+                await writable.write(zipBlob);
+                await writable.close();
+            }
+            
+        } else {
+        const fileHandle = await dirHandle.getFileHandle(filenameXml, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blobXml);
+        await writable.close();
+        }
 
         console.log(`XML guardado: ${filenameXml}`);
         showToast("Éxito", "Archivo XML descargado correctamente", "success", 3000);
@@ -1760,10 +1876,31 @@ tabla.addEventListener('click', async (e) => {
             const headerJson = respJson.headers.get("Content-Disposition");
             const filenameJson = headerJson?.split("filename=")[1]?.replace(/"/g, "") || `Fac_${nFact}.json`;
 
-            const fileHandleJson = await dirHandle.getFileHandle(filenameJson, { create: true });
-            const writableJson = await fileHandleJson.createWritable();
-            await writableJson.write(blobJson);
-            await writableJson.close();
+            if (confirmar === "encriptar") {
+                const formData = new FormData();
+                formData.append("archivo", new File([blobJson], filenameJson));
+
+                const respCifrado = await fetch(`https://${host}:9876/cifrado/test/cifrar`, {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (respCifrado.ok) {
+                    const zipBlob = await respCifrado.blob();
+                    const zipHandle = await dirHandle.getFileHandle(filenameJson + ".zip", {
+                    create: true,
+                    });
+                    const writable = await zipHandle.createWritable();
+                    await writable.write(zipBlob);
+                    await writable.close();
+                }
+
+            } else {
+            const fileHandle = await dirHandle.getFileHandle(filenameJson, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(blobJson);
+            await writable.close();
+            }
 
             console.log(`JSON guardado: ${filenameJson}`);
             showToast("Éxito", "Archivo JSON descargado correctamente", "success", 3000);
@@ -1797,10 +1934,30 @@ tabla.addEventListener('click', async (e) => {
 
             const nombreTxt = `ResultadosMSPS_${nFact}${procesoId ? `_ID${procesoId}` : ""}_A_CUV.txt`;
 
-            const fileHandleTxt = await dirHandle.getFileHandle(nombreTxt, { create: true });
-            const writableTxt = await fileHandleTxt.createWritable();
-            await writableTxt.write(contenidoTxt);
-            await writableTxt.close();
+            if (confirmar === "encriptar") {
+                const formData = new FormData();
+                formData.append("archivo", new File([contenidoTxt], nombreTxt));
+
+                const respCifrado = await fetch(`https://${host}:9876/cifrado/test/cifrar`, {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (respCifrado.ok) {
+                    const zipBlob = await respCifrado.blob();
+                    const zipHandle = await dirHandle.getFileHandle(nombreTxt + ".zip", {
+                    create: true,
+                    });
+                    const writable = await zipHandle.createWritable();
+                    await writable.write(zipBlob);
+                    await writable.close();
+                }
+            } else {
+                const fileHandle = await dirHandle.getFileHandle(nombreTxt, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(contenidoTxt);
+                await writable.close();
+            }
 
             console.log(`TXT guardado: ${nombreTxt}`);
             showToast("Éxito", "Archivo TXT (RIPS) descargado correctamente", "success", 3000);
@@ -1818,6 +1975,8 @@ tabla.addEventListener('click', async (e) => {
     showToast("Error", err.message, "error", 5000);
     }
 });
+
+
 
 // ==========================================================
 // EVENTO PARA GENERAR DOCUMENTOS DISPONIBLES DE UNA ATENCION
