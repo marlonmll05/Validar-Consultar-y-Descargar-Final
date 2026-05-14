@@ -21,12 +21,16 @@ import java.util.zip.ZipOutputStream;
 public class CifradoService {
 
     // Test Key EPS
-    private static final String LLAVE_PUBLICA = "<RSAKeyValue><Modulus>zaI6/RkWtKD94hgdoy/LrqI77LKZrK0wvSBtpZh21bTqpOFTzvIeuSNNyN39fcytB7ChP0a/IoeKj6i4wDiq1T3Ozki+ByLAapUyGhPjkHiBw9VVGsBKghkQLtCAjuRdWtcQErHJ46KkvnXJfNt9sN1w+dyzCIVy010m3v0ZyicUR+2CfOtzrkwU7yI5qnRRPZUXTje0jn3rf2NpUnbAVrCSQEAHjKKcfYdQR2aTMJ8drnzC+a4xgVzhPkV23fx9iQXuUEajIK90jH5Jn02YLGqsQpAMjdFV64Pq3A6AYF4agS7EIy6ukASQZ40qK7KhJrMJvBl4+NkGX6gaRseKEvteuXKcnWTl65aGQZJHVEgH9wf9gMwgpnjWxNfSg88hJV8kLcCgX+y+3rNOFIbZ0saKLS6OjA+2ZS6lsRj9wqfkCQ3GmYN2gkj3W9VAtSezZUGbBaN+Qt6JpDfrEmXYCzXUsVQ95KiJTh4OZnQcr9LmazaJJKyxYPlLUPUUSuq48G9xLspvATR20WlMcljAyRInPXrrY5NAdmSv13mB/2w+sBV9cIjof9JrIVYEve7KkRwJXzpf0Jy6hIXy4KIes9rbBqSbWN8HvRyAD9z4d7reKlVkmj1/n2YV3vkg6r47Ca2E43h798ylLH5njfp0QsB7bz9v2AKvFxOl/sWkXfk=</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
+    private static final String LLAVE_PUBLICA = null;
 
 
 
     public byte[] cifrar(@RequestParam("archivo") MultipartFile archivo) {
         try {
+
+            if (LLAVE_PUBLICA == null){
+                throw new IllegalArgumentException("La llave publica es NULL");
+            }
             byte[] contenido = archivo.getBytes();
             String nombre = archivo.getOriginalFilename();
             @SuppressWarnings("null")
@@ -76,6 +80,10 @@ public class CifradoService {
     }
 
     public ArchivoCifrado cifrarArchivo(byte[] contenido, String extension) throws Exception {
+
+        if (LLAVE_PUBLICA == null){
+            throw new IllegalArgumentException("La llave publica es NULL");
+        }
 
         // AES
         KeyGenerator kg = KeyGenerator.getInstance("AES");
