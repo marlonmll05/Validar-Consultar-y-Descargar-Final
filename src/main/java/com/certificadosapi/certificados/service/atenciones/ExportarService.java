@@ -209,7 +209,7 @@ public class ExportarService {
     public XmlDocumento generarXml(String nFact) throws SQLException {
         log.info("Generando XML para factura: {}", nFact);
         
-        String sql = "SELECT FF.NFact, CONVERT(xml, M.DocXml) AS DocXml, T.CUV, FF.IdMovDoc " +
+        String sql = "SELECT FF.NFact, CONVERT(xml, M.DocXmlEnvelope) AS DocXml, T.CUV, FF.IdMovDoc " +
                     "FROM IPSoft100_ST.dbo.FacturaFinal FF " +
                     "INNER JOIN IPSoft100_ST.dbo.Rips_Transaccion T ON T.IdMovDoc = FF.IdMovDoc " +
                     "INNER JOIN IPSoftFinanciero_ST.dbo.MovimientoDocumentos M ON M.IdMovDoc = FF.IdMovDoc " +
