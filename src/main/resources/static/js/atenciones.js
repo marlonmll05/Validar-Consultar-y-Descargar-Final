@@ -1770,7 +1770,7 @@ tabla.addEventListener('click', async (e) => {
                 const formData = new FormData();
                 formData.append("archivo", new File([blob], nombre));
 
-                const respCifrado = await fetch(`https://${host}:9876/cifrado/test/cifrar`, {
+                const respCifrado = await fetch(`https://${host}:9876/cifrado/cifrar`, {
                     method: "POST",
                     body: formData,
                 });
@@ -1837,7 +1837,7 @@ tabla.addEventListener('click', async (e) => {
             const formData = new FormData();
             formData.append("archivo", new File([blobXml], filenameXml));
 
-            const respCifrado = await fetch(`https://${host}:9876/cifrado/test/cifrar`, {
+            const respCifrado = await fetch(`https://${host}:9876/cifrado/cifrar`, {
                 method: "POST",
                 body: formData,
             });
@@ -1880,7 +1880,7 @@ tabla.addEventListener('click', async (e) => {
                 const formData = new FormData();
                 formData.append("archivo", new File([blobJson], filenameJson));
 
-                const respCifrado = await fetch(`https://${host}:9876/cifrado/test/cifrar`, {
+                const respCifrado = await fetch(`https://${host}:9876/cifrado/cifrar`, {
                     method: "POST",
                     body: formData,
                 });
@@ -1938,7 +1938,7 @@ tabla.addEventListener('click', async (e) => {
                 const formData = new FormData();
                 formData.append("archivo", new File([contenidoTxt], nombreTxt));
 
-                const respCifrado = await fetch(`https://${host}:9876/cifrado/test/cifrar`, {
+                const respCifrado = await fetch(`https://${host}:9876/cifrado/cifrar`, {
                     method: "POST",
                     body: formData,
                 });
