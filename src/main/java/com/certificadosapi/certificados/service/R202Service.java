@@ -272,4 +272,17 @@ public class R202Service {
 
     }
 
+    public String eliminarR202(Integer idRep) {
+        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
+            try (CallableStatement cs = conn.prepareCall("EXEC [pa_R202_EliminarProceso] ?")) {
+                cs.setInt(1, idRep);
+                cs.execute();
+            }
+            return String.format("Proceso %d eliminado exitosamente", idRep);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error al eliminar proceso: " + e);
+        }
+    }
+
 }

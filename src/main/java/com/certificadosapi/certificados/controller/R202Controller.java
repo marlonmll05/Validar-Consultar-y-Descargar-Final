@@ -69,5 +69,13 @@ public class R202Controller {
 
         return ResponseEntity.ok(respuesta);
     }
+
+    @RequestMapping("/eliminar")
+    public ResponseEntity<?> eliminarR202(@RequestParam Integer idRep){
+        
+        String respuesta = R202Service.eliminarR202(idRep);
+
+        return ResponseEntity.ok(respuesta);
+    }
  }
 

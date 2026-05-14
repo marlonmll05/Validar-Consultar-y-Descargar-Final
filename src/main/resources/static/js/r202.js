@@ -59,7 +59,6 @@ function buildProgress() {
 
 function buildSteps() {
   const container = document.getElementById('stepsContainer');
-  document.getElementById("gen-btn-0").disabled = true;
   
   STEPS.forEach((s, i) => {
     const card = document.createElement('div');
@@ -95,6 +94,7 @@ function buildSteps() {
     container.appendChild(card);
   });
 
+  document.getElementById("gen-btn-0").disabled = true;
   
 }
 
@@ -193,14 +193,80 @@ async function consultarIdRep() {
 
     // Habilitar paso 1
     document.getElementById("gen-btn-0").disabled = false;
+    document.getElementById("eliminar-btn").disabled = false;
+
     showToast(`✅ IdRep obtenido: ${currentIdRep}`, "success");
   } catch (error) {
     showToast("Error al consultar: " + error, "error");
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<span class="btn-icon">🔍</span> Consultar';
+    btn.innerHTML = 'Consultar';
   }
 }
+
+async function eliminarIdRep() {
+  if (!currentIdRep) {
+    showToast("No hay IdRep activo para eliminar", "error");
+    return;
+  }
+
+  const confirmado = confirm("Deseas eliminar este R202?");
+
+  if (!confirmado){
+    return
+  }
+
+  try {
+    const response = await fetch(`/r202/eliminar?idRep=${currentIdRep}`);
+    const data = await response.text();
+
+    console.log("IdRep eliminado exitosamente", data);
+
+    if (!response.ok) {
+      showToast(data, "error");
+      return;
+    }
+
+    currentIdRep = null;
+    document.getElementById("idRep-display").textContent = "";
+
+    completedSteps.clear();
+    generatedSteps.clear();
+    currentStep = 0;
+
+    STEPS.forEach((_, i) => {
+      const card = document.getElementById(`card-${i}`);
+      const badge = document.getElementById(`badge-${i}`);
+      const badgeText = document.getElementById(`badge-text-${i}`);
+      const nextBtn = document.getElementById(`next-btn-${i}`);
+      const genBtn = document.getElementById(`gen-btn-${i}`);
+      const dot = document.getElementById(`dot-${i}`);
+      const line = document.getElementById(`line-${i}`);
+
+      card.className = "step-card";
+      badge.className = "status-badge pending";
+      badgeText.textContent = "Pendiente";
+      nextBtn.style.display = "none";
+      genBtn.disabled = false;
+
+      if (dot) {
+        dot.className = "step-dot";
+        dot.textContent = i + 1;
+      }
+      if (line) line.className = "step-line";
+    });
+
+    document.getElementById("card-0").classList.add("active");
+    document.getElementById("gen-btn-0").disabled = true;
+    document.getElementById("exportCard").classList.remove("visible");
+    updateProgress();
+
+    showToast("✅ Proceso eliminado correctamente", "success");
+  } catch (error) {
+    showToast("Error al eliminar: " + error, "error");
+  }
+}
+
 
 async function cargarEstado() {
   try {
