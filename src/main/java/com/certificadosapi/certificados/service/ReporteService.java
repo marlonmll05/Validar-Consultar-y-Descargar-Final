@@ -176,45 +176,6 @@ public class ReporteService {
             throw new RuntimeException("Error al obtener los documentos de soporte: " + e.getMessage(), e);
         }
     }
-
-
-    /**
-     * Verifica si existe una factura en la base de datos para un ID de admisión y documento dados.
-     * Consulta la tabla tbl_Net_Facturas_ListaPdf para verificar la existencia del registro.
-     * 
-     * @param idAdmision El ID de admisión a buscar
-     * @param idDoc El ID del documento de soporte (IdSoporteKey) a buscar
-     * @return Mapa con una sola llave "existe" (Boolean): true si la factura existe, false en caso contrario
-     * @throws RuntimeException si ocurre un error de base de datos durante la verificación
-     */
-    public Map<String, Boolean> existeFactura(String idAdmision, Integer idDoc) {
-        log.info("Verificando existencia de factura IdAdmision={} IdSoporteKey={}", idAdmision, idDoc);
-
-        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
-
-            String sql = "SELECT COUNT(*) FROM dbo.tbl_Net_Facturas_ListaPdf WHERE IdSoporteKey = ? AND IdAdmision = ?";
-
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setInt(1, idDoc);
-                ps.setString(2, idAdmision);
-
-                try (ResultSet rs = ps.executeQuery()) {
-
-                    if (rs.next() && rs.getInt(1) > 0) {
-                        log.debug("Factura encontrada para IdAdmision={} IdSoporteKey={}", idAdmision, idDoc);
-                        return Map.of("existe", true);
-                    }
-                }
-            }
-
-            log.debug("No existe factura para IdAdmision={} IdSoporteKey={}", idAdmision, idDoc);
-            return Map.of("existe", false);
-
-        } catch (Exception e) {
-            log.error("Error al verificar factura IdAdmision={} Detalle={}", idAdmision, e.getMessage());
-            throw new RuntimeException("Error: " + e.getMessage(), e);
-        }
-    }
 }
 
 

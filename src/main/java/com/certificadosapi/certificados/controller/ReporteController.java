@@ -42,18 +42,4 @@ public class ReporteController {
         return ResponseEntity.ok(documentos);
     }
 
-    // ENDPOINT PARA VALIDAR SI EXISTE UNA FACTURA
-    @GetMapping("/facturas/existe")
-    public ResponseEntity<?> existeFactura(
-            @RequestParam String idAdmision,
-            @RequestParam Integer idDoc
-    ) {
-
-        Map<String, Boolean> existe = reporteService.existeFactura(idAdmision, idDoc);
-
-        return ResponseEntity.ok(existe);
-
-    }
-
-
 }
