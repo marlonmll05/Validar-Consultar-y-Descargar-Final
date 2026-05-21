@@ -2,7 +2,6 @@
 // VARIABLES GLOBALES
 // ============================================================================
 let abortController;
-let rptServiceSeleccionado = '';
 let idDoc = '';
 
 
@@ -441,13 +440,11 @@ async function cargarSoporte() {
 
         if (opcionPorDefecto){
             opcionPorDefecto.selected = true;
-            rptServiceSeleccionado = opcionPorDefecto.value;
             idDoc = opcionPorDefecto.dataset.idDoc;
         }
 
         select.addEventListener('change', async () =>{
             const selected = select.options[select.selectedIndex];
-            rptServiceSeleccionado = selected.value;
             idDoc = selected.dataset.idDoc;
 
             await cargarDatosTabla();
