@@ -202,6 +202,25 @@ public class AtencionesController {
         return ResponseEntity.ok("PDF factura insertado correctamente con ID: " + idGenerado);
     }
 
+    //ENDPOINT PARA DESCARGAR LA HEV
+    @GetMapping("/descargar-hev")
+    public ResponseEntity<String> descargarResumenAtencion(
+            @RequestParam Long idAdmision,
+            @RequestParam Long idPacienteKey,
+            @RequestParam Long idSoporteKey,
+            @RequestParam String tipoDocumento
+    ) throws SQLException, IOException {
+        
+        Long idGenerado = generarService.descargarResumenAtencion(
+            idAdmision, 
+            idPacienteKey, 
+            idSoporteKey, 
+            tipoDocumento
+        );
+        
+        return ResponseEntity.ok("PDF de HEV insertado correctamente con ID: " + idGenerado);
+    }
+
 
     //ENDPOINT PARA EXPORTAR EL CONTENIDO DE UNA ADMISION
     @SuppressWarnings("null")

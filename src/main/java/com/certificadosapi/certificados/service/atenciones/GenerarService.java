@@ -275,6 +275,135 @@ public class GenerarService {
         }
     }
 
+    
+    /**
+     * Descarga la factura de venta desde Reporting Services
+     * y la inserta como documento PDF en la base de datos.
+     *
+     * Obtiene la ruta del reporte mediante procedimiento
+     * almacenado y realiza la descarga usando autenticación NTLM.
+     *
+     * @param idAdmision     Identificador de la admisión
+     * @param idPacienteKey Identificador del paciente
+     * @param idSoporteKey  Identificador del soporte
+     * @param tipoDocumento Tipo de documento a registrar
+     * @return Identificador del PDF insertado en la base de datos
+     *
+     * @throws SQLException Si ocurre un error en base de datos
+     * @throws IOException  Si ocurre un error al descargar el PDF
+     */
+    public Long descargarResumenAtencion(Long idAdmision, Long idPacienteKey, 
+                                      Long idSoporteKey, String tipoDocumento) 
+            throws SQLException, IOException {
+        
+        log.info("Iniciando descargarResumenAtencion(idAdmision={}, idPacienteKey={}, idSoporteKey={}, tipoDocumento={})",
+                 idAdmision, idPacienteKey, idSoporteKey, tipoDocumento);
+
+
+        String urlBase = databaseConfig.parametrosServidor(2);
+
+
+        if (urlBase == null || urlBase.trim().isEmpty()) {
+            log.error("Valor de urlBase nulo o vacío después de consultar ParametrosServidor");
+            throw new IllegalStateException("No se encontró la URL del servidor de reportes.");
+        }
+
+        // Ejecutar procedimiento para obtener rutaReporte 
+        String rutaReporte = null;
+        String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
+
+        try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+            String sqlProc = "EXEC pa_Net_Facturas_Tablas 14, ?";
+            
+            try (PreparedStatement psProc = conn.prepareStatement(sqlProc)) {
+                psProc.setLong(1, idAdmision);
+                log.info("Ejecutando pa_Net_Facturas_Tablas 14, {} para obtener RutaReporte", idAdmision);
+                
+                try (ResultSet rsProc = psProc.executeQuery()) {
+                    if (rsProc.next()) {
+                        rutaReporte = rsProc.getString("NombreRptService");
+                        
+                        log.info("Resultado pa_Net_Facturas_Tablas: RutaReporte='{}'", rutaReporte);
+                    } else {
+                        log.error("El procedimiento pa_Net_Facturas_Tablas 14, {} no retornó resultados", idAdmision);
+                        throw new IllegalStateException("No se obtuvieron resultados del procedimiento almacenado.");
+                    }
+                }
+            }
+        }
+
+        if (rutaReporte == null) {
+            log.error("rutaReporte nulo después de pa_Net_Facturas_Tablas para idAdmision={}", idAdmision);
+            throw new IllegalStateException("No se pudo obtener RutaReporte del procedimiento almacenado.");
+        }
+
+        // Descarga del PDF desde Reporting Services
+        try (CloseableHttpClient httpClient = servidorUtil.crearHttpClientConNTLM()) {
+
+            String reportUrl = urlBase + "?" + rutaReporte + "&IdAdmision=" + idAdmision + "&rs:Format=PDF";
+            log.debug("URL original para descarga de HEV: {}", reportUrl);
+
+            try {
+                URI uri = new URI(reportUrl.replace(" ", "%20"));
+                reportUrl = uri.toString();
+                log.info("URL codificada para descarga de HEV: {}", reportUrl);
+            } catch (Exception ex) {
+                log.warn("Error al codificar URL de descarga de HEV: {}", ex.getMessage());
+            }
+
+            HttpGet request = new HttpGet(reportUrl);
+
+            try (CloseableHttpResponse response = httpClient.execute(request)) {
+                int statusCode = response.getStatusLine().getStatusCode();
+                log.info("Respuesta HTTP al descargar HEV: statusCode={}", statusCode);
+
+                if (statusCode == 200) {
+                    byte[] pdfBytes = EntityUtils.toByteArray(response.getEntity());
+                    log.info("HEV descargada correctamente. Tamaño={} bytes", pdfBytes.length);
+
+                    try (Connection conn = DriverManager.getConnection(connectionUrl)) {
+                        String sql = "EXEC dbo.pa_Net_Insertar_DocumentoPdf ?, ?, ?, ?, ?, ?, ?, ?";
+                        
+                        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                            ps.setLong(1, idAdmision);
+                            ps.setLong(2, idPacienteKey);
+                            ps.setLong(3, idSoporteKey != null ? idSoporteKey : 1L);
+                            ps.setBoolean(4, false);
+                            ps.setString(5, tipoDocumento);
+                            ps.setBinaryStream(6, new ByteArrayInputStream(pdfBytes));
+                            ps.setBoolean(7, true);
+                            ps.setBoolean(8, true);
+                            
+                            log.debug("Insertando PDF de hev en BD para idAdmision={}, idPacienteKey={}", idAdmision, idPacienteKey);
+                            try (ResultSet rs = ps.executeQuery()) {
+                                if (rs.next()) {
+                                    long idGenerado = rs.getLong("IdpdfKey");
+                                    log.info("PDF de HEV insertado correctamente con IdpdfKey={}", idGenerado);
+                                    return idGenerado;
+                                } else {
+                                    log.error("El procedimiento pa_Net_Insertar_DocumentoPdf no retornó IdpdfKey");
+                                }
+                            }
+                        }
+                    }
+
+                    throw new SQLException("No se pudo obtener el ID generado del PDF");
+
+                } else {
+                    String errorContent = "";
+                    if (response.getEntity() != null) {
+                        errorContent = EntityUtils.toString(response.getEntity(), "UTF-8");
+                    }
+
+                    log.error("Error HTTP al descargar reporte de factura. Código={}, detalle={}", statusCode, errorContent);
+                    throw new IOException("Error al descargar el informe. Código: " + statusCode +
+                            " - " + response.getStatusLine().getReasonPhrase() +
+                            "\nDetalle: " + errorContent);
+                }
+            }
+        }
+    }
+
     /**
      * Obtiene los soportes disponibles asociados a una admisión.
      *
