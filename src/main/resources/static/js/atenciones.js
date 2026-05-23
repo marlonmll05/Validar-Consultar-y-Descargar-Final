@@ -1721,6 +1721,7 @@ tabla.addEventListener('click', async (e) => {
 
     const idAdmision = btn.dataset.idadmision;
     const nFact = btn.dataset.nfact;
+    const idTerceroKey = btn.dataset.idtercerokey;
     
     console.log("nFact obtenido:", nFact);
 
@@ -1782,6 +1783,7 @@ tabla.addEventListener('click', async (e) => {
                 if (confirmar === "encriptar") {
                 const formData = new FormData();
                 formData.append("archivo", new File([blob], nombre));
+                formData.append("IdTerceroKey", idTerceroKey);
 
                 const respCifrado = await fetch(`https://${host}:9876/cifrado/cifrar`, {
                     method: "POST",
@@ -2272,8 +2274,23 @@ async function generarPorLote() {
     const idAtencion = row.dataset.idatencion;
     const erroresPaso = [];
 
-    // ===== Paso 1: Apoyo diagnóstico =====
+    // Toast general por admisión
+    const toastProceso = showToast(
+      "Proceso",
+      `Generando admisión ${idAdmision}...`,
+      "info",
+      0,
+      true,
+    );
 
+    // ===== Paso 1: Apoyo diagnóstico =====
+    const toastDiag = showToast(
+    "Diagnóstico",
+    "Generando apoyo diagnóstico...",
+    "info",
+    0,
+    true,
+    );
     try {
       const respPrint = await fetch(
         `https://${host}:9876/api/generar-apoyo-diagnostico?idPacienteKey=${idPacienteKey}&idAdmision=${idAdmision}`,
@@ -2294,13 +2311,34 @@ async function generarPorLote() {
             body: fd,
           });
         }
-      }
+    }
+    actualizarToastProgreso(toastDiag, 100);
+    toastDiag.querySelector("p").textContent =
+        "Apoyo diagnóstico generado ✔";
+    toastDiag.classList.replace("info", "success");
     } catch (err) {
-      console.warn(`[${idAdmision}] Apoyo diagnóstico omitido:`, err.message);
-
+    console.warn(`[${idAdmision}] Apoyo diagnóstico omitido:`, err.message);
+    actualizarToastProgreso(toastDiag, 100);
+    toastDiag.querySelector("p").textContent =
+        "⚠ Error en apoyo diagnóstico";
+    toastDiag.classList.replace("info", "error");
+    } finally {
+    setTimeout(() => {
+        if (toastDiag.parentElement) {
+        toastDiag.classList.add("fadeOut");
+        setTimeout(() => toastDiag.remove(), 300);
+        }
+    }, 2500);
     }
 
     // ===== Paso 2: Factura =====
+    const toastFactura = showToast(
+    "Factura",
+    "Generando factura de venta...",
+    "info",
+    0,
+    true,
+    );
     try {
       const urlFactura = new URL(
         `https://${host}:9876/api/descargar-factura-venta`,
@@ -2313,9 +2351,23 @@ async function generarPorLote() {
       const respFactura = await fetch(urlFactura);
       if (!respFactura.ok)
         throw new Error("Factura: " + (await respFactura.text()));
-    } catch (err) {
-      console.error(`[${idAdmision}] Error paso 2:`, err.message);
 
+    actualizarToastProgreso(toastFactura, 100);
+    toastFactura.querySelector("p").textContent = "Factura generada ✔";
+    toastFactura.classList.replace("info", "success");
+    } catch (err) {
+    console.error(`[${idAdmision}] Error factura:`, err.message);
+    actualizarToastProgreso(toastFactura, 100);
+    toastFactura.querySelector("p").textContent = "⚠ Error en factura";
+    toastFactura.classList.replace("info", "error");
+    erroresPaso.push(err.message);
+    } finally {
+    setTimeout(() => {
+        if (toastFactura.parentElement) {
+        toastFactura.classList.add("fadeOut");
+        setTimeout(() => toastFactura.remove(), 300);
+        }
+    }, 2500);
     }
 
     // ===== Paso 3: Soportes adicionales =====
@@ -2326,30 +2378,71 @@ async function generarPorLote() {
       if (!respSoporte.ok)
         throw new Error("Obtener soportes: " + (await respSoporte.text()));
 
-      const soportes = await respSoporte.json();
-      for (const soporte of soportes) {
+        const soportes = await respSoporte.json();
+        let totalSoportes = soportes.length;
+        let procesadosSoportes = 0;
+
+    for (const soporte of soportes) {
         const {
           Id: idSoporteKey,
           nombreRptService: nombreSoporte,
           TipoDocumento: tipoDocumento,
         } = soporte;
-        if (!nombreSoporte || nombreSoporte.trim() === "") continue;
+        if (!nombreSoporte || nombreSoporte.trim() === "") {
+        procesadosSoportes++;
+        continue;
+        }
 
+        const toastSoporte = showToast(
+        "Soporte",
+        `Procesando soporte ${idSoporteKey}...`,
+        "info",
+        0,
+        true,
+        );
         try {
-          const urlSoporte = new URL(
+        const urlSoporte = new URL(
             `https://${host}:9876/api/insertar-soportes`,
-          );
-          urlSoporte.searchParams.set("idAdmision", idAdmision);
-          urlSoporte.searchParams.set("idPacienteKey", idPacienteKey);
-          urlSoporte.searchParams.set("idSoporteKey", idSoporteKey);
-          urlSoporte.searchParams.set("tipoDocumento", tipoDocumento);
-          urlSoporte.searchParams.set("nombreSoporte", nombreSoporte);
+        );
+        urlSoporte.searchParams.set("idAdmision", idAdmision);
+        urlSoporte.searchParams.set("idPacienteKey", idPacienteKey);
+        urlSoporte.searchParams.set("idSoporteKey", idSoporteKey);
+        urlSoporte.searchParams.set("tipoDocumento", tipoDocumento);
+        urlSoporte.searchParams.set("nombreSoporte", nombreSoporte);
 
-          const respS = await fetch(urlSoporte);
-          if (!respS.ok)
-            throw new Error(`Soporte ${idSoporteKey}: ` + (await respS.text()));
+        const respS = await fetch(urlSoporte);
+        if (!respS.ok)
+            throw new Error(
+            `Soporte ${idSoporteKey}: ` + (await respS.text()),
+            );
+
+        actualizarToastProgreso(toastSoporte, 100);
+        toastSoporte.querySelector("p").textContent =
+            `Soporte ${idSoporteKey} completado ✔`;
+        toastSoporte.classList.replace("info", "success");
         } catch (errS) {
-          erroresPaso.push(errS.message);
+        console.error(
+            `[${idAdmision}] Error soporte ${idSoporteKey}:`,
+            errS.message,
+        );
+        actualizarToastProgreso(toastSoporte, 100);
+        toastSoporte.querySelector("p").textContent =
+            `⚠ Error en soporte ${idSoporteKey}`;
+        toastSoporte.classList.replace("info", "error");
+        erroresPaso.push(errS.message);
+        } finally {
+        setTimeout(() => {
+            if (toastSoporte.parentElement) {
+            toastSoporte.classList.add("fadeOut");
+            setTimeout(() => toastSoporte.remove(), 300);
+            }
+        }, 2500);
+
+        procesadosSoportes++;
+        const porcentajeSoportes = Math.round(
+            (procesadosSoportes / totalSoportes) * 100,
+        );
+        actualizarToastProgreso(toastProceso, porcentajeSoportes);
         }
       }
     } catch (err) {
@@ -2357,24 +2450,29 @@ async function generarPorLote() {
       erroresPaso.push(err.message);
     }
 
+
+    // ===== Cierre toast proceso =====
+    actualizarToastProgreso(toastProceso, 100);
     if (erroresPaso.length === 0) {
-    showToast(
-        "✔ Completado",
-        `Admisión ${idAdmision} generada correctamente`,
-        "success",
-        3000,
-    );
-    procesados++;
+      toastProceso.querySelector("p").textContent =
+        `Admisión ${idAdmision} completada ✔`;
+      toastProceso.classList.replace("info", "success");
+      procesados++;
     } else {
-    showToast(
-        "⚠ Con errores",
-        `Admisión ${idAdmision} tuvo errores`,
-        "warning",
-        3000,
-    );
-    errores++;
-    fallos.push({ idAdmision, errores: erroresPaso });
+      toastProceso.querySelector("p").textContent =
+        `Admisión ${idAdmision} con errores`;
+      toastProceso.classList.replace("info", "error");
+      errores++;
+      fallos.push({ idAdmision, errores: erroresPaso });
     }
+
+    setTimeout(() => {
+      if (toastProceso.parentElement) {
+        toastProceso.classList.add("fadeOut");
+        setTimeout(() => toastProceso.remove(), 300);
+      }
+    }, 3000);
+
     const porcentaje = Math.round(((procesados + errores) / total) * 100);
     btn.innerHTML = `Generando... ${porcentaje}%`;
   }
