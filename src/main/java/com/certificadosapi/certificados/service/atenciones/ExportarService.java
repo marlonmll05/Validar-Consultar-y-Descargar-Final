@@ -277,40 +277,33 @@ public class ExportarService {
     }
 
     /**
-     * Construye un archivo ZIP que contiene:
-     * - XML de la factura
-     * - JSON de la factura
-     * - PDFs asociados
-     * - Archivo TXT con la respuesta del validador (CUV)
+     * Construye un archivo ZIP que contiene los documentos de una factura.
+     * Los archivos XML, JSON, PDFs y TXT son opcionales según disponibilidad.
+     * Soporta cifrado AES+RSA por archivo usando la llave pública del tercero.
      *
-     * @param nFact Número de factura
-     * @param xml Archivo XML
-     * @param jsonFactura Archivo JSON
-     * @param pdfs Lista de archivos PDF
-     * @param encriptar Decide si se encripta o no
+     * @param nFact        Número de factura
+     * @param xml          Archivo XML de la factura (opcional)
+     * @param jsonFactura  Archivo JSON de la factura (opcional)
+     * @param pdfs         Lista de archivos PDF asociados (opcional)
+     * @param encriptar    Indica si los archivos deben cifrarse
+     * @param idTerceroKey ID del tercero para obtener la llave pública de cifrado
      * @return ZIP en formato byte[]
-     * @throws Exception 
+     * @throws Exception si ocurre un error al construir el ZIP o cifrar los archivos
      */
     public byte[] armarZip(
             String nFact,
             MultipartFile xml,
             MultipartFile jsonFactura,
             List<MultipartFile> pdfs,
-            Boolean encriptar
+            Boolean encriptar,
+            Integer idTerceroKey
     ) throws Exception {
 
         log.info("Armando ZIP para factura: {}", nFact);
 
-        if (xml == null || xml.isEmpty()) {
-            log.error("Archivo XML faltante en request para factura: {}", nFact);
-            throw new IllegalArgumentException("Falta el archivo XML en la parte 'xml'");
-        }
-
-        log.debug("Archivo XML recibido - Nombre: {}, Tamaño: {} bytes", xml.getOriginalFilename(), xml.getSize());
-
         final Pattern ILLEGAL = Pattern.compile("[\\\\/:*?\"<>|]+");
         String sanitizeN = (nFact == null ? "" : ILLEGAL.matcher(nFact).replaceAll("_").trim());
-        String folderName = sanitizeN + "/"; 
+        String folderName = sanitizeN + "/";
 
         Integer idMovDoc = null;
         String numdoc = null, idEmpresaGrupo = null;
@@ -370,12 +363,7 @@ public class ExportarService {
             try (PreparedStatement ps = c.prepareStatement(sql)) {
                 ps.setString(1, nFact);
                 try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        respuestaValidador = rs.getString("MensajeRespuesta");
-                        log.debug("Respuesta del validador obtenida");
-                    } else {
-                        log.debug("No hay respuesta del validador para factura: {}", nFact);
-                    }
+                    if (rs.next()) respuestaValidador = rs.getString("MensajeRespuesta");
                 }
             }
         } catch (Exception ex) {
@@ -388,36 +376,11 @@ public class ExportarService {
             try {
                 ObjectMapper om = new ObjectMapper();
                 JsonNode node = om.readTree(respuestaValidador);
-                if (node.has("ProcesoId")) {
-                    procesoId = node.get("ProcesoId").asText("");
-                    log.debug("ProcesoId extraído: {}", procesoId);
-                }
+                if (node.has("ProcesoId")) procesoId = node.get("ProcesoId").asText("");
             } catch (Exception e) {
                 log.warn("Error al parsear ProcesoId: {}", e.getMessage());
             }
         }
-
-        // Nombre del XML
-        String xmlFileName;
-        if (idEmpresaGrupo != null && numdoc != null) {
-            String yearSuffix = String.valueOf(java.time.LocalDate.now().getYear()).substring(2);
-            String formattedNumdoc;
-            try {
-                int num = Integer.parseInt(numdoc);
-                formattedNumdoc = String.format("%08d", num);
-            } catch (NumberFormatException nfe) {
-                log.warn("Error al formatear numdoc: {}", nfe.getMessage());
-                formattedNumdoc = numdoc;
-            }
-            xmlFileName = "ad0" + idEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml";
-        } else {
-            String original = xml.getOriginalFilename();
-            xmlFileName = (original != null && !original.isBlank())
-                    ? ILLEGAL.matcher(original).replaceAll("_").trim()
-                    : ("Factura_" + sanitizeN + ".xml");
-        }
-
-        log.debug("Nombre de archivo XML en ZIP: {}", xmlFileName);
 
         // Crear ZIP
         log.info("Iniciando creación del archivo ZIP");
@@ -426,34 +389,40 @@ public class ExportarService {
 
             boolean cifrar = Boolean.TRUE.equals(encriptar);
 
-            // ================= XML =================
-            cifradoService.agregarArchivoZip(
-                zos,
-                folderName + xmlFileName,
-                xml.getBytes(),
-                ".xml",
-                cifrar
-            );
+            // ================= XML ================= (opcional)
+            if (xml != null && !xml.isEmpty()) {
+                String xmlFileName;
+                if (idEmpresaGrupo != null && numdoc != null) {
+                    String yearSuffix = String.valueOf(java.time.LocalDate.now().getYear()).substring(2);
+                    String formattedNumdoc;
+                    try {
+                        formattedNumdoc = String.format("%08d", Integer.parseInt(numdoc));
+                    } catch (NumberFormatException nfe) {
+                        formattedNumdoc = numdoc;
+                    }
+                    xmlFileName = "ad0" + idEmpresaGrupo + "000" + yearSuffix + formattedNumdoc + ".xml";
+                } else {
+                    String original = xml.getOriginalFilename();
+                    xmlFileName = (original != null && !original.isBlank())
+                            ? ILLEGAL.matcher(original).replaceAll("_").trim()
+                            : ("Factura_" + sanitizeN + ".xml");
+                }
+                log.debug("Agregando XML al ZIP: {}", xmlFileName);
+                cifradoService.agregarArchivoZip(zos, folderName + xmlFileName, xml.getBytes(), ".xml", cifrar, idTerceroKey);
+            }
 
-            // ================= JSON =================
+            // ================= JSON ================= (opcional)
             if (jsonFactura != null && !jsonFactura.isEmpty()) {
 
                 String jsonName = jsonFactura.getOriginalFilename();
                 jsonName = (jsonName != null && !jsonName.isBlank())
                         ? ILLEGAL.matcher(jsonName).replaceAll("_").trim()
                         : ("Factura_" + sanitizeN + ".json");
-
-                cifradoService.agregarArchivoZip(
-                    zos,
-                    folderName + jsonName,
-                    jsonFactura.getBytes(),
-                    ".json",
-                    cifrar
-                );
-
+                log.debug("Agregando JSON al ZIP: {}", jsonName);
+                cifradoService.agregarArchivoZip(zos, folderName + jsonName, jsonFactura.getBytes(), ".json", cifrar, idTerceroKey);
             }
 
-            // ================= PDFs =================
+            // ================= PDFs ================= (opcional)
             if (pdfs != null && !pdfs.isEmpty()) {
 
                 int idx = 1;
@@ -466,20 +435,12 @@ public class ExportarService {
                     nombre = (nombre != null && !nombre.isBlank())
                             ? ILLEGAL.matcher(nombre).replaceAll("_").trim()
                             : ("Documento_" + idx + ".pdf");
-
-                    cifradoService.agregarArchivoZip(
-                        zos,
-                        folderName + nombre,
-                        pdf.getBytes(),
-                        ".pdf",
-                        cifrar
-                    );
-
+                    cifradoService.agregarArchivoZip(zos, folderName + nombre, pdf.getBytes(), ".pdf", cifrar, idTerceroKey);
                     idx++;
                 }
             }
 
-            // ================= TXT =================
+            // ================= TXT ================= (opcional)
             if (respuestaValidador != null && !respuestaValidador.isBlank()) {
 
                 String safeProc = ILLEGAL.matcher(procesoId == null ? "" : procesoId).replaceAll("_").trim();
@@ -487,14 +448,8 @@ public class ExportarService {
                 String nombreTxt = "ResultadosMSPS_" + sanitizeN
                         + (safeProc.isBlank() ? "" : ("_ID" + safeProc))
                         + "_A_CUV.txt";
-
-                cifradoService.agregarArchivoZip(
-                    zos,
-                    folderName + nombreTxt,
-                    respuestaValidador.getBytes(StandardCharsets.UTF_8),
-                    ".txt",
-                    cifrar
-                );
+                cifradoService.agregarArchivoZip(zos, folderName + nombreTxt,
+                        respuestaValidador.getBytes(StandardCharsets.UTF_8), ".txt", cifrar, idTerceroKey);
             }
         }
 

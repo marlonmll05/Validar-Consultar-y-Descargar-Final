@@ -3,14 +3,13 @@ package com.certificadosapi.certificados.service;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.*;
+
 import org.springframework.web.multipart.MultipartFile;
 import org.w3c.dom.*;
 
 import com.certificadosapi.certificados.config.DatabaseConfig;
 import com.certificadosapi.certificados.dto.ArchivoCifrado;
 
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.crypto.*;
@@ -25,7 +24,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Base64;
-import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
