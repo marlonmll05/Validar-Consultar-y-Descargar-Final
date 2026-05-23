@@ -296,13 +296,14 @@ public class AtencionesController {
     )
     public ResponseEntity<byte[]> armarZip(
             @PathVariable String nFact,
-            @RequestPart("xml") MultipartFile xml,
+            @RequestPart(value = "xml", required = false) MultipartFile xml,
             @RequestPart(value = "jsonFactura", required = false) MultipartFile jsonFactura,
             @RequestPart(value = "pdfs", required = false) List<MultipartFile> pdfs,
-            @RequestParam(defaultValue = "false") Boolean encriptar
+            @RequestParam(defaultValue = "false") Boolean encriptar,
+            @RequestParam Integer IdTerceroKey
     ) throws Exception {
 
-        byte[] zipBytes = exportarService.armarZip(nFact, xml, jsonFactura, pdfs, encriptar);
+        byte[] zipBytes = exportarService.armarZip(nFact, xml, jsonFactura, pdfs, encriptar, IdTerceroKey);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/zip"))
