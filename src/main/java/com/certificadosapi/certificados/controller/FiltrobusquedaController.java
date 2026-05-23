@@ -87,6 +87,33 @@ public class FiltrobusquedaController {
         return ResponseEntity.ok(data);
     }
 
+    // ENDPOINT PARA CONSULTAR CAPITAS 
+    @GetMapping("/capita")
+    public ResponseEntity<List<Map<String, Object>>> buscarCapitas(
+            @RequestParam(required = false) Long IdAtencion,
+            @RequestParam(required = false) String HistClinica,
+            @RequestParam(required = false) Integer Cliente,
+            @RequestParam(required = false) String NoContrato,
+            @RequestParam(required = false) Integer IdAreaAtencion,
+            @RequestParam(required = false) Integer IdUnidadAtencion,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyyMMdd") LocalDate FechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyyMMdd") LocalDate FechaHasta,
+            @RequestParam(required = false) String nFact,
+            @RequestParam(required = false, defaultValue = "0") Integer cantSoportes,
+            @RequestParam(required = true) Integer idDocSoporte,
+            @RequestParam(required = true) Boolean multiConsultante, 
+            @RequestParam(required = false) Boolean mostrarGeneradas
+    ) {
+
+
+        List<Map<String, Object>> data = filtrobusquedaService.buscarCapita(IdAtencion, HistClinica, Cliente, 
+            NoContrato, IdAreaAtencion, IdUnidadAtencion, 
+            FechaDesde, FechaHasta, nFact, cantSoportes, idDocSoporte, multiConsultante, mostrarGeneradas);
+
+        return ResponseEntity.ok(data);
+    }
+
+
     
     // ENDPOINT PARA BUSCAR CUENTAS DE COBRO
     @GetMapping("/cuenta-cobro")

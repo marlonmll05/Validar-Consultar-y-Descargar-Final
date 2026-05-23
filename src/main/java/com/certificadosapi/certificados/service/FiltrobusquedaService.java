@@ -347,6 +347,99 @@ public class FiltrobusquedaService {
         }
     }
 
+    
+    /**
+     * Busca atenciones médicas en el sistema aplicando múltiples criterios de filtrado.
+     * Ejecuta el procedimiento almacenado pa_net_facturas_historico_gensoportes2
+     * para obtener el historial de atenciones capita.
+     *
+     * @param IdAtencion       ID específico de atención a buscar (opcional)
+     * @param HistClinica      Número de historia clínica (opcional)
+     * @param Cliente          ID del cliente/EPS (opcional)
+     * @param NoContrato       Número de contrato asociado (opcional)
+     * @param IdAreaAtencion   ID del área donde se realizó la atención (opcional)
+     * @param IdUnidadAtencion ID de la unidad de atención (opcional)
+     * @param FechaDesde       Fecha inicial del rango de búsqueda (opcional)
+     * @param FechaHasta       Fecha final del rango de búsqueda (opcional)
+     * @param nFact            Número de factura asociada (opcional)
+     * @param cantSoportes     Cantidad mínima de documentos soporte, por defecto 0 (opcional)
+     * @param idDocSoporte     ID del tipo de documento soporte a filtrar (requerido)
+     * @param multiConsultante Indica si se incluyen atenciones de múltiples consultantes (requerido)
+     * @param mostrarGeneradas Indica si se incluyen atenciones ya generadas (opcional)
+     * @return Lista de mapas donde cada mapa representa una atención encontrada.
+     *         Las llaves del mapa corresponden a los nombres de columna del resultado
+     * @throws RuntimeException si ocurre un error durante la ejecución del procedimiento
+     */
+    public List<Map<String, Object>> buscarCapita(
+            Long IdAtencion,
+            String HistClinica,
+            Integer Cliente,
+            String NoContrato,
+            Integer IdAreaAtencion,
+            Integer IdUnidadAtencion,
+            LocalDate FechaDesde,
+            LocalDate FechaHasta,
+            String nFact,
+            Integer cantSoportes,
+            Integer idDocSoporte, 
+            Boolean multiConsultante,
+            Boolean mostrarGeneradas) {
+
+        log.info("Iniciando búsqueda de capita");
+
+        log.info("Parametros recibidos: " +
+            "IdAtencion={}, HistClinica={}, Cliente={}, NoContrato={}, IdAreaAtencion={}, IdUnidadAtencion={}, " +
+            "FechaDesde={}, FechaHasta={}, nFact={}, cantSoportes={}, idDocSoporte={}, multiconsultante={}, mostrarGeneradas={}",
+            IdAtencion, HistClinica, Cliente, NoContrato, IdAreaAtencion, IdUnidadAtencion,
+            FechaDesde, FechaHasta, nFact, cantSoportes, idDocSoporte, multiConsultante, mostrarGeneradas);
+
+        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
+
+            String sql = "EXEC dbo.pa_net_facturas_historico_gensoportes2 ?,?,?,?,?,?,?,?,?,?,?,?,?";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                stmt.setObject(1, IdAtencion);
+                stmt.setObject(2, HistClinica);
+                stmt.setObject(3, Cliente);
+                stmt.setObject(4, NoContrato);
+                stmt.setObject(5, IdAreaAtencion);
+                stmt.setObject(6, IdUnidadAtencion);
+                stmt.setObject(7, FechaDesde != null ? Date.valueOf(FechaDesde) : null);
+                stmt.setObject(8, FechaHasta != null ? Date.valueOf(FechaHasta) : null);
+                stmt.setObject(9, nFact);
+                stmt.setObject(10, cantSoportes);
+                stmt.setObject(11, idDocSoporte);
+                stmt.setObject(12, multiConsultante);
+                stmt.setObject(13, mostrarGeneradas);
+
+                log.info("Ejecutando procedimiento pa_net_facturas_historico_gensoportes2");
+
+                try (ResultSet rs = stmt.executeQuery()) {
+
+                    List<Map<String, Object>> resultados = new ArrayList<>();
+                    ResultSetMetaData meta = rs.getMetaData();
+                    int colCount = meta.getColumnCount();
+
+                    while (rs.next()) {
+                        Map<String, Object> fila = new LinkedHashMap<>();
+                        for (int i = 1; i <= colCount; i++) {
+                            fila.put(meta.getColumnName(i), rs.getObject(i));
+                        }
+                        resultados.add(fila);
+                    }
+
+                    log.info("Consulta de atenciones retornó {} registros", resultados.size());
+                    return resultados;
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Error consultando atenciones: {}", e.getMessage());
+            throw new RuntimeException("Error consultando admisiones: " + e.getMessage(), e);
+        }
+    }
+
     /**
      * Consulta cuentas de cobro del sistema aplicando criterios de filtrado.
      * Ejecuta el procedimiento almacenado Facturacion_CC_Lista para obtener
