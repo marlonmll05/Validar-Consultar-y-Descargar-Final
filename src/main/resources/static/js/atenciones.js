@@ -524,11 +524,20 @@ function renderTablaPagina(pagina) {
     tdCheckbox.appendChild(checkbox);
     tr.appendChild(tdCheckbox);
 
-    // Columnas normales
     camposMostrarGlobal.forEach(h => {
-      const td = document.createElement('td');
-      td.textContent = (row[h] !== null && row[h] !== undefined) ? row[h] : '';
-      tr.appendChild(td);
+        const td = document.createElement('td');
+
+        td.textContent =
+            (row[h] !== null && row[h] !== undefined)
+                ? row[h]
+                : '';
+
+        if (h === "CantSoporte") {
+            td.classList.add("cant-soportes");
+            td.dataset.idadmision = idAdmision;
+        }
+
+        tr.appendChild(td);
     });
 
     // Columna 1: acciones
@@ -1991,6 +2000,7 @@ tabla.addEventListener('click', async (e) => {
     const idAtencion = btn.dataset.idatencion;
 
     let toastProceso;
+    let soportesExitosos = 0;
 
     try {
     // Verificar si ya existe documentación
@@ -2050,6 +2060,7 @@ tabla.addEventListener('click', async (e) => {
         actualizarToastProgreso(toastDiag, 100);
         toastDiag.querySelector("p").textContent = "Documento diagnóstico generado ✔";
         toastDiag.classList.replace("info", "success");
+        soportesExitosos++;
     } catch (err1) {
         console.error("Error en apoyo diagnóstico:", err1);
         actualizarToastProgreso(toastDiag, 100);
@@ -2091,6 +2102,7 @@ tabla.addEventListener('click', async (e) => {
         actualizarToastProgreso(toastFactura, 100);
         toastFactura.querySelector("p").textContent = "Factura generada ✔";
         toastFactura.classList.replace("info", "success");
+        soportesExitosos++;
     } catch (errFactura) {
         console.error("Error al generar factura:", errFactura);
         actualizarToastProgreso(toastFactura, 100);
@@ -2186,6 +2198,16 @@ tabla.addEventListener('click', async (e) => {
     actualizarToastProgreso(toastProceso, 100);
     toastProceso.querySelector("p").textContent = "Proceso completo ✔";
     toastProceso.classList.replace("info", "success");
+
+    const tr = btn.closest("tr");
+    const celdaCant = tr?.querySelector(".cant-soportes");
+
+
+    if (celdaCant) {
+        celdaCant.textContent = soportesExitosos;
+    } else {
+        console.warn("No se encontró la celda cant-soportes en esta fila");
+    }
 
     setTimeout(() => {
         if (toastProceso.parentElement) {
