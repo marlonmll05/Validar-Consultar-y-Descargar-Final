@@ -203,21 +203,4 @@ public class ConsultaService {
             }
         }
     } 
-
-    public Integer getIdTipoCapita(String nfact) throws SQLException {
-        String sql = "SELECT IdTipoCapita FROM facturaFinal WHERE Nfact = ?";
-
-        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"));
-            PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, nfact);
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("IdTipoCapita");
-                }
-                return null;
-            }
-        }
-    }
 }
