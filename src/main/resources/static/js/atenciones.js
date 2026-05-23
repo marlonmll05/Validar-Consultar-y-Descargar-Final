@@ -508,12 +508,14 @@ function renderTablaPagina(pagina) {
     const idAdmision = row["IdAdmision"] ?? '';
     const idAtencion = row["IdAtencion"] ?? '';
     const idPacienteKey = row["IdPacienteKey"] ?? '';
+    const idTerceroKey = row["IdTerceroKey"] ?? "";
 
     const tr = document.createElement('tr');
     tr.dataset.rowkey = rowKey;
     tr.dataset.idadmision = idAdmision;
     tr.dataset.idpacientekey = idPacienteKey;
     tr.dataset.idatencion = idAtencion;
+    tr.dataset.idtercerokey = idTerceroKey;
 
     // Checkbox selección
     const tdCheckbox = document.createElement('td');
@@ -574,6 +576,7 @@ function renderTablaPagina(pagina) {
     btnExportar.dataset.rowkey = rowKey;
     btnExportar.dataset.idadmision = idAdmision;
     btnExportar.dataset.idpacientekey = idPacienteKey;
+    btnExportar.dataset.idtercerokey = idTerceroKey;
     btnExportar.dataset.nfact = row["NFact"] || '';
     tdAccion2.appendChild(btnExportar);
 
@@ -1265,6 +1268,7 @@ document.getElementById('btnExportar').addEventListener('click', async (event) =
 
             const idAdmision = tr.dataset.idadmision;
             const idAtencion = tr.dataset.idatencion;
+            const idTerceroKey = tr.dataset.idtercerokey;
             const btnExportar = tr.querySelector('.btn-exportar');
             const nFact = btnExportar ? btnExportar.dataset.nfact : null;
 
@@ -1364,7 +1368,7 @@ document.getElementById('btnExportar').addEventListener('click', async (event) =
 
                 // 4) Enviar todo al backend para que arme el ZIP (allí se añade el TXT MSPS)
                 const respZip = await fetch(
-                  `https://${host}:9876/api/armar-zip/${encodeURIComponent(nFact)}?encriptar=${encriptar}`,
+                  `https://${host}:9876/api/armar-zip/${encodeURIComponent(nFact)}?encriptar=${encriptar}&IdTerceroKey=${idTerceroKey}`,
                   {
                     method: "POST",
                     body: form,
@@ -1845,6 +1849,7 @@ tabla.addEventListener('click', async (e) => {
         if (confirmar === "encriptar") {
             const formData = new FormData();
             formData.append("archivo", new File([blobXml], filenameXml));
+            formData.append("IdTerceroKey", idTerceroKey);
 
             const respCifrado = await fetch(`https://${host}:9876/cifrado/cifrar`, {
                 method: "POST",
@@ -1888,6 +1893,7 @@ tabla.addEventListener('click', async (e) => {
             if (confirmar === "encriptar") {
                 const formData = new FormData();
                 formData.append("archivo", new File([blobJson], filenameJson));
+                formData.append("IdTerceroKey", idTerceroKey);
 
                 const respCifrado = await fetch(`https://${host}:9876/cifrado/cifrar`, {
                     method: "POST",
@@ -1946,6 +1952,7 @@ tabla.addEventListener('click', async (e) => {
             if (confirmar === "encriptar") {
                 const formData = new FormData();
                 formData.append("archivo", new File([contenidoTxt], nombreTxt));
+                formData.append("IdTerceroKey", idTerceroKey);
 
                 const respCifrado = await fetch(`https://${host}:9876/cifrado/cifrar`, {
                     method: "POST",
@@ -2172,6 +2179,7 @@ tabla.addEventListener('click', async (e) => {
             actualizarToastProgreso(toastSoporte, 100);
             toastSoporte.querySelector("p").textContent = `Soporte ${idSoporteKey} completado ✔`;
             toastSoporte.classList.replace("info", "success");
+            soportesExitosos++;
         } catch (errIter) {
             console.error("Error en soporte:", errIter);
             actualizarToastProgreso(toastSoporte, 100);
