@@ -24,10 +24,10 @@ public class CifradoController {
 
     @SuppressWarnings("null")
     @PostMapping("/cifrar")
-    public ResponseEntity<byte[]> cifrar(@RequestParam("archivo") MultipartFile archivo) {
+    public ResponseEntity<byte[]> cifrar(@RequestParam("archivo") MultipartFile archivo, Integer IdTerceroKey) {
         try {
 
-            byte[] respuesta = CifradoService.cifrar(archivo);
+            byte[] respuesta = CifradoService.cifrar(archivo, IdTerceroKey);
 
             return ResponseEntity.ok().header("Content-Disposition", "attachment; filename=" + archivo.getOriginalFilename() + ".zip").contentType(MediaType.APPLICATION_OCTET_STREAM).body(respuesta);
 
