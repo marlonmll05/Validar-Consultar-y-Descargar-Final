@@ -1,5 +1,6 @@
 package com.certificadosapi.certificados.service.atenciones;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,6 +23,8 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.pdfbox.io.MemoryUsageSetting;
+import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,11 +58,13 @@ public class ExportarService {
     
     private final DatabaseConfig databaseConfig;
     private final CifradoService cifradoService;
+    private final ConsultaService consultaService;
 
     @Autowired
-    public ExportarService(DatabaseConfig databaseConfig, CifradoService cifradoService){
+    public ExportarService(DatabaseConfig databaseConfig, CifradoService cifradoService, ConsultaService consultaService){
         this.databaseConfig = databaseConfig;
         this.cifradoService = cifradoService;
+        this.consultaService = consultaService;
     }
 
 
@@ -96,6 +101,106 @@ public class ExportarService {
 
     /**
      * Exporta el contenido PDF asociado a una admisión y un soporte específico.
+     * Obtiene los bytes del archivo desde la base de datos Asclepius_Documentos
+     * sin recuperar el nombre real del archivo.
+     *
+     * @param idAdmision   Identificador de la admisión
+     * @param idSoporteKey Identificador del soporte
+     * @return Objeto PdfDocumento con bytes y MIME type application/pdf
+     * @throws SQLException              Error de base de datos
+     * @throws IOException               Error de lectura del archivo
+     * @throws NoSuchElementException    Si el documento no existe, es NULL o está vacío
+     */
+    public PdfDocumento exportarPdfCapita(Long idAdmision, Long idSoporteKey) throws SQLException, IOException {
+        log.info("Exportando PDF - idAdmision: {}, idSoporteKey: {}", idAdmision, idSoporteKey);
+
+        String sql = "SELECT NameFilePdf FROM tbl_Net_Facturas_ListaPdf WHERE IdAdmision = ? AND IdSoporteKey = ?";
+
+        try (Connection conn = DriverManager.getConnection(databaseConfig.getConnectionUrl("Asclepius_Documentos"));
+            PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setLong(1, idAdmision);
+            ps.setLong(2, idSoporteKey);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    log.warn("Documento no encontrado - idAdmision: {}, idSoporteKey: {}", idAdmision, idSoporteKey);
+                    throw new NoSuchElementException("Documento no encontrado");
+                }
+
+                try (InputStream is = rs.getBinaryStream("NameFilePdf")) {
+                    if (is == null) {
+                        log.error("Contenido NULL para documento - idSoporteKey: {}", idSoporteKey);
+                        throw new NoSuchElementException("Contenido del documento es NULL");
+                    }
+
+                    byte[] pdfBytes = is.readAllBytes();
+                    if (pdfBytes.length == 0) {
+                        log.error("Documento vacío (0 bytes) - idSoporteKey: {}", idSoporteKey);
+                        throw new NoSuchElementException("Documento vacío");
+                    }
+
+                    log.info("PDF exportado exitosamente - Tamaño: {} bytes", pdfBytes.length);
+
+
+                    return new PdfDocumento(pdfBytes, null, "application/pdf");
+                }
+            }
+        }
+    }
+
+
+    /**
+     * Unifica los PDFs de todas las admisiones indicadas en un único archivo PDF.
+     * Por cada admisión obtiene sus soportes disponibles, exporta cada PDF y los
+     * fusiona en orden usando PDFMergerUtility.
+     * Los soportes que fallen individualmente se omiten con un warning sin detener el proceso.
+     *
+     * @param idAdmisiones Lista de identificadores de admisiones a procesar
+     * @param nombreCapita Nombre del archivo PDF resultante
+     * @return Objeto PdfDocumento con el PDF unificado, nombre y MIME type application/pdf
+     * @throws Exception              Error durante la fusión de documentos
+     * @throws NoSuchElementException Si ninguna admisión tiene PDFs disponibles
+     */
+    public PdfDocumento unificarPdfs(List<Long> idAdmisiones, String nombreCapita) throws Exception {
+        log.info("Unificando PDFs para {} admisiones", idAdmisiones.size());
+
+        PDFMergerUtility merger = new PDFMergerUtility();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        merger.setDestinationStream(baos);
+
+        int totalPdfs = 0;
+
+
+        for (Long idAdmision : idAdmisiones) {
+            log.debug("Procesando admisión: {}", idAdmision);
+
+            List<Long> soportes = consultaService.obtenerAnexosPorAdmision(idAdmision);
+
+            for (Long idSoporteKey : soportes) {
+                try {
+                    PdfDocumento doc = exportarPdfCapita(idAdmision, idSoporteKey);
+                    merger.addSource(new ByteArrayInputStream(doc.getContenido()));
+
+                    totalPdfs++;
+                } catch (Exception e) {
+                    log.warn("No se pudo agregar PDF idSoporteKey={} idAdmision={}: {}", idSoporteKey, idAdmision, e.getMessage());
+                }
+            }
+        }
+
+        if (totalPdfs == 0) {
+            throw new NoSuchElementException("No se encontraron PDFs para las admisiones indicadas");
+        }
+
+        merger.mergeDocuments(MemoryUsageSetting.setupMainMemoryOnly());
+
+        log.info("PDFs unificados - Total: {}, Nombre: {}", totalPdfs, nombreCapita);
+        return new PdfDocumento(baos.toByteArray(), nombreCapita, "application/pdf");
+    }
+
+    /**
+     * Exporta el contenido PDF asociado a una admisión y un soporte específico.
      *
      * El archivo PDF se obtiene desde base de datos, se valida que exista
      * y se retorna junto con su nombre real.
@@ -106,7 +211,7 @@ public class ExportarService {
      * @throws SQLException Error de base de datos
      * @throws IOException Error de lectura del archivo
      */
-    public PdfDocumento exportarPdf(Long idAdmision, Long idSoporteKey) throws SQLException, IOException {
+    public PdfDocumento exportarPdfEvento(Long idAdmision, Long idSoporteKey) throws SQLException, IOException {
         log.info("Exportando PDF - idAdmision: {}, idSoporteKey: {}", idAdmision, idSoporteKey);
 
         String sql = "SELECT NameFilePdf FROM tbl_Net_Facturas_ListaPdf WHERE IdAdmision = ? AND IdSoporteKey = ?";

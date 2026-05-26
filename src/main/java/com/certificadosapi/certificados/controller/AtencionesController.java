@@ -229,7 +229,7 @@ public class AtencionesController {
             @RequestParam Long idAdmision,
             @RequestParam Long idSoporteKey) throws SQLException, IOException {
         
-        PdfDocumento pdf = exportarService.exportarPdf(idAdmision, idSoporteKey);
+        PdfDocumento pdf = exportarService.exportarPdfEvento(idAdmision, idSoporteKey);
         
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + pdf.getNombre() + "\"")
@@ -339,4 +339,15 @@ public class AtencionesController {
         
     }
 
+
+    @GetMapping("/unificar-pdfs")
+    public ResponseEntity<byte[]> unificarPdfs(@RequestParam List<Long> idAdmisiones, String nombreCapita) throws Exception {
+
+        PdfDocumento doc = exportarService.unificarPdfs(idAdmisiones, nombreCapita);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + doc.getNombre() + "\"")
+                .body(doc.getContenido());
+    }
 }
