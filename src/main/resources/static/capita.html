@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Admisiones</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="/css/capita.css">
+</head>
+
+
+<body>
+    <header>
+      <div class="container">
+        <div class="header-inner">
+          <a href="inicio.html" class="back-link">Volver</a>
+          <div class="header-center">
+            <h1>Soportes Colectivos</h1>
+            <p class="subtitle">Generación, carga y descarga de Soportes Colectivos</p>
+          </div>
+        </div>
+      </div>
+  </header>
+
+
+
+  <main class="container">
+    <!-- Filtros -->
+    <section class="card">
+      <div class="card-title">Filtros de búsqueda</div>
+      <form id="filtrosForm">
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label for="registroAtencion">Registro Atención</label>
+            <input type="text" id="registroAtencion" name="registroAtencion" placeholder="Ej. 12345">
+          </div>
+
+          <div class="form-group">
+            <label for="histClinica">Historia Clínica</label>
+            <input type="text" id="histClinica" name="histClinica" placeholder="Ej. 100234">
+          </div>
+
+          <div class="form-group">
+            <label for="eps">EPS o Cliente</label>
+            <select id="eps" name="eps">
+              <option value="" selected>-- Selecciona eps --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="contrato">Contrato</label>
+            <select id="contrato" name="contrato">
+              <option value="" selected>-- Selecciona contrato --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="idAreaAtencion">Área de Atención</label>
+            <select id="idAreaAtencion" name="idAreaAtencion">
+              <option value="" selected>-- Selecciona área --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="idUnidadAtencionCur">Unidad Atención en Curso</label>
+            <select id="idUnidadAtencionCur" name="idUnidadAtencionCur">
+              <option value="" selected>-- Selecciona unidad --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="fechaDesde">Fecha Desde</label>
+            <input type="date" id="fechaDesde" name="fechaDesde">
+          </div>
+
+          <div class="form-group">
+            <label for="fechaHasta">Fecha Hasta</label>
+            <input type="date" id="fechaHasta" name="fechaHasta">
+          </div>
+
+            <div class="form-group">
+                <label for="idTipoSoporte">Tipo de Soporte</label>
+                <select id="idDocSoporte" name="idDocSoporte">
+                <option value="" selected>-- Selecciona un soporte --</option>
+                </select>
+            </div>
+
+          <div class="form-group">
+            <label for="numeroFactura">Número de Factura</label>
+            <input type="text" id="numeroFactura" name="numeroFactura" placeholder="Ej. 12345">
+          </div>
+
+          <div class="form-group">
+            <label for="cantSoportes">Cantidad de Soportes</label>
+            <input type="text" id="cantSoportes" name="cantSoportes" placeholder="Valor por defecto: 0">
+          </div>
+
+            <div class="checkbox-group">
+                <label for="multiconsultante">Ver Multiconsultante</label>
+                <label class="switch">
+                <input type="checkbox" id="multiconsultante">
+                <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="checkbox-group">
+                <label for="verGeneradas">Ver Generadas</label>
+                <label class="switch">
+                <input type="checkbox" id="verGeneradas">
+                <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="actions-bar">
+          <button type="submit" class="button">Buscar</button>
+          <button type="button" id="btnLimpiar" class="button button-secondary">Limpiar</button>
+        </div>
+        <div class="error" id="errorMsg"></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-header-row">
+        <div class="checkbox-container">
+          <div class="card-title-table">Resultados</div>
+
+
+
+          <div id="pagination" class="pagination"></div>
+          <div class="export-button-wrapper">
+
+            <button type="button" id="btnGenerarLote" class="button btn-primary" title="Genera todos los soportes disponibles" onclick="generarPorLote()">Generar por Lote</button>
+
+            <button type="button" id="btnExportar" class="button" title="Exportar Cuenta de Cobro / Exportar Seleccionadas">Exportar por Lote</button>
+          </div>
+
+
+        </div>
+
+      </div>
+
+      <div id="emptyState" class="empty-state" style="display:none;">No se encontraron resultados</div>
+
+      <table id="resultadosTabla" style="display:none;">
+        <thead id="tablaHead"></thead>
+        <tbody id="tablaBody"></tbody>
+      </table>
+
+    </section>
+  </main>
+
+  <div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+
+  <div id="modalConfirm" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <h3>Confirmar acción</h3>
+      <p id="modalMessage">¿Seguro que deseas continuar?</p>
+      <div class="modal-actions">
+        <button id="btnModalCancel" class="btn-cancel">Cancelar</button>
+        <button id="btnModalOk" class="btn-ok">Eliminar</button>
+        
+      </div>
+    </div>
+  </div>
+
+
+  <div id="modalEncriptar" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <h3>Confirmar encriptado</h3>
+      <p id="modalEncriptarMessage">Deseas exportar o encriptar y exportar. ¿Qué deseas hacer?</p>
+      <div class="modal-actions">
+        <button id="btnModalEncriptarCancel" class="btn-cancel">Cancelar</button>
+        <button id="btnModalEncriptarExportar" class="btn-ok">Exportar</button>
+        <button id="btnModalEncriptar" class="btn-ok">Exportar y Encriptar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalGen" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <h3>Tipo de Generacion</h3>
+      <p id="modalGenMessage"></p>
+      <div class="modal-actions">
+        <button id="btnModalGenCancel" class="btn-cancel">Cancelar</button>
+        <button id="btnModalGenResumen" class="btn-ok">Solo HEV</button>
+        <button id="btnModalGenTodo" class="btn-ok">Todo</button>
+      </div>
+    </div>
+  </div>
+
+    <!-- Modal Terceros Clientes -->
+  <div id="modalTerceros" class="modal-overlay" style="display:none;">
+    <div class="modal-box" style="max-width:680px; width:100%;">
+  
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+        <div>
+          <h3 style="margin:0;">Nuevo cliente / tercero</h3>
+          <p style="margin:4px 0 0; font-size:13px; color:#666;">pa_NET_Terceros_Clientes</p>
+        </div>
+        <button onclick="cerrarModalTerceros()" style="background:none; border:none; cursor:pointer; font-size:22px; color:#888;">&times;</button>
+      </div>
+  
+      <div style="max-height:520px; overflow-y:auto; padding-right:4px;">
+  
+        <!-- Identificación -->
+        <p class="seccion-label">Identificación</p>
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label for="tc_tipoIdent">Tipo identificación</label>
+            <select id="tc_tipoIdent" name="TipoIdent">
+              <option value="">-- Tipo --</option>
+              <option value="CC">CC</option>
+              <option value="NIT">NIT</option>
+              <option value="CE">CE</option>
+              <option value="PA">PA</option>
+              <option value="RC">RC</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="tc_idTercero">No. identificación</label>
+            <input type="text" id="tc_idTercero" name="IdTercero" maxlength="20" placeholder="Ej. 123456789">
+          </div>
+          <div class="form-group">
+            <label for="tc_dv">DV</label>
+            <input type="text" id="tc_dv" name="DV" maxlength="1" placeholder="0">
+          </div>
+        </div>
+  
+        <!-- Datos del tercero -->
+        <p class="seccion-label">Datos del tercero</p>
+        <div class="form-grid-2">
+          <div class="form-group" style="grid-column:1/-1;">
+            <label for="tc_nomTercero">Nombre completo / razón social</label>
+            <input type="text" id="tc_nomTercero" name="NomTercero" maxlength="82" placeholder="Nombre o razón social">
+          </div>
+          <div class="form-group">
+            <label for="tc_terceroNom">Primer nombre</label>
+            <input type="text" id="tc_terceroNom" name="TerceroNom" maxlength="40" placeholder="Nombres">
+          </div>
+          <div class="form-group">
+            <label for="tc_terceroApe">Apellidos</label>
+            <input type="text" id="tc_terceroApe" name="TerceroApe" maxlength="40" placeholder="Apellidos">
+          </div>
+        </div>
+  
+        <!-- Contacto -->
+        <p class="seccion-label">Contacto</p>
+        <div class="form-grid-2">
+          <div class="form-group" style="grid-column:1/-1;">
+            <label for="tc_direccion">Dirección</label>
+            <input type="text" id="tc_direccion" name="Direccion" maxlength="60" placeholder="Dirección">
+          </div>
+          <div class="form-group">
+            <label for="tc_ciudad">Ciudad</label>
+            <input type="text" id="tc_ciudad" name="Ciudad" maxlength="30" placeholder="Ciudad">
+          </div>
+          <div class="form-group">
+            <label for="tc_email">Correo electrónico</label>
+            <input type="email" id="tc_email" name="eMail" maxlength="50" placeholder="correo@ejemplo.com">
+          </div>
+          <div class="form-group">
+            <label for="tc_telefono">Teléfono fijo</label>
+            <input type="text" id="tc_telefono" name="Telefono" maxlength="30" placeholder="Ej. 6051234567">
+          </div>
+          <div class="form-group">
+            <label for="tc_telefonoCel">Celular</label>
+            <input type="text" id="tc_telefonoCel" name="TelefonoCel" maxlength="30" placeholder="Ej. 3001234567">
+          </div>
+        </div>
+  
+        <!-- Datos financieros -->
+        <p class="seccion-label">Datos financieros</p>
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label for="tc_codAdmin">Cod. administradora</label>
+            <input type="text" id="tc_codAdmin" name="CodAdministradora" maxlength="6" placeholder="Ej. EPS01">
+          </div>
+          <div class="form-group">
+            <label for="tc_cuentaCredito">Cuenta crédito</label>
+            <input type="text" id="tc_cuentaCredito" name="CuentaCredito" maxlength="20" placeholder="No. cuenta">
+          </div>
+          <div class="form-group">
+            <label for="tc_cuentaOrden">Cuenta orden</label>
+            <input type="text" id="tc_cuentaOrden" name="CuentaOrden" maxlength="20" placeholder="No. cuenta">
+          </div>
+          <div class="form-group">
+            <label for="tc_cuentaRad">Cuenta radicada</label>
+            <input type="text" id="tc_cuentaRad" name="Cuenta_Radicada" maxlength="20" placeholder="No. cuenta">
+          </div>
+          <div class="form-group">
+            <label for="tc_gpuc">Grupo PUC</label>
+            <input type="text" id="tc_gpuc" name="GPUC" maxlength="2" placeholder="Ej. 13">
+          </div>
+          <div class="form-group">
+            <label for="tc_tipoPagador">Tipo pagador</label>
+            <select id="tc_tipoPagador" name="Tipo_Pagador">
+              <option value="">-- Tipo --</option>
+              <option value="1">1 - EPS</option>
+              <option value="2">2 - Particular</option>
+              <option value="3">3 - Otro</option>
+            </select>
+          </div>
+        </div>
+  
+        <!-- Empresa -->
+        <p class="seccion-label">Empresa</p>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="tc_idEmpresa">Id empresa grupo</label>
+            <input type="text" id="tc_idEmpresa" name="IdEmpresaGrupo" maxlength="15" placeholder="Ej. EMP001">
+          </div>
+          <div class="form-group">
+            <label for="tc_systemUser">Usuario sistema</label>
+            <input type="text" id="tc_systemUser" name="systemuser" maxlength="20" placeholder="Usuario">
+          </div>
+        </div>
+  
+        <div id="tc_errorMsg" class="error" style="display:none;"></div>
+  
+      </div>
+  
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button id="tc_btnLimpiar" class="button button-secondary" onclick="limpiarTerceros()">Limpiar</button>
+        <button id="tc_btnGuardar" class="button" onclick="guardarTercero()">Guardar</button>
+      </div>
+  
+    </div>
+  </div>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="/js/capita.js"></script>
+</body>
+</html>
+
