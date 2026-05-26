@@ -50,6 +50,8 @@ import com.certificadosapi.certificados.service.CifradoService;
  * - Obtener respuestas RIPS (CUV)
  * - Generar XML de facturas
  * - Construir archivos ZIP con XML, JSON, PDFs y archivos TXT de validación
+ * 
+ * @author Marlon Morales Llanos
  */
 @Service
 public class ExportarService {

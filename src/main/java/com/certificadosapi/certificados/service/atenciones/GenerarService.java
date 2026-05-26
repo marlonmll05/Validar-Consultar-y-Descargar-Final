@@ -44,6 +44,8 @@ import com.certificadosapi.certificados.util.ServidorUtil;
  * - Generación de PDFs desde imágenes
  * - Descarga de reportes desde Reporting Services
  * - Inserción de documentos PDF en base de datos
+ * 
+ * @author Marlon Morales Llanos
  */
 @Service
 public class GenerarService {

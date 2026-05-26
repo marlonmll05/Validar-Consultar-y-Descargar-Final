@@ -31,6 +31,9 @@ import com.certificadosapi.certificados.config.DatabaseConfig;
  * - Validar existencia de facturas
  * - Consultar anexos por admisión
  * - Validar cuentas de cobro mediante procedimientos almacenados
+ * 
+ * @author Marlon Morales Llanos
+ * 
  */
 @Service
 public class ConsultaService { 

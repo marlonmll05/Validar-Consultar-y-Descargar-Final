@@ -32,6 +32,8 @@ import com.certificadosapi.certificados.config.DatabaseConfig;
  * - Unificar (merge) archivos PDF
  * - Insertar PDFs en base de datos
  * - Controlar inserciones automáticas duplicadas
+ * 
+ * @author Marlon Morales Llanos
  */
 @Service
 public class AnexarService {
