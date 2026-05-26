@@ -340,6 +340,7 @@ public class AtencionesController {
     }
 
 
+    @SuppressWarnings("null")
     @GetMapping("/unificar-pdfs")
     public ResponseEntity<byte[]> unificarPdfs(@RequestParam List<Long> idAdmisiones, String nombreCapita) throws Exception {
 
