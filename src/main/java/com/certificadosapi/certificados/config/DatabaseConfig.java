@@ -1,5 +1,6 @@
 package com.certificadosapi.certificados.config;
 
+import java.io.ByteArrayInputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -111,5 +112,47 @@ public class DatabaseConfig {
                 return respuesta;
             }
         } 
+    }
+
+    public Long insertarDocumentoPdf(
+        Long idAdmision,
+        Long idPacienteKey,
+        Long idSoporteKey,
+        String tipoDocumento,
+        byte[] pdfFinal,
+        boolean eliminarSiNo,
+        boolean automatico
+    ) throws SQLException {
+
+        String sql = "EXEC dbo.pa_Net_Insertar_DocumentoPdf ?, ?, ?, ?, ?, ?, ?, ?";
+
+        try (
+            Connection conn = DriverManager.getConnection(getConnectionUrl("IPSoft100_ST"));
+            PreparedStatement ps = conn.prepareStatement(sql)
+        ) {
+
+            ps.setLong(1, idAdmision);
+            ps.setLong(2, idPacienteKey);
+            ps.setLong(3, idSoporteKey);
+            ps.setBoolean(4, false);
+            ps.setString(5, tipoDocumento);
+            ps.setBinaryStream(6, new ByteArrayInputStream(pdfFinal), pdfFinal.length);
+            ps.setBoolean(7, eliminarSiNo);
+            ps.setBoolean(8, automatico);
+
+            try (ResultSet rs = ps.executeQuery()) {
+
+                if (rs.next()) {
+                    Long idGenerado = rs.getLong("IdpdfKey");
+
+                    log.info("PDF insertado correctamente. IdpdfKey={}", idGenerado);
+
+                    return idGenerado;
+                }
+                log.error("pa_Net_Insertar_DocumentoPdf no retornó IdpdfKey para idAdmision={}, idSoporteKey={}",
+                              idAdmision, idSoporteKey);
+                throw new SQLException("No se pudo obtener el IdpdfKey del PDF insertado");
+            }
+        }
     }
 }

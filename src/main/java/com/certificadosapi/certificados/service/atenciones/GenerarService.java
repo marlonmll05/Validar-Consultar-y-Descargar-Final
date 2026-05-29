@@ -1,7 +1,6 @@
 package com.certificadosapi.certificados.service.atenciones;
 
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -234,33 +233,7 @@ public class GenerarService {
                     byte[] pdfBytes = EntityUtils.toByteArray(response.getEntity());
                     log.info("Factura descargada correctamente. Tamaño={} bytes", pdfBytes.length);
 
-                    try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                        String sql = "EXEC dbo.pa_Net_Insertar_DocumentoPdf ?, ?, ?, ?, ?, ?, ?, ?";
-                        
-                        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                            ps.setLong(1, idAdmision);
-                            ps.setLong(2, idPacienteKey);
-                            ps.setLong(3, idSoporteKey != null ? idSoporteKey : 18L);
-                            ps.setBoolean(4, false);
-                            ps.setString(5, tipoDocumento);
-                            ps.setBinaryStream(6, new ByteArrayInputStream(pdfBytes));
-                            ps.setBoolean(7, true);
-                            ps.setBoolean(8, true);
-                            
-                            log.debug("Insertando PDF de factura en BD para idAdmision={}, idPacienteKey={}", idAdmision, idPacienteKey);
-                            try (ResultSet rs = ps.executeQuery()) {
-                                if (rs.next()) {
-                                    long idGenerado = rs.getLong("IdpdfKey");
-                                    log.info("PDF de factura insertado correctamente con IdpdfKey={}", idGenerado);
-                                    return idGenerado;
-                                } else {
-                                    log.error("El procedimiento pa_Net_Insertar_DocumentoPdf no retornó IdpdfKey");
-                                }
-                            }
-                        }
-                    }
-
-                    throw new SQLException("No se pudo obtener el ID generado del PDF");
+                    return databaseConfig.insertarDocumentoPdf(idAdmision, idPacienteKey, idSoporteKey != null ? idSoporteKey : 18L, tipoDocumento, pdfBytes, true, true);
 
                 } else {
                     String errorContent = "";
@@ -363,33 +336,7 @@ public class GenerarService {
                     byte[] pdfBytes = EntityUtils.toByteArray(response.getEntity());
                     log.info("HEV descargada correctamente. Tamaño={} bytes", pdfBytes.length);
 
-                    try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                        String sql = "EXEC dbo.pa_Net_Insertar_DocumentoPdf ?, ?, ?, ?, ?, ?, ?, ?";
-                        
-                        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                            ps.setLong(1, idAdmision);
-                            ps.setLong(2, idPacienteKey);
-                            ps.setLong(3, idSoporteKey != null ? idSoporteKey : 1L);
-                            ps.setBoolean(4, false);
-                            ps.setString(5, tipoDocumento);
-                            ps.setBinaryStream(6, new ByteArrayInputStream(pdfBytes));
-                            ps.setBoolean(7, true);
-                            ps.setBoolean(8, true);
-                            
-                            log.debug("Insertando PDF de hev en BD para idAdmision={}, idPacienteKey={}", idAdmision, idPacienteKey);
-                            try (ResultSet rs = ps.executeQuery()) {
-                                if (rs.next()) {
-                                    long idGenerado = rs.getLong("IdpdfKey");
-                                    log.info("PDF de HEV insertado correctamente con IdpdfKey={}", idGenerado);
-                                    return idGenerado;
-                                } else {
-                                    log.error("El procedimiento pa_Net_Insertar_DocumentoPdf no retornó IdpdfKey");
-                                }
-                            }
-                        }
-                    }
-
-                    throw new SQLException("No se pudo obtener el ID generado del PDF");
+                    return databaseConfig.insertarDocumentoPdf(idAdmision, idPacienteKey, idSoporteKey != null ? idSoporteKey : 1L, tipoDocumento, pdfBytes, true, true);
 
                 } else {
                     String errorContent = "";
@@ -495,35 +442,7 @@ public class GenerarService {
                     byte[] pdfBytes = EntityUtils.toByteArray(response.getEntity());
                     log.info("Soporte descargado correctamente. Tamaño={} bytes", pdfBytes.length);
 
-                    String connectionUrl = databaseConfig.getConnectionUrl("IPSoft100_ST");
-
-                    try (Connection conn = DriverManager.getConnection(connectionUrl)) {
-                        String sql = "EXEC dbo.pa_Net_Insertar_DocumentoPdf ?, ?, ?, ?, ?, ?, ?, ?";
-                        
-                        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                            ps.setLong(1, idAdmision);
-                            ps.setLong(2, idPacienteKey);
-                            ps.setLong(3, idSoporteKey);
-                            ps.setBoolean(4, false);
-                            ps.setString(5, tipoDocumento);
-                            ps.setBinaryStream(6, new ByteArrayInputStream(pdfBytes));
-                            ps.setBoolean(7, false);
-                            ps.setBoolean(8, true);
-                            
-                            log.debug("Insertando soporte PDF en BD para idAdmision={}, idPacienteKey={}", idAdmision, idPacienteKey);
-                            try (ResultSet rs = ps.executeQuery()) {
-                                if (rs.next()) {
-                                    long idGenerado = rs.getLong("IdpdfKey");
-                                    log.info("Soporte PDF insertado correctamente con IdpdfKey={}", idGenerado);
-                                    return idGenerado;
-                                } else {
-                                    log.error("El procedimiento pa_Net_Insertar_DocumentoPdf no retornó IdpdfKey en insertarSoporte");
-                                }
-                            }
-                        }
-                    }
-
-                    throw new SQLException("No se pudo obtener el ID generado del PDF");
+                    return databaseConfig.insertarDocumentoPdf(idAdmision, idPacienteKey, idSoporteKey, tipoDocumento, pdfBytes, false, true);
 
                 } else {
                     String errorContent = "";

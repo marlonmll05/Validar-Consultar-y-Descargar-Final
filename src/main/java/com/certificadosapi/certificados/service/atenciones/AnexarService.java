@@ -248,39 +248,8 @@ public class AnexarService {
             log.info("Merge de PDFs completado. Tamaño final del PDF unificado={} bytes", pdfFinal.length);
         }
 
-        // Insertar el PDF unificado en IPSoft100_ST
-        try (Connection connIPSoft = DriverManager.getConnection(databaseConfig.getConnectionUrl("IPSoft100_ST"))) {
-            log.debug("Conexión abierta a IPSoft100_ST para insertar PDF unificado. idAdmision={}, idSoporteKey={}",
-                     idAdmision, idSoporteKey);
-
-            String sql = "EXEC dbo.pa_Net_Insertar_DocumentoPdf ?, ?, ?, ?, ?, ?, ?, ?";
-
-            try (PreparedStatement ps = connIPSoft.prepareStatement(sql)) {
-                ps.setLong(1, idAdmision);
-                ps.setLong(2, idPacienteKey);
-                ps.setLong(3, idSoporteKey);
-                ps.setBoolean(4, false);
-                ps.setString(5, tipoDocumento);
-                ps.setBinaryStream(6, new ByteArrayInputStream(pdfFinal), pdfFinal.length);
-                ps.setBoolean(7, eliminarSiNo);
-                ps.setBoolean(8, automatico);
-
-                log.debug("Ejecutando pa_Net_Insertar_DocumentoPdf con eliminarSiNo={}, automatico={}",
-                          eliminarSiNo, automatico);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        long idGenerado = rs.getLong("IdpdfKey");
-                        log.info("PDF unificado insertado correctamente en tbl_Net_Facturas_ListaPdf. IdpdfKey={}",
-                                 idGenerado);
-                        return idGenerado;
-                    }
-                    log.error("pa_Net_Insertar_DocumentoPdf no retornó IdpdfKey para idAdmision={}, idSoporteKey={}",
-                              idAdmision, idSoporteKey);
-                    throw new SQLException("No se pudo obtener el ID del PDF insertado");
-                }
-            }
-        }
+        return databaseConfig.insertarDocumentoPdf(idAdmision, idPacienteKey, idSoporteKey, tipoDocumento, pdfFinal, eliminarSiNo, automatico);
+        
     }
 }
 
