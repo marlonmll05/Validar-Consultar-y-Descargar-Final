@@ -1,0 +1,547 @@
+:root {
+    --primary: #9b87f5;
+    --primary-dark: #7a68c3;
+    --primary-light: #9b87f515;
+    --primary-border: #9b87f540;
+    --dark: #1A1F2C;
+    --gray: #8E9196;
+    --light: #f8f9fa;
+    --border: #e2e8f0;
+    --white: #ffffff;
+    --header-h: 130px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: var(--light);
+    color: var(--dark);
+    min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 28px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+
+.header-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.logo-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+}
+
+.header-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--dark);
+    letter-spacing: -0.01em;
+}
+
+.header-sub {
+    font-size: 12px;
+    color: var(--gray);
+    margin-left: auto;
+}
+
+.search-bar {
+    display: grid;
+    grid-template-columns: 160px 1fr 1fr 1fr auto;
+    gap: 10px;
+    align-items: end;
+}
+
+.search-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.search-field label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.search-field select,
+.search-field input {
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--light);
+    color: var(--dark);
+    font-size: 13px;
+    font-family: 'Segoe UI', sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.search-field select:focus,
+.search-field input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.btn-consultar {
+    height: 36px;
+    padding: 0 20px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Segoe UI', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+    margin-top: 20px;
+}
+
+.btn-consultar:hover { background: var(--primary-dark); }
+.btn-consultar:active { transform: scale(0.98); }
+
+.panel-tab {
+    height: 32px;
+    padding: 0 16px;
+    background: transparent;
+    color: var(--gray);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Segoe UI', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+
+.panel-tab:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.panel-tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.panel-tab.active:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+/* ── BODY LAYOUT ── */
+.main-content {
+    display: grid;
+    grid-template-columns: 1220px 1fr;
+    gap: 0;
+    padding-top: var(--header-h);
+    overflow: hidden;
+}
+
+/* ── PANEL IZQUIERDO ── */
+.left-panel {
+    background: var(--white);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+}
+.panel-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    padding: 0 4px;
+}
+
+/* ── ACORDEONES ── */
+.accordion {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: box-shadow 0.15s;
+}
+
+.accordion.open {
+    box-shadow: 0 2px 12px rgba(155,135,245,0.1);
+    border-color: var(--primary-border);
+}
+
+.accordion-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    background: var(--white);
+    user-select: none;
+    transition: background 0.15s;
+}
+
+.accordion-header:hover { background: var(--primary-light); }
+
+.accordion-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.accordion.open .accordion-num {
+    background: var(--primary-dark);
+}
+
+.accordion-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dark);
+    flex: 1;
+}
+
+.accordion-sub {
+    font-size: 11px;
+    color: var(--gray);
+    display: block;
+    font-weight: 400;
+    margin-top: 1px;
+}
+
+.accordion-arrow {
+    width: 20px;
+    height: 20px;
+    color: var(--gray);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.accordion.open .accordion-arrow {
+    transform: rotate(180deg);
+    color: var(--primary);
+}
+
+.accordion-body {
+    display: none;
+    padding: 0 16px 16px;
+    background: var(--white);
+    border-top: 1px solid var(--border);
+}
+
+.accordion.open .accordion-body {
+    display: block;
+
+
+}
+
+.empty-state {
+    padding: 16px 0 4px;
+    text-align: center;
+    color: var(--gray);
+    font-size: 13px;
+    font-style: italic;
+}
+
+
+/* ── FORMULARIOS DE ACORDEÓN ── */
+.acc-form {
+    padding-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-field label {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.field-code {
+    font-weight: 400;
+    color: var(--primary);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.form-field input {
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--light);
+    color: var(--dark);
+    font-size: 13px;
+    font-family: 'Segoe UI', sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.form-field input[readonly] {
+    background: #f8f9fa;
+    color: var(--dark);
+    cursor: default;
+}
+
+.form-field input:not([readonly]):focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.form-group-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 6px 0 2px;
+    border-bottom: 1px solid var(--primary-border);
+    margin-top: 4px;
+}
+
+/* ── PANEL DERECHO - PDF ── */
+.right-panel {
+    background: var(--light);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.pdf-toolbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pdf-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dark);
+    flex: 1;
+}
+
+.pdf-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    border: 1px solid var(--primary-border);
+}
+
+.pdf-btn {
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--dark);
+    font-size: 12px;
+    font-family: 'Segoe UI', sans-serif;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pdf-btn:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary-dark);
+}
+
+.pdf-viewer {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.pdf-viewer iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: none;
+}
+
+.pdf-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 100%;
+    color: var(--gray);
+}
+
+.pdf-empty-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pdf-empty-icon svg {
+    width: 28px;
+    height: 28px;
+    stroke: var(--gray);
+    fill: none;
+    stroke-width: 1.5;
+}
+
+.pdf-empty-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.pdf-empty-sub {
+    font-size: 13px;
+    color: var(--gray);
+    text-align: center;
+    max-width: 240px;
+    line-height: 1.5;
+}
+
+/* ── TOASTS ── */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    min-width: 260px;
+    max-width: 360px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    pointer-events: all;
+    animation: slideIn 0.25s ease;
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.toast.hiding {
+    opacity: 0;
+    transform: translateX(20px);
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.toast-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+}
+
+.toast-icon.success { background: #e8f5e9; color: #2e7d32; }
+.toast-icon.error   { background: #fdecea; color: #c62828; }
+.toast-icon.info    { background: var(--primary-light); color: var(--primary-dark); }
+.toast-icon.warning { background: #fff8e1; color: #e65100; }
+
+.toast-content { flex: 1; }
+
+.toast-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.toast-msg {
+    font-size: 12px;
+    color: var(--gray);
+    margin-top: 2px;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--gray);
+    font-size: 16px;
+    padding: 0;
+    line-height: 1;
+}
+
+.toast-close:hover { color: var(--dark); }
+
+/* ── SCROLLBAR ── */
+.left-panel::-webkit-scrollbar { width: 4px; }
+.left-panel::-webkit-scrollbar-track { background: transparent; }
+.left-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.left-panel::-webkit-scrollbar-thumb:hover { background: var(--gray); }

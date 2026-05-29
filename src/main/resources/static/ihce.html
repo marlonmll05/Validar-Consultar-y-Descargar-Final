@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+      <link rel="stylesheet" href="/css/ihce.css">
+    <title>Consulta FHIR</title>
+</head>
+<body>
+
+<!-- ========== HEADER FIJO ========== -->
+<header class="header">
+    <div class="header-top">
+        <div class="logo-dot"></div>
+        <span class="header-title">Consulta FHIR</span>
+        <span class="header-sub">Historia clínica electrónica</span>
+
+        <div class="panel-tabs">
+            <button class="panel-tab active" onclick="mostrarPanel('paciente', this)">RDA Paciente</button>
+            <button class="panel-tab" onclick="mostrarPanel('urgencias', this)">Urgencias</button>
+            <button class="panel-tab" onclick="mostrarPanel('consulta', this)">Consulta</button>
+            <button class="panel-tab" onclick="mostrarPanel('hospitalizacion', this)">Hospitalización</button>
+        </div>
+    </div>
+
+    <div class="search-bar">
+        <div class="search-field">
+            <label>Tipo documento</label>
+            <select id="tipoDocumento">
+                <option value="">Seleccione...</option>
+                <option value="CC">CC - Cédula de ciudadanía</option>
+                <option value="TI">TI - Tarjeta de identidad</option>
+                <option value="CE">CE - Cédula extranjería</option>
+                <option value="PA">PA - Pasaporte</option>
+                <option value="RC">RC - Registro civil</option>
+                <option value="MS">MS - Menor sin identificación</option>
+            </select>
+        </div>
+
+        <div class="search-field">
+            <label>Número documento</label>
+            <input type="text" id="numDocumento"/>
+        </div>
+
+        <div class="search-field">
+            <label>Número de admisión</label>
+            <input type="text" id="numAdmision" readonly/>
+        </div>
+
+        <div class="search-field">
+            <label>RDA</label>
+            <input type="text" id="rda" readonly/>
+        </div>
+
+        <button class="btn-consultar" onclick="ejecutarConsulta()">Consultar</button>
+    </div>
+</header>
+
+<!-- ========== CONTENIDO PRINCIPAL ========== -->
+<div class="main-content">
+
+    <!-- ── PANEL IZQUIERDO ── -->
+    <aside class="left-panel" id="panel-paciente">
+
+        <p class="panel-title">Secciones del registro</p>
+
+        <!-- 1. Identificación del Prestador -->
+        <div class="accordion" id="acc1">
+            <div class="accordion-header" onclick="toggleAccordion('acc1')">
+                <div class="accordion-num">1</div>
+                <div>
+                    <span class="accordion-label">Identificación del Prestador de Servicios de Salud</span>
+                    <span class="accordion-sub">Elementos del dato · 16</span>
+                </div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body">
+                <form class="acc-form">
+                    <div class="form-field">
+                        <label>Código IPS <span class="field-code">· 16</span></label>
+                        <input type="text" name="Cod_Ips" readonly />
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 2. Identificación del Paciente -->
+        <div class="accordion" id="acc2">
+            <div class="accordion-header" onclick="toggleAccordion('acc2')">
+                <div class="accordion-num">2</div>
+                <div>
+                    <span class="accordion-label">Identificación del Paciente</span>
+                    <span class="accordion-sub">Datos personales e identificación · 21 campos</span>
+                </div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Tipo identificación <span class="field-code">· 2.1</span></label>
+                            <input type="text" name="Tipo_Identificacion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Número identificación <span class="field-code">· 2.2</span></label>
+                            <input type="text" name="Numero_Identificacion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Primer nombre <span class="field-code">· 3.1</span></label>
+                            <input type="text" name="Primer_Nombre" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Segundo nombre <span class="field-code">· 3.2</span></label>
+                            <input type="text" name="Segundo_Nombre" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Primer apellido <span class="field-code">· 3.3</span></label>
+                            <input type="text" name="Primer_Apellido" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Segundo apellido <span class="field-code">· 3.4</span></label>
+                            <input type="text" name="Segundo_Apellido" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Fecha nacimiento <span class="field-code">· 4</span></label>
+                            <input type="text" name="Fec_Nac" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código país nac. <span class="field-code">· 1.1</span></label>
+                            <input type="text" name="Cod_Pais_Nacionalidad" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre país nac. <span class="field-code">· 1.2</span></label>
+                            <input type="text" name="Nombre_Pais_Nacionalidad" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Sexo biológico <span class="field-code">· 5</span></label>
+                            <input type="text" name="Sexo_Biologico" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Identidad género <span class="field-code">· 6</span></label>
+                            <input type="text" name="Identidad_Genero" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código CIUO <span class="field-code">· 7.1</span></label>
+                            <input type="text" name="Cod_Ocupacion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre ocupación <span class="field-code">· 7.2</span></label>
+                            <input type="text" name="Nom_Ocupacion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Categoría discapacidad <span class="field-code">· 10</span></label>
+                            <input type="text" name="Categoria_Discapacidad" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código país res. <span class="field-code">· 11.1</span></label>
+                            <input type="text" name="Cod_Pais_Residencia" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre país res. <span class="field-code">· 11.2</span></label>
+                            <input type="text" name="Nombre_Pais_Residencia" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código municipio <span class="field-code">· 12.1</span></label>
+                            <input type="text" name="Cod_Mpio_Residencia" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre municipio <span class="field-code">· 12.2</span></label>
+                            <input type="text" name="Nombre_Mpio_Residencia" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Pertenencia étnica <span class="field-code">· 13.1</span></label>
+                            <input type="text" name="Pertenencia_Etnica" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre etnia <span class="field-code">· 13.2</span></label>
+                            <input type="text" name="Nombre_Pertenencia_Etnica" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código zona <span class="field-code">· 14</span></label>
+                            <input type="text" name="CodZona" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 3. Antecedentes de salud -->
+        <div class="accordion" id="acc3">
+            <div class="accordion-header" onclick="toggleAccordion('acc3')">
+                <div class="accordion-num">3</div>
+                <div>
+                    <span class="accordion-label">Antecedentes de salud</span>
+                    <span class="accordion-sub">Historial clínico del paciente · 4 campos</span>
+                </div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body">
+                <form class="acc-form">
+                    <div class="form-group-label">Antecedentes alérgicos</div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Alérgico <span class="field-code">· 47.1</span></label>
+                            <input type="text" name="Antecedentes_Alergicos" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre alérgeno <span class="field-code">· 47.2</span></label>
+                            <input type="text" name="Antecedentes_NombreAlergico" readonly />
+                        </div>
+                    </div>
+                    <div class="form-group-label">Antecedentes familiares</div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Antecedente familiar <span class="field-code">· 47.3</span></label>
+                            <input type="text" name="Antecedente_Familiar" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Parentesco <span class="field-code">· 47.4</span></label>
+                            <input type="text" name="Antecedente_Parentesco" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 4. Antecedentes farmacológicos -->
+        <div class="accordion" id="acc4">
+            <div class="accordion-header" onclick="toggleAccordion('acc4')">
+                <div class="accordion-num">4</div>
+                <div>
+                    <span class="accordion-label">Antecedentes farmacológicos</span>
+                    <span class="accordion-sub">Diagnósticos y medicamentos · 2 campos</span>
+                </div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body">
+                <form class="acc-form">
+                    <div class="form-group-label">Diagnóstico principal</div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Código Dx principal <span class="field-code">· 37.1</span></label>
+                            <input type="text" name="Cod_Dx_Princ" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre Dx principal <span class="field-code">· 37.2</span></label>
+                            <input type="text" name="Nom_Dx_Princ" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- ── PANEL CONSULTA EXTERNA ── -->
+    <aside class="left-panel" id="panel-consulta" style="display:none">
+        <p class="panel-title">Secciones del registro · Consulta Externa</p>
+
+        <div class="accordion" id="con1">
+            <div class="accordion-header" onclick="toggleAccordion('con1')">
+                <div class="accordion-num">1</div>
+                <div><span class="accordion-label">Identificación del Prestador de Servicios de Salud</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="con2">
+            <div class="accordion-header" onclick="toggleAccordion('con2')">
+                <div class="accordion-num">2</div>
+                <div><span class="accordion-label">Entidad responsable por el plan de beneficios en salud (Consulta Externa)</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="con3">
+            <div class="accordion-header" onclick="toggleAccordion('con3')">
+                <div class="accordion-num">3</div>
+                <div><span class="accordion-label">Identificación del Paciente</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="con4">
+            <div class="accordion-header" onclick="toggleAccordion('con4')">
+                <div class="accordion-num">4</div>
+                <div><span class="accordion-label">Datos de la Consulta Externa</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="con5">
+            <div class="accordion-header" onclick="toggleAccordion('con5')">
+                <div class="accordion-num">5</div>
+                <div><span class="accordion-label">Antecedentes de salud</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="con6">
+            <div class="accordion-header" onclick="toggleAccordion('con6')">
+                <div class="accordion-num">6</div>
+                <div><span class="accordion-label">Diagnósticos</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="con7">
+            <div class="accordion-header" onclick="toggleAccordion('con7')">
+                <div class="accordion-num">7</div>
+                <div><span class="accordion-label">Fórmula de Medicamentos ordenados en Consulta Externa (Tecnologías en Salud)</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="con8">
+            <div class="accordion-header" onclick="toggleAccordion('con8')">
+                <div class="accordion-num">8</div>
+                <div><span class="accordion-label">Órdenes médicas – procedimientos ordenados en Consulta Externa</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="con9">
+            <div class="accordion-header" onclick="toggleAccordion('con9')">
+                <div class="accordion-num">9</div>
+                <div><span class="accordion-label">Órdenes médicas – Otras tecnologías en salud ordenadas en Consulta Externa</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="con10">
+            <div class="accordion-header" onclick="toggleAccordion('con10')">
+                <div class="accordion-num">10</div>
+                <div><span class="accordion-label">Datos de incapacidad</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="con11">
+            <div class="accordion-header" onclick="toggleAccordion('con11')">
+                <div class="accordion-num">11</div>
+                <div><span class="accordion-label">Profesional de salud que realizó la atención por Consulta Externa</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="con12">
+            <div class="accordion-header" onclick="toggleAccordion('con12')">
+                <div class="accordion-num">12</div>
+                <div><span class="accordion-label">Documento de soporte de la Consulta Externa</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+    </aside>
+
+    <!-- ── PANEL URGENCIAS ── -->
+    <aside class="left-panel" id="panel-urgencias" style="display:none">
+        <p class="panel-title">Secciones del registro · Urgencias</p>
+
+        <div class="accordion" id="urg1">
+            <div class="accordion-header" onclick="toggleAccordion('urg1')">
+                <div class="accordion-num">1</div>
+                <div><span class="accordion-label">Identificación del Prestador de Servicios de Salud</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Código IPS <span class="field-code">· 16</span></label>
+                            <input type="text" name="urg_Cod_Ips" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg2">
+            <div class="accordion-header" onclick="toggleAccordion('urg2')">
+                <div class="accordion-num">2</div>
+                <div><span class="accordion-label">Entidad responsable por el plan de beneficios en salud atención inmediata / Urgencias</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>EAPB <span class="field-code">· 15.1</span></label>
+                            <input type="text" name="urg_EAPB" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre EAPB <span class="field-code">· 15.2</span></label>
+                            <input type="text" name="urg_Nombre_EAPB" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg3">
+            <div class="accordion-header" onclick="toggleAccordion('urg3')">
+                <div class="accordion-num">3</div>
+                <div><span class="accordion-label">Identificación del Paciente</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Tipo identificación <span class="field-code">· 2.1</span></label>
+                            <input type="text" name="urg_Tipo_Identificacion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Número identificación <span class="field-code">· 2.2</span></label>
+                            <input type="text" name="urg_Numero_Identificacion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Primer nombre <span class="field-code">· 3.1</span></label>
+                            <input type="text" name="urg_Primer_Nombre" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Segundo nombre <span class="field-code">· 3.2</span></label>
+                            <input type="text" name="urg_Segundo_Nombre" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Primer apellido <span class="field-code">· 3.3</span></label>
+                            <input type="text" name="urg_Primer_Apellido" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Segundo apellido <span class="field-code">· 3.4</span></label>
+                            <input type="text" name="urg_Segundo_Apellido" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Fecha nacimiento <span class="field-code">· 4</span></label>
+                            <input type="text" name="urg_Fec_Nac" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código país nac. <span class="field-code">· 1.1</span></label>
+                            <input type="text" name="urg_Cod_Pais_Nacionalidad" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre país nac. <span class="field-code">· 1.2</span></label>
+                            <input type="text" name="urg_Nombre_Pais_Nacionalidad" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Sexo biológico <span class="field-code">· 5</span></label>
+                            <input type="text" name="urg_Sexo_Biologico" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Identidad género <span class="field-code">· 6</span></label>
+                            <input type="text" name="urg_Identidad_Genero" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código CIUO <span class="field-code">· 7.1</span></label>
+                            <input type="text" name="urg_Cod_Ocupacion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre ocupación <span class="field-code">· 7.2</span></label>
+                            <input type="text" name="urg_Nom_Ocupacion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Categoría discapacidad <span class="field-code">· 10</span></label>
+                            <input type="text" name="urg_Categoria_Discapacidad" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código país res. <span class="field-code">· 11.1</span></label>
+                            <input type="text" name="urg_Cod_Pais_Residencia" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre país res. <span class="field-code">· 11.2</span></label>
+                            <input type="text" name="urg_Nombre_Pais_Residencia" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código municipio <span class="field-code">· 12.1</span></label>
+                            <input type="text" name="urg_Cod_Mpio_Residencia" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre municipio <span class="field-code">· 12.2</span></label>
+                            <input type="text" name="urg_Nombre_Mpio_Residencia" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Pertenencia étnica <span class="field-code">· 13.1</span></label>
+                            <input type="text" name="urg_Pertenencia_Etnica" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre etnia <span class="field-code">· 13.2</span></label>
+                            <input type="text" name="urg_Nombre_Pertenencia_Etnica" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código zona <span class="field-code">· 14</span></label>
+                            <input type="text" name="urg_CodZona" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg4">
+            <div class="accordion-header" onclick="toggleAccordion('urg4')">
+                <div class="accordion-num">4</div>
+                <div><span class="accordion-label">Datos de la atención inmediata / Urgencias</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Fecha hora inicio <span class="field-code">· 17</span></label>
+                            <input type="text" name="urg_Fecha_hora_ini_atencion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Fecha hora fin <span class="field-code">· 43</span></label>
+                            <input type="text" name="urg_Fecha_hora_fin_atencion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Modalidad servicio <span class="field-code">· 18.1</span></label>
+                            <input type="text" name="urg_Modalidad_Servicio" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Grupo servicio <span class="field-code">· 18.2</span></label>
+                            <input type="text" name="urg_GrupoServicio" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Entorno atención <span class="field-code">· 19</span></label>
+                            <input type="text" name="urg_Entorno_Atencion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Vía ingreso <span class="field-code">· 20</span></label>
+                            <input type="text" name="urg_Via_Ingreso" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Causa externa <span class="field-code">· 21</span></label>
+                            <input type="text" name="urg_Causa_Externa" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Fecha hora triage <span class="field-code">· 22.1</span></label>
+                            <input type="text" name="urg_Fecha_Hora_Triage" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Clasificación triage <span class="field-code">· 22.2</span></label>
+                            <input type="text" name="urg_Clasificacion_Triage" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código Dx principal <span class="field-code">· 23.1</span></label>
+                            <input type="text" name="urg_Dx_Principal" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre Dx principal <span class="field-code">· 23.2</span></label>
+                            <input type="text" name="urg_Nombre_Dx_Principal" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Tipo Dx <span class="field-code">· 23.3</span></label>
+                            <input type="text" name="urg_Tipo_Dx" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg5">
+            <div class="accordion-header" onclick="toggleAccordion('urg5')">
+                <div class="accordion-num">5</div>
+                <div><span class="accordion-label">Antecedentes de salud</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Alérgico <span class="field-code">· 47.1</span></label>
+                            <input type="text" name="urg_Antecedentes_Alergicos" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre alérgeno <span class="field-code">· 47.2</span></label>
+                            <input type="text" name="urg_Antecedentes_NombreAlergico" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Antecedente familiar <span class="field-code">· 47.3</span></label>
+                            <input type="text" name="urg_Antecedente_Familiar" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Parentesco <span class="field-code">· 47.4</span></label>
+                            <input type="text" name="urg_Antecedente_Parentesco" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg6">
+            <div class="accordion-header" onclick="toggleAccordion('urg6')">
+                <div class="accordion-num">6</div>
+                <div><span class="accordion-label">Listado de Procedimientos realizados durante la atención en Salud – Urgencias (Tecnologías en Salud)</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body" id="body-urg6">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Tipo tecnología en salud</label>
+                            <input type="text" name="urg_PR_Tipo_tecnologia_en_salud" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código CUPS</label>
+                            <input type="text" name="urg_PR_Codigo_CUPS" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código IUM</label>
+                            <input type="text" name="urg_PR_Codigo_IUM" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Finalidad</label>
+                            <input type="text" name="urg_PR_Finalidad" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Fecha entrega tecnología</label>
+                            <input type="text" name="urg_PR_Fecha_Entrega_Tecnologia" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Tipo identificación profesional</label>
+                            <input type="text" name="urg_PR_Tipo_Identificacion_Profesional" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Identificación profesional</label>
+                            <input type="text" name="urg_PR_Identificacion_Identificacion_Profesional" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Fecha resultado</label>
+                            <input type="text" name="urg_PR_Fecha_Resultado" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Instrumento evaluador resultado</label>
+                            <input type="text" name="urg_PR_Instr_Evaluador_Resultado" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código parámetro observado</label>
+                            <input type="text" name="urg_PR_Codigo_parametro_Obsvado" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Valor resultado</label>
+                            <input type="text" name="urg_PR_Valor_Resultado" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg7">
+            <div class="accordion-header" onclick="toggleAccordion('urg7')">
+                <div class="accordion-num">7</div>
+                <div><span class="accordion-label">Listado de Medicamentos administrados durante la atención inmediata / Urgencias (Tecnologías en Salud)</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body" id="body-urg7">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Tipo tecnología salud</label>
+                            <input type="text" name="urg_M_Tipo_Tecnologia_Salud" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código CUPS</label>
+                            <input type="text" name="urg_M_Codigo_CUPS" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código IUM</label>
+                            <input type="text" name="urg_M_Codigo_IUM" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Finalidad</label>
+                            <input type="text" name="urg_M_Finalidad" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Descripción común medicamento</label>
+                            <input type="text" name="urg_M_Descripcion_Comun_Medicamento" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Fecha prescripción</label>
+                            <input type="text" name="urg_M_Fecha_Prescripcion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Dosis descrita</label>
+                            <input type="text" name="urg_M_Dosis_Descrita" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código unidad medida</label>
+                            <input type="text" name="urg_M_Cod_unidad_medida" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Vía administración</label>
+                            <input type="text" name="urg_M_Via_Administracion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Frecuencia administración</label>
+                            <input type="text" name="urg_M_Frecuencia_de_Administracion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código unidad de tiempo</label>
+                            <input type="text" name="urg_M_Cod_Unidad_de_Tiempo" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Cantidad aplicada dosis</label>
+                            <input type="text" name="urg_M_Cantidad_Aplicada_dosis" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código unidad medida dosis</label>
+                            <input type="text" name="urg_M_Codigo_de_la_unidad_de_medida_de_la_dosis" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Fecha entrega tecnología</label>
+                            <input type="text" name="urg_M_Fecha_Entrega_Tecnologia" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Cantidad total tratamiento</label>
+                            <input type="text" name="urg_M_Cantidad_total_de_todo_el_ttmto" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>FFMM</label>
+                            <input type="text" name="urg_M_FFMM" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Tipo identificación profesional</label>
+                            <input type="text" name="urg_M_Tipo_Identificacion_Profesional" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Identificación profesional</label>
+                            <input type="text" name="urg_M_Identificacion_Identificacion_Profesional" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg8">
+            <div class="accordion-header" onclick="toggleAccordion('urg8')">
+                <div class="accordion-num">8</div>
+                <div><span class="accordion-label">Listado de Otras tecnologías en salud administradas durante la atención inmediata / Urgencias</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body" id="body-urg8">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Tipo tecnología en salud</label>
+                            <input type="text" name="urg_Tipo_tecnologia_en_salud" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código CUPS</label>
+                            <input type="text" name="urg_Codigo_CUPS" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código IUM</label>
+                            <input type="text" name="urg_Codigo_IUM" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Finalidad</label>
+                            <input type="text" name="urg_Finalidad" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Fecha prescripción</label>
+                            <input type="text" name="urg_Fecha_Prescripcion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Fecha entrega tecnología</label>
+                            <input type="text" name="urg_Fecha_Entrega_Tecnologia" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Tipo identificación profesional</label>
+                            <input type="text" name="urg_Tipo_Identificacion_Profesional" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Identificación profesional</label>
+                            <input type="text" name="urg_Identificacion_Profesional" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg9">
+            <div class="accordion-header" onclick="toggleAccordion('urg9')">
+                <div class="accordion-num">9</div>
+                <div><span class="accordion-label">Diagnósticos</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Código Dx principal <span class="field-code">· 37.1</span></label>
+                            <input type="text" name="urg_Cod_Dx_Princ" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre Dx principal <span class="field-code">· 37.2</span></label>
+                            <input type="text" name="urg_Nom_Dx_Princ" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Tipo Dx principal <span class="field-code">· 37.3</span></label>
+                            <input type="text" name="urg_Tipo_Dx_Principal" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código Dx relacionado <span class="field-code">· 38.1</span></label>
+                            <input type="text" name="urg_Cod_Dx_Rel" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre Dx enf. huérfana <span class="field-code">· 38.2</span></label>
+                            <input type="text" name="urg_Nom_Dx_Rel_Enf_Huerfan" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código Dx compl. <span class="field-code">· 40.1</span></label>
+                            <input type="text" name="urg_Cod_Dx_Compl" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre Dx compl. <span class="field-code">· 40.2</span></label>
+                            <input type="text" name="urg_Nom_Dx_Compl" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Condición destino usuario <span class="field-code">· 41</span></label>
+                            <input type="text" name="urg_Cond_dest_del_usuario" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código Dx causa muerte <span class="field-code">· 42.1</span></label>
+                            <input type="text" name="urg_Cod_Dx_Basica_Muerte" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre Dx causa muerte <span class="field-code">· 42.2</span></label>
+                            <input type="text" name="urg_Nom_Dx_Causa_Basica_Muerte" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Cód. prestador refiere <span class="field-code">· 44</span></label>
+                            <input type="text" name="urg_Cod_Prestador_donde_refiere" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg10">
+            <div class="accordion-header" onclick="toggleAccordion('urg10')">
+                <div class="accordion-num">10</div>
+                <div><span class="accordion-label">Fórmula de Medicamentos ordenados al egreso de la atención inmediata / Urgencias (Tecnologías en Salud)</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body" id="body-urg10">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Tipo tecnología en salud</label>
+                            <input type="text" name="urg_F_Tipo_tecnologia_en_salud" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código CUPS</label>
+                            <input type="text" name="urg_F_Codigo_CUPS" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código IUM</label>
+                            <input type="text" name="urg_F_Codigo_IUM" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Finalidad</label>
+                            <input type="text" name="urg_F_Finalidad" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Descripción común medicamento</label>
+                            <input type="text" name="urg_F_Descripcion_Comun_Medicamento" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Fecha prescripción</label>
+                            <input type="text" name="urg_F_Fecha_Prescripcion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Dosis descrita</label>
+                            <input type="text" name="urg_F_Dosis_Descrita" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código unidad medida</label>
+                            <input type="text" name="urg_F_Cod_unidad_medida" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Vía administración</label>
+                            <input type="text" name="urg_F_Via_Administracion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Unidades tiempo prescripción</label>
+                            <input type="text" name="urg_F_Unidades_de_tiempo_de_prescripcion_tratamiento" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código unidad tiempo</label>
+                            <input type="text" name="urg_F_Cod_Unidad_tiempo" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Frecuencia administración</label>
+                            <input type="text" name="urg_F_Frecuencia_de_Administracion" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código unidad de tiempo</label>
+                            <input type="text" name="urg_F_Cod_Unidad_de_Tiempo" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg11">
+            <div class="accordion-header" onclick="toggleAccordion('urg11')">
+                <div class="accordion-num">11</div>
+                <div><span class="accordion-label">Órdenes médicas – Procedimientos ordenados al egreso de la atención inmediata / Urgencias</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body" id="body-urg11">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Tipo orden</label>
+                            <input type="text" name="urg_O_TipoOrden" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Tipo tecnología ordenada</label>
+                            <input type="text" name="urg_O_Tipo_tecnologia_en_salud_ordenada" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código CUPS ordenado</label>
+                            <input type="text" name="urg_O_Codigo_CUPS_ordenado" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Cantidad ordenada</label>
+                            <input type="text" name="urg_O_Cantidad_ordenada" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Finalidad tecnología salud</label>
+                            <input type="text" name="urg_O_Finalidad_tecnologia_salud" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código Dx asociado orden</label>
+                            <input type="text" name="urg_O_Cod_Dx_asociado_orden" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre Dx asociado orden</label>
+                            <input type="text" name="urg_O_Nom_Dx_asociado_orden" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg12">
+            <div class="accordion-header" onclick="toggleAccordion('urg12')">
+                <div class="accordion-num">12</div>
+                <div><span class="accordion-label">Órdenes médicas – Otras tecnologías en salud ordenadas al egreso de la atención inmediata / Urgencias</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body" id="body-urg12">
+                <form class="acc-form">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Tipo orden</label>
+                            <input type="text" name="urg_OT_TipoOrden" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Tipo tecnología ordenada</label>
+                            <input type="text" name="urg_OT_Tipo_tecnologia_en_salud_ordenada" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código CUPS ordenado</label>
+                            <input type="text" name="urg_OT_Codigo_CUPS_ordenado" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Cantidad ordenada</label>
+                            <input type="text" name="urg_OT_Cantidad_ordenada" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Finalidad tecnología salud</label>
+                            <input type="text" name="urg_OT_Finalidad_tecnologia_salud" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Código Dx asociado orden</label>
+                            <input type="text" name="urg_OT_Cod_Dx_asociado_orden" readonly />
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre Dx asociado orden</label>
+                            <input type="text" name="urg_OT_Nom_Dx_asociado_orden" readonly />
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="accordion" id="urg13">
+            <div class="accordion-header" onclick="toggleAccordion('urg13')">
+                <div class="accordion-num">13</div>
+                <div><span class="accordion-label">Datos de incapacidad</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="urg14">
+            <div class="accordion-header" onclick="toggleAccordion('urg14')">
+                <div class="accordion-num">14</div>
+                <div><span class="accordion-label">Profesional de salud que dio el alta de la atención inmediata / Urgencias</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="urg15">
+            <div class="accordion-header" onclick="toggleAccordion('urg15')">
+                <div class="accordion-num">15</div>
+                <div><span class="accordion-label">Documento de soporte de la Atención inmediata / Urgencias</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+    </aside>
+
+    <!-- ── PANEL HOSPITALIZACIÓN ── -->
+    <aside class="left-panel" id="panel-hospitalizacion" style="display:none">
+        <p class="panel-title">Secciones del registro · Hospitalización</p>
+
+        <div class="accordion" id="hos1">
+            <div class="accordion-header" onclick="toggleAccordion('hos1')">
+                <div class="accordion-num">1</div>
+                <div><span class="accordion-label">Identificación del Prestador de Servicios de Salud</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos2">
+            <div class="accordion-header" onclick="toggleAccordion('hos2')">
+                <div class="accordion-num">2</div>
+                <div><span class="accordion-label">Entidad responsable por el plan de beneficios en salud</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos3">
+            <div class="accordion-header" onclick="toggleAccordion('hos3')">
+                <div class="accordion-num">3</div>
+                <div><span class="accordion-label">Identificación del Paciente</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos4">
+            <div class="accordion-header" onclick="toggleAccordion('hos4')">
+                <div class="accordion-num">4</div>
+                <div><span class="accordion-label">Datos de hospitalización</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos5">
+            <div class="accordion-header" onclick="toggleAccordion('hos5')">
+                <div class="accordion-num">5</div>
+                <div><span class="accordion-label">Antecedentes de salud</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos6">
+            <div class="accordion-header" onclick="toggleAccordion('hos6')">
+                <div class="accordion-num">6</div>
+                <div><span class="accordion-label">Listado de Procedimientos realizados durante la hospitalización</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos7">
+            <div class="accordion-header" onclick="toggleAccordion('hos7')">
+                <div class="accordion-num">7</div>
+                <div><span class="accordion-label">Listado de Medicamentos administrados durante la hospitalización</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos8">
+            <div class="accordion-header" onclick="toggleAccordion('hos8')">
+                <div class="accordion-num">8</div>
+                <div><span class="accordion-label">Listado de Otras tecnologías en salud administradas durante la hospitalización</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos9">
+            <div class="accordion-header" onclick="toggleAccordion('hos9')">
+                <div class="accordion-num">9</div>
+                <div><span class="accordion-label">Diagnósticos</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos10">
+            <div class="accordion-header" onclick="toggleAccordion('hos10')">
+                <div class="accordion-num">10</div>
+                <div><span class="accordion-label">Fórmula de Medicamentos ordenados al egreso hospitalario</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos11">
+            <div class="accordion-header" onclick="toggleAccordion('hos11')">
+                <div class="accordion-num">11</div>
+                <div><span class="accordion-label">Órdenes médicas – Procedimientos ordenados al egreso hospitalario</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos12">
+            <div class="accordion-header" onclick="toggleAccordion('hos12')">
+                <div class="accordion-num">12</div>
+                <div><span class="accordion-label">Órdenes médicas – Otras tecnologías en salud ordenadas al egreso hospitalario</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos13">
+            <div class="accordion-header" onclick="toggleAccordion('hos13')">
+                <div class="accordion-num">13</div>
+                <div><span class="accordion-label">Datos de incapacidad</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos14">
+            <div class="accordion-header" onclick="toggleAccordion('hos14')">
+                <div class="accordion-num">14</div>
+                <div><span class="accordion-label">Profesional de salud responsable del egreso hospitalario</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+        <div class="accordion" id="hos15">
+            <div class="accordion-header" onclick="toggleAccordion('hos15')">
+                <div class="accordion-num">15</div>
+                <div><span class="accordion-label">Documento de soporte de hospitalización</span></div>
+                <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            <div class="accordion-body"><p class="empty-state">Formulario pendiente</p></div>
+        </div>
+
+    </aside>
+
+    <!-- ── PANEL DERECHO - VISOR PDF ── -->
+    <section class="right-panel">
+        <div class="pdf-toolbar">
+            <span class="pdf-title">Visor de documento</span>
+            <span class="pdf-badge" id="pdfBadge">Sin consulta</span>
+            <button class="pdf-btn" id="btnDescargar" onclick="descargarPdf()" style="display:none">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Descargar
+            </button>
+            <button class="pdf-btn" id="btnNueva" onclick="nuevaConsulta()" style="display:none">
+                Nueva consulta
+            </button>
+        </div>
+
+        <div class="pdf-viewer" id="pdfViewer">
+            <div class="pdf-empty" id="pdfEmpty">
+                <div class="pdf-empty-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                </div>
+                <p class="pdf-empty-title">Sin documento cargado</p>
+                <p class="pdf-empty-sub">Realiza una consulta para visualizar el documento PDF del paciente</p>
+            </div>
+
+            <iframe id="pdfFrame" src=""></iframe>
+        </div>
+    </section>
+
+</div>
+
+<!-- ========== TOASTS ========== -->
+<div class="toast-container" id="toastContainer"></div>
+  
+<script src="/js/ihce.js"></script>
+
+</body>
+</html>
