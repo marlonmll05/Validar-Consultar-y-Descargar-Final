@@ -1,0 +1,198 @@
+:root {
+    --primary: #9b87f5;
+    --primary-dark: #7a68c3;
+    --secondary: #33C3F0;
+    --dark: #1A1F2C;
+    --gray: #8E9196;
+    --light: #f8f9fa;
+    --border: #e2e8f0;
+    --success: #10b981;
+    --danger: #ef4444;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+
+body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+#firmaImg {
+    min-height: 60px;
+    max-width: 100%;
+    display: block;
+    margin: 0 auto;
+}
+
+.container {
+    width: 100%;
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+}
+
+.header { margin-bottom: 25px; }
+.header h1 { color: var(--dark); font-size: 32px; margin-bottom: 10px; }
+.header p { color: var(--gray); }
+
+.card {
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.card-title {
+    color: var(--primary-dark);
+    font-size: 20px;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: end;
+}
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.form-group input,
+.form-group select {
+    padding: 10px 14px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--dark);
+    background: var(--light);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--primary);
+    background: white;
+}
+
+canvas {
+    width: 100%;
+    border: 2px dashed var(--primary);
+    border-radius: 12px;
+    background: var(--light);
+}
+
+.buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+button {
+    border: none;
+    padding: 14px 22px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-secondary { background: var(--secondary); color: white; }
+.btn-secondary:hover { opacity: 0.9; transform: translateY(-2px); }
+
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { opacity: 0.9; transform: translateY(-2px); }
+.btn-success:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { opacity: 0.9; transform: translateY(-2px); }
+
+.preview { margin-top: 20px; text-align: center; }
+
+.preview img {
+    max-width: 100%;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: white;
+    padding: 10px;
+}
+
+.status {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    font-weight: bold;
+}
+
+.status.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.error-msg {
+    color: var(--danger);
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.resultado-box {
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 12px;
+    background: var(--light);
+    border: 1px solid var(--border);
+    display: none;
+    overflow-x: auto;
+}
+
+.resultado-box table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    table-layout: fixed;
+}
+
+.resultado-box th {
+    background: var(--dark);
+    color: white;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.resultado-box td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.resultado-box tr:hover td { background: #f6f4ff; }
+
+.firma-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
