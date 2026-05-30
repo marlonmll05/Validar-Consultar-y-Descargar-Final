@@ -27,14 +27,6 @@
                     <label for="tipoDoc">Tipo Identificación <span style="color:var(--danger)">*</span></label>
                     <select id="tipoDoc">
                         <option value="">-- Selecciona --</option>
-                        <option value="CC">CC - Cédula de Ciudadanía</option>
-                        <option value="TI">TI - Tarjeta de Identidad</option>
-                        <option value="CE">CE - Cédula de Extranjería</option>
-                        <option value="RC">RC - Registro Civil</option>
-                        <option value="PA">PA - Pasaporte</option>
-                        <option value="MS">MS - Menor sin identificación</option>
-                        <option value="AS">AS - Adulto sin identificación</option>
-                        <option value="NIT">NIT</option>
                     </select>
                 </div>
 
@@ -80,15 +72,20 @@
                 <canvas id="cnv" width="500" height="120"></canvas>
 
                 <div class="buttons">
-                    <button type="button" class="btn-primary" onclick="BasicDemoStartSignEx()">
+
+                    <button 
+                        type="button"
+                        id="btnIniciarFirma"
+                        class="btn-primary"
+                        onclick="iniciarFirma()">
                         Iniciar Firma
                     </button>
 
-                    <button type="button" class="btn-success" id="btnGuardarFirma" onclick="guardarFirma()">
+                    <button type="button" class="btn-success" id="btnGuardarFirma" onclick="guardarFirma()" disabled>
                         Guardar Firma
                     </button>
 
-                    <button type="button" class="btn-secondary" onclick="BasicDemoClearSign()">
+                    <button type="button" class="btn-secondary" id="btnLimpiarFirma" onclick="BasicDemoClearSign()" disabled>
                         Limpiar
                     </button>
                 </div>
@@ -120,6 +117,18 @@
 
         <p id="extVersion"></p>
         <p id="nmhVersion"></p>
+    </div>
+
+    <div id="modalGuardar" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <h3>Confirmar guardado</h3>
+            <p id="modalGuardarMessage">Ya existe un documento para este soporte. ¿Qué deseas hacer?</p>
+            <div class="modal-actions">
+                <button id="btnModalGuardarCancel">Cancelar</button>
+                <button id="btnModalGuardarAnexar">Anexar</button>
+                <button id="btnModalGuardarReemplazar">Reemplazar</button>
+            </div>
+        </div>
     </div>
 
     <script src="/js/firma/firma.js"></script>
