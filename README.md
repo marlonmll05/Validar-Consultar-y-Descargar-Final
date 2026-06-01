@@ -2,7 +2,7 @@
 
 Sistema web integral para la validación, generación y gestión de facturas y documentos de soporte de cobro en instituciones de salud del departamento del Atlántico, Colombia.
 
-Actualmente en producción en 18 centros de salud con más de 50 usuarios activos.
+Actualmente en producción en 20 centros de salud con más de 50 usuarios activos.
 
 ## Características Principales
 
@@ -57,11 +57,11 @@ Actualmente en producción en 18 centros de salud con más de 50 usuarios activo
 
 ## Impacto
 
-- 18 centros de salud activos
+- 20 centros de salud activos
 - 50+ usuarios diarios
 - 80% de reducción en tiempos de validación
 - 20+ tipos de documentos gestionados
-- 12 meses de desarrollo
+- 17 meses de desarrollo
 
 ## Instituciones en Producción
 
@@ -83,6 +83,8 @@ Actualmente en producción en 18 centros de salud con más de 50 usuarios activo
 16. Sanidad IPS
 17. Hospital Campo de la Cruz
 18. Hospital Juan de Acosta
+19. Hospital de Tubara
+20. Hospital de Puerto Colombia
 
 ## Módulos Principales
 
